@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply bg-forest-950 text-gray-100;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    @apply min-h-screen;
+    /* Safe area for notched phones */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  * {
+    @apply box-border;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-forest-500 hover:bg-forest-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-150 active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply border border-forest-600 hover:border-forest-400 text-forest-300 hover:text-forest-200 font-semibold py-3 px-6 rounded-lg transition-colors duration-150 active:scale-95;
+  }
+
+  .btn-danger {
+    @apply bg-danger-700 hover:bg-danger-500 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-150 active:scale-95;
+  }
+
+  .card {
+    @apply bg-forest-900 border border-forest-800 rounded-xl p-4;
+  }
+
+  .input {
+    @apply bg-forest-950 border border-forest-700 focus:border-forest-500 text-gray-100 placeholder-gray-500 rounded-lg px-4 py-3 w-full outline-none transition-colors duration-150;
+  }
+
+  .label {
+    @apply text-sm font-medium text-forest-300 mb-1 block;
+  }
+}
