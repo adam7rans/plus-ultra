@@ -45,7 +45,7 @@ export function bucketScore(role: SkillRole, members: TribeMember[], skills: Mem
   return 0.6 + 0.4 * Math.min(1, (ratio - 1) / 2)
 }
 
-export function survivabilityScore(tribe: Tribe, members: TribeMember[], skills: MemberSkill[]): number {
+export function survivabilityScore(_tribe: Tribe, members: TribeMember[], skills: MemberSkill[]): number {
   const tier1Scores = TIER_1_ROLES.map(r => bucketScore(r, members, skills))
   const tier2Scores = TIER_2_ROLES.map(r => bucketScore(r, members, skills))
   const tier3Scores = TIER_3_ROLES.map(r => bucketScore(r, members, skills))
