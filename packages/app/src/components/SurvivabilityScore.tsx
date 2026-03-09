@@ -32,7 +32,7 @@ export default function SurvivabilityScore({ score, hasCriticalGap }: Props) {
     <div className={`card border ${scoreBg(score, hasCriticalGap)}`}>
       <div className="flex items-end justify-between mb-2">
         <div>
-          <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">
+          <div className="text-xs text-gray-300 uppercase tracking-widest mb-1">
             Survivability Score
           </div>
           <div className={`text-6xl font-bold font-mono leading-none ${scoreColor(score, hasCriticalGap)}`}>

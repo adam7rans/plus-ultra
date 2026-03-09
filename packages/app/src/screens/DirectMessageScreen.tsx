@@ -14,7 +14,7 @@ export default function DirectMessageScreen() {
   const { identity } = useIdentity()
   const { members } = useTribe()
   const online = useOnlineStatus()
-  const { messages, loading } = useDMChannel(identity?.pub ?? '', memberPub)
+  const { messages, loading, inject } = useDMChannel(identity?.pub ?? '', memberPub)
   const [decrypted, setDecrypted] = useState<Map<string, string>>(new Map())
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -27,24 +27,21 @@ export default function DirectMessageScreen() {
 
     async function decryptAll() {
       const newDecrypted = new Map<string, string>()
+      // ECDH: SEA.secret(otherEpub, myPair) == SEA.secret(myEpub, otherPair)
+      // So both sender and recipient always derive the shared secret using the OTHER person's epub.
+      const otherEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
+
       for (const msg of messages) {
         if (msg.type !== 'text') {
-          // Voice/photo stored as-is (not text-encrypted)
+          newDecrypted.set(msg.id, msg.content)
+          continue
+        }
+        if (!otherEpub) {
           newDecrypted.set(msg.id, msg.content)
           continue
         }
         try {
-          // Determine who sent it to know which epub to use
-          const senderEpub = msg.senderId === identity!.pub
-            ? identity!.epub
-            : (recipient as TribeMember & { epub?: string }).epub ?? ''
-
-          if (!senderEpub) {
-            newDecrypted.set(msg.id, msg.content)
-            continue
-          }
-
-          const plaintext = await decryptDMContent(msg.content, senderEpub, pair)
+          const plaintext = await decryptDMContent(msg.content, otherEpub, pair)
           newDecrypted.set(msg.id, plaintext)
         } catch {
           newDecrypted.set(msg.id, '[encrypted]')
@@ -63,19 +60,28 @@ export default function DirectMessageScreen() {
   async function handleSendText(text: string) {
     if (!identity || !recipient?.epub) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
-    await sendDM(tribeId, identity.pub, pair, memberPub, (recipient as TribeMember & { epub?: string }).epub ?? '', 'text', text)
+    const recipientEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
+    const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'text', text)
+    inject(msg)
+    setDecrypted(prev => new Map(prev).set(msg.id, text))
   }
 
   async function handleSendVoice(base64: string, mimeType: string) {
     if (!identity || !recipient?.epub) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
-    await sendDM(tribeId, identity.pub, pair, memberPub, (recipient as TribeMember & { epub?: string }).epub ?? '', 'voice', base64, mimeType)
+    const recipientEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
+    const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'voice', base64, mimeType)
+    inject(msg)
+    setDecrypted(prev => new Map(prev).set(msg.id, base64))
   }
 
   async function handleSendPhoto(base64: string, mimeType: string) {
     if (!identity || !recipient?.epub) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
-    await sendDM(tribeId, identity.pub, pair, memberPub, (recipient as TribeMember & { epub?: string }).epub ?? '', 'photo', base64, mimeType)
+    const recipientEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
+    const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'photo', base64, mimeType)
+    inject(msg)
+    setDecrypted(prev => new Map(prev).set(msg.id, base64))
   }
 
   const recipientName = recipient?.displayName ?? memberPub.slice(0, 8)

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { closeDB } from '../lib/db'
+
+const isDev = import.meta.env.DEV
 
 interface DiagResult {
   label: string
@@ -9,6 +12,19 @@ interface DiagResult {
 
 export default function DiagnosticsScreen() {
   const [results, setResults] = useState<DiagResult[]>([])
+  const [resetting, setResetting] = useState(false)
+
+  function resetAllData() {
+    setResetting(true)
+    closeDB() // release our connection so delete isn't blocked
+    const req = indexedDB.deleteDatabase('plus-ultra')
+    req.onsuccess = () => window.location.reload()
+    req.onerror = () => setResetting(false)
+    req.onblocked = () => {
+      // Another connection still open — wait a tick and reload anyway
+      setTimeout(() => window.location.reload(), 500)
+    }
+  }
 
   useEffect(() => {
     const out: DiagResult[] = []
@@ -70,6 +86,17 @@ export default function DiagnosticsScreen() {
         ← Home
       </Link>
       <h2 className="text-xl font-bold text-gray-100 mb-6">Diagnostics</h2>
+
+      {isDev && (
+        <button
+          onClick={resetAllData}
+          disabled={resetting}
+          className="w-full mb-6 py-2 px-4 rounded bg-danger-600 hover:bg-danger-500 disabled:opacity-50 text-white text-sm font-semibold"
+        >
+          {resetting ? 'Wiping data…' : 'Reset All Data (dev only)'}
+        </button>
+      )}
+
       <div className="space-y-1 font-mono text-xs">
         {results.map((r, i) => (
           <div key={i} className="flex items-start gap-3">

@@ -8,13 +8,16 @@ export default function JoinTribeScreen() {
   const { identity } = useIdentity()
   const navigate = useNavigate()
   // TanStack Router parses search params
-  const search = useSearch({ strict: false }) as { tribe?: string; token?: string }
+  const search = useSearch({ strict: false }) as { tribe?: string; token?: string; name?: string; loc?: string; pub?: string }
 
   const tribeId = search.tribe
   const token = search.token
+  // Tribe info embedded in URL for offline join (no Gun/relay needed)
+  const urlTribeName = search.name
+  const urlTribeLoc = search.loc
+  const urlTribePub = search.pub
 
   const [tribe, setTribe] = useState<Tribe | null>(null)
-  const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(true)
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -26,11 +29,10 @@ export default function JoinTribeScreen() {
       return
     }
     fetchTribeMeta(tribeId).then(data => {
-      if (!data) {
-        setError('Tribe not found. The invite link may be invalid or the tribe has not synced yet.')
-      } else {
+      if (data) {
         setTribe(data)
       }
+      // If no Gun data, we still show the invite using URL-embedded name/loc
       setLoading(false)
     })
   }, [tribeId])
@@ -40,7 +42,10 @@ export default function JoinTribeScreen() {
     setJoining(true)
     setError(null)
     try {
-      await joinTribe(tribeId, token, identity.pub, displayName.trim() || undefined, identity.epub)
+      const fallback = (urlTribeName && urlTribePub)
+        ? { name: urlTribeName, location: urlTribeLoc ?? '', pub: urlTribePub }
+        : undefined
+      await joinTribe(tribeId, token, identity.pub, identity.displayName, identity.epub, fallback)
       window.dispatchEvent(new Event('tribe-joined'))
       await navigate({ to: '/tribe/$tribeId', params: { tribeId } })
     } catch (err) {
@@ -83,34 +88,23 @@ export default function JoinTribeScreen() {
         <div className="card border-danger-700 bg-danger-900/20 mb-6">
           <p className="text-danger-400 text-sm">{error}</p>
         </div>
-      ) : tribe ? (
+      ) : (tribe || urlTribeName) ? (
         <div className="space-y-6">
           {/* Tribe preview */}
           <div className="card">
             <div className="text-xs text-gray-500 uppercase tracking-widest mb-2">You're invited to join</div>
-            <div className="text-2xl font-bold text-gray-100 mb-1">{tribe.name}</div>
-            <div className="text-gray-400 text-sm">{tribe.location}</div>
-            <div className="mt-3 pt-3 border-t border-forest-800">
-              <span className="text-xs text-gray-600">Governance: </span>
-              <span className="text-xs text-gray-400">
-                {tribe.constitutionTemplate === 'direct_democracy' ? 'Direct Democracy'
-                  : tribe.constitutionTemplate === 'council' ? 'Council Model'
-                  : 'Hybrid'}
-              </span>
-            </div>
-          </div>
-
-          {/* Display name */}
-          <div>
-            <label className="label">Your display name</label>
-            <input
-              className="input"
-              type="text"
-              placeholder="How you'll appear to tribe members"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              maxLength={40}
-            />
+            <div className="text-2xl font-bold text-gray-100 mb-1">{tribe?.name ?? urlTribeName}</div>
+            <div className="text-gray-400 text-sm">{tribe?.location ?? urlTribeLoc}</div>
+            {tribe && (
+              <div className="mt-3 pt-3 border-t border-forest-800">
+                <span className="text-xs text-gray-600">Governance: </span>
+                <span className="text-xs text-gray-400">
+                  {tribe.constitutionTemplate === 'direct_democracy' ? 'Direct Democracy'
+                    : tribe.constitutionTemplate === 'council' ? 'Council Model'
+                    : 'Hybrid'}
+                </span>
+              </div>
+            )}
           </div>
 
           <button
@@ -118,7 +112,7 @@ export default function JoinTribeScreen() {
             onClick={handleJoin}
             disabled={joining}
           >
-            {joining ? 'Joining...' : `Join ${tribe.name}`}
+            {joining ? 'Joining...' : `Join ${tribe?.name ?? urlTribeName}`}
           </button>
         </div>
       ) : (

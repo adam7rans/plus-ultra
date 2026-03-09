@@ -50,6 +50,13 @@ export async function restoreIdentity(raw: string): Promise<Identity> {
   return identity
 }
 
+export async function saveDisplayName(displayName: string): Promise<void> {
+  const db = await getDB()
+  const identity = await db.get('identity', IDENTITY_KEY) as Identity | undefined
+  if (!identity) return
+  await db.put('identity', { ...identity, displayName: displayName.trim() || undefined }, IDENTITY_KEY)
+}
+
 export async function markBackedUp(): Promise<void> {
   const db = await getDB()
   const identity = await db.get('identity', IDENTITY_KEY) as Identity | undefined

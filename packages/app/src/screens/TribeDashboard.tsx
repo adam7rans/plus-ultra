@@ -9,6 +9,7 @@ import SurvivabilityScore from '../components/SurvivabilityScore'
 import BucketGrid from '../components/BucketGrid'
 import CriticalGapsPanel from '../components/CriticalGapsPanel'
 import MemberCard from '../components/MemberCard'
+import QrDisplay from '../components/QrDisplay'
 
 export default function TribeDashboard() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId' })
@@ -19,20 +20,47 @@ export default function TribeDashboard() {
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
   const [loadingInvite, setLoadingInvite] = useState(false)
+  const [showInviteQr, setShowInviteQr] = useState(false)
+  const [shareSuccess, setShareSuccess] = useState(false)
+
+  async function handleShare() {
+    if (!inviteUrl) return
+    const title = `Join ${tribe?.name ?? localRef?.name ?? 'my tribe'}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ url: inviteUrl, title })
+        return
+      } catch {
+        // user cancelled or API failed — fall through to copy
+      }
+    }
+    // Desktop fallback: copy to clipboard
+    await navigator.clipboard.writeText(inviteUrl)
+    setShareSuccess(true)
+    setTimeout(() => setShareSuccess(false), 2000)
+  }
   const [showBuckets, setShowBuckets] = useState(false)
 
   const { score, bucketScores, members, skills, criticalGaps, warnings } = useSurvivabilityScore(tribeId)
 
+  const [tribePub, setTribePub] = useState<string>('')
+
   useEffect(() => {
     setActiveTribeId(tribeId)
     fetchTribeMeta(tribeId).then(t => { if (t) setTribe(t) })
+    // Load tribePub from my-tribes for invite URL (needed even when tribe-cache is empty)
+    import('../lib/db').then(({ getDB }) =>
+      getDB().then(db => db.get('my-tribes', tribeId).then(r => { if (r?.tribePub) setTribePub(r.tribePub) }))
+    )
   }, [tribeId, setActiveTribeId])
 
   async function handleGenerateInvite() {
     setLoadingInvite(true)
     try {
       const token = await createInviteToken(tribeId)
-      const url = buildInviteUrl(tribeId, token)
+      const pub = tribe?.pub ?? tribePub
+      const tribeMeta = { name: tribe?.name ?? localRef?.name ?? '', location: tribe?.location ?? localRef?.location ?? '', pub }
+      const url = buildInviteUrl(tribeId, token, tribeMeta)
       setInviteUrl(url)
     } finally {
       setLoadingInvite(false)
@@ -61,7 +89,7 @@ export default function TribeDashboard() {
           {/* Header */}
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-100">{tribe?.name ?? localRef?.name}</h2>
-            <p className="text-gray-500 text-sm mt-0.5">{tribe?.location ?? localRef?.location} · {members.length} member{members.length !== 1 ? 's' : ''}</p>
+            <p className="text-gray-400 text-sm mt-0.5">{tribe?.location ?? localRef?.location} · {members.length} member{members.length !== 1 ? 's' : ''}</p>
           </div>
 
           {/* Survivability score */}
@@ -78,7 +106,7 @@ export default function TribeDashboard() {
             <span className="text-2xl">📡</span>
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-gray-100 text-sm">Tribe Channel</div>
-              <div className="text-xs text-gray-500">Tribe-wide messages</div>
+              <div className="text-xs text-gray-400">Tribe-wide messages</div>
             </div>
             <span className="text-forest-400 text-lg">→</span>
           </Link>
@@ -87,7 +115,7 @@ export default function TribeDashboard() {
           {mySkillCount === 0 && (
             <div className="card border-forest-600 bg-forest-900/30 mb-4">
               <p className="text-forest-300 text-sm font-semibold mb-1">You haven't declared your skills</p>
-              <p className="text-gray-500 text-xs mb-3">
+              <p className="text-gray-400 text-xs mb-3">
                 Declaring skills updates the tribe's survivability score in real time.
               </p>
               <Link to="/tribe/$tribeId/skills" params={{ tribeId }}>
@@ -98,7 +126,7 @@ export default function TribeDashboard() {
 
           {/* Critical gaps */}
           <div className="mb-6">
-            <h3 className="text-xs text-gray-500 uppercase tracking-widest mb-2">Gaps &amp; Priorities</h3>
+            <h3 className="text-xs text-gray-300 uppercase tracking-widest mb-2">Gaps &amp; Priorities</h3>
             <CriticalGapsPanel
               criticalGaps={criticalGaps}
               warnings={warnings}
@@ -112,7 +140,7 @@ export default function TribeDashboard() {
               className="flex items-center justify-between w-full mb-3"
               onClick={() => setShowBuckets(prev => !prev)}
             >
-              <h3 className="text-xs text-gray-500 uppercase tracking-widest">
+              <h3 className="text-xs text-gray-300 uppercase tracking-widest">
                 All Buckets
               </h3>
               <span className="text-xs text-forest-400">{showBuckets ? '▲ Hide' : '▼ Show'}</span>
@@ -125,7 +153,7 @@ export default function TribeDashboard() {
           {/* Members */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs text-gray-500 uppercase tracking-widest">
+              <h3 className="text-xs text-gray-300 uppercase tracking-widest">
                 Members ({members.length})
               </h3>
               {mySkillCount > 0 && (
@@ -136,7 +164,7 @@ export default function TribeDashboard() {
             </div>
             {members.length === 0 ? (
               <div className="card text-center py-6">
-                <p className="text-gray-600 text-sm">No members yet — invite some</p>
+                <p className="text-gray-400 text-sm">No members yet — invite some</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -157,19 +185,44 @@ export default function TribeDashboard() {
             <h3 className="text-sm font-semibold text-gray-300 mb-3">Invite Members</h3>
             {inviteUrl ? (
               <div className="space-y-3">
+                {/* QR code toggle */}
+                <button
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-forest-900 border border-forest-700 hover:border-forest-500 transition-colors"
+                  onClick={() => setShowInviteQr(prev => !prev)}
+                >
+                  <span className="text-sm text-gray-300">Show QR Code</span>
+                  <span className="text-forest-400 text-sm">{showInviteQr ? '▲' : '▼'}</span>
+                </button>
+                {showInviteQr && (
+                  <div className="flex justify-center py-2">
+                    <QrDisplay value={inviteUrl} />
+                  </div>
+                )}
+
+                {/* URL display */}
                 <div className="bg-forest-950 rounded-lg p-3 font-mono text-xs text-gray-400 break-all">
                   {inviteUrl}
                 </div>
-                <p className="text-xs text-gray-600">24 hours · single use</p>
-                <button
-                  className={`btn-primary w-full ${copySuccess ? 'bg-forest-600' : ''}`}
-                  onClick={handleCopyInvite}
-                >
-                  {copySuccess ? '✓ Copied!' : 'Copy Invite Link'}
-                </button>
+                <p className="text-xs text-gray-400">24 hours · single use</p>
+
+                {/* Action buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    className={`btn-primary ${copySuccess ? 'bg-forest-600' : ''}`}
+                    onClick={handleCopyInvite}
+                  >
+                    {copySuccess ? '✓ Copied!' : 'Copy Link'}
+                  </button>
+                  <button
+                    className={`btn-primary ${shareSuccess ? 'bg-forest-600' : ''}`}
+                    onClick={handleShare}
+                  >
+                    {shareSuccess ? '✓ Copied!' : 'Share ↗'}
+                  </button>
+                </div>
                 <button
                   className="btn-secondary w-full text-sm"
-                  onClick={() => setInviteUrl(null)}
+                  onClick={() => { setInviteUrl(null); setShowInviteQr(false) }}
                 >
                   Generate new link
                 </button>

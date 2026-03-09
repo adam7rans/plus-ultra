@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' ws://localhost:* http://localhost:* wss://gun-relay.prepper.network https://gun-relay.prepper.network; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:"
+      "csp": "default-src 'self' http://localhost:*; connect-src 'self' ws://localhost:* http://localhost:* wss://gun-relay.prepper.network https://gun-relay.prepper.network; script-src 'self' http://localhost:* 'unsafe-eval' 'unsafe-inline'; style-src 'self' http://localhost:* 'unsafe-inline'; media-src 'self' blob: mediastream:"
     }
   },
   "bundle": {

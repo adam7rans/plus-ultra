@@ -12,6 +12,10 @@ export interface AppDB {
       backedUp: boolean
     }
   }
+  members: {
+    key: string   // `${tribeId}:${pubkey}`
+    value: unknown
+  }
   'queued-messages': {
     key: string
     value: {
@@ -55,13 +59,30 @@ export interface AppDB {
       lastReadAt: number
     }
   }
+  skills: {
+    key: string   // `${tribeId}:${memberId}__${role}`
+    value: unknown
+  }
 }
 
 let _db: IDBPDatabase<AppDB> | null = null
 
+export function closeDB(): void {
+  _db?.close()
+  _db = null
+}
+
 export async function getDB(): Promise<IDBPDatabase<AppDB>> {
   if (_db) return _db
-  _db = await openDB<AppDB>('plus-ultra', 3, {
+  _db = await openDB<AppDB>('plus-ultra', 5, {
+    blocked() {
+      // Another tab has the DB open at an older version — force it to close
+      // so our upgrade can proceed (stale tab will reload automatically)
+      console.warn('[db] upgrade blocked by another tab — closing old connection')
+      _db?.close()
+      _db = null
+      window.location.reload()
+    },
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         if (!db.objectStoreNames.contains('identity')) {
@@ -88,6 +109,16 @@ export async function getDB(): Promise<IDBPDatabase<AppDB>> {
         }
         if (!db.objectStoreNames.contains('channel-reads')) {
           db.createObjectStore('channel-reads')
+        }
+      }
+      if (oldVersion < 4) {
+        if (!db.objectStoreNames.contains('members')) {
+          db.createObjectStore('members')
+        }
+      }
+      if (oldVersion < 5) {
+        if (!db.objectStoreNames.contains('skills')) {
+          db.createObjectStore('skills')
         }
       }
     },

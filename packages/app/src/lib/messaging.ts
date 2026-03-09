@@ -65,7 +65,7 @@ export async function sendDM(
   type: Message['type'],
   content: string,
   mimeType?: string
-): Promise<void> {
+): Promise<Message> {
   const id = nanoid()
   const sentAt = Date.now()
   const channelId = dmChannelId(senderId, recipientPub)
@@ -97,6 +97,7 @@ export async function sendDM(
 
   await writeDM(channelId, message)
   await cacheMessage(message)
+  return message
 }
 
 export async function decryptDMContent(
@@ -115,18 +116,48 @@ export async function decryptDMContent(
   return decrypted ?? '[decryption failed]'
 }
 
+// ─── Gun SEA-safe helpers ─────────────────────────────────────────────────────
+// Gun/SEA installs a put() middleware that silently drops writes containing
+// field values starting with "SEA{" (it tries to verify them as signed Gun nodes
+// and fails). We escape them to "~SEA{" before writing and restore on read.
+
+function gunEscape(obj: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined) continue  // Gun rejects undefined values entirely
+    if (typeof v === 'string' && v.startsWith('SEA{')) {
+      out[k] = '~' + v  // escape: "SEA{..." → "~SEA{..."
+    } else {
+      out[k] = v
+    }
+  }
+  return out
+}
+
+function gunUnescape(obj: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v === 'string' && v.startsWith('~SEA{')) {
+      out[k] = v.slice(1)  // restore: "~SEA{..." → "SEA{..."
+    } else {
+      out[k] = v
+    }
+  }
+  return out
+}
+
 // ─── Gun write helpers ────────────────────────────────────────────────────────
 
 async function writeMessage(tribeId: string, _channelId: string, message: Message): Promise<void> {
   tribeChannelRef(tribeId)
     .get(message.id)
-    .put(message as unknown as Record<string, unknown>)
+    .put(gunEscape(message as unknown as Record<string, unknown>))
 }
 
 async function writeDM(channelId: string, message: Message): Promise<void> {
   dmChannelRef(channelId)
     .get(message.id)
-    .put(message as unknown as Record<string, unknown>)
+    .put(gunEscape(message as unknown as Record<string, unknown>))
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────────
@@ -137,17 +168,34 @@ export function subscribeTribeChannel(
 ): () => void {
   const msgMap = new Map<string, Message>()
 
+  // Seed from IDB immediately (survives restarts, no Gun relay needed)
+  loadCachedMessages(tribewideChannelId()).then(cached => {
+    for (const m of cached) {
+      if (m.tribeId === tribeId) msgMap.set(m.id, m)
+    }
+    if (msgMap.size > 0) callback(sortedMessages(msgMap))
+  })
+
   const ref = tribeChannelRef(tribeId)
-  ref.map().on((data: unknown, key: string) => {
+
+  function handleMsg(data: unknown, key: string) {
     if (!data || typeof data !== 'object' || key === '_') return
     const m = parseMessage(data)
     if (m) {
       msgMap.set(m.id, m)
+      void cacheMessage(m)
       callback(sortedMessages(msgMap))
     }
-  })
+  }
 
-  return () => ref.map().off()
+  ref.map().once(handleMsg)
+  ref.map().on(handleMsg)
+  const poll = window.setInterval(() => ref.map().once(handleMsg), 2000)
+
+  return () => {
+    ref.map().off()
+    clearInterval(poll)
+  }
 }
 
 export function subscribeDMChannel(
@@ -156,34 +204,52 @@ export function subscribeDMChannel(
 ): () => void {
   const msgMap = new Map<string, Message>()
 
+  // Seed from IDB immediately
+  loadCachedMessages(channelId).then(cached => {
+    for (const m of cached) msgMap.set(m.id, m)
+    if (msgMap.size > 0) callback(sortedMessages(msgMap))
+  })
+
   const ref = dmChannelRef(channelId)
-  ref.map().on((data: unknown, key: string) => {
+
+  function handleMsg(data: unknown, key: string) {
     if (!data || typeof data !== 'object' || key === '_') return
     const m = parseMessage(data)
     if (m) {
       msgMap.set(m.id, m)
+      void cacheMessage(m)
       callback(sortedMessages(msgMap))
     }
-  })
+  }
 
-  return () => ref.map().off()
+  ref.map().once(handleMsg)
+  ref.map().on(handleMsg)
+
+  // Gun's map().on() doesn't reliably fire for peer-pushed messages in all environments.
+  // Poll with once() every 2s as a fallback — handleMsg deduplicates by message ID.
+  const poll = window.setInterval(() => ref.map().once(handleMsg), 2000)
+
+  return () => {
+    ref.map().off()
+    clearInterval(poll)
+  }
 }
 
 function parseMessage(data: unknown): Message | null {
   if (!data || typeof data !== 'object') return null
-  const d = data as Record<string, unknown>
-  if (!d.id || !d.senderId || !d.sentAt) return null
+  const raw = gunUnescape(data as Record<string, unknown>)
+  if (!raw.id || !raw.senderId || !raw.sentAt) return null
   return {
-    id: d.id as string,
-    tribeId: (d.tribeId as string) ?? '',
-    channelId: (d.channelId as string) ?? '',
-    senderId: d.senderId as string,
-    type: (d.type as Message['type']) ?? 'text',
-    content: (d.content as string) ?? '',
-    mimeType: d.mimeType as string | undefined,
-    sentAt: d.sentAt as number,
-    deliveredAt: d.deliveredAt as number | undefined,
-    sig: (d.sig as string) ?? '',
+    id: raw.id as string,
+    tribeId: (raw.tribeId as string) ?? '',
+    channelId: (raw.channelId as string) ?? '',
+    senderId: raw.senderId as string,
+    type: (raw.type as Message['type']) ?? 'text',
+    content: (raw.content as string) ?? '',
+    mimeType: raw.mimeType as string | undefined,
+    sentAt: raw.sentAt as number,
+    deliveredAt: raw.deliveredAt as number | undefined,
+    sig: (raw.sig as string) ?? '',
   }
 }
 

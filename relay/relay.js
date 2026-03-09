@@ -1,0 +1,5 @@
+const Gun = require('gun')
+const http = require('http')
+const server = http.createServer()
+Gun({ web: server })
+server.listen(8765, () => console.log('Gun relay running on ws://localhost:8765/gun'))

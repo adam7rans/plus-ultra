@@ -16,7 +16,11 @@ export function createVoiceRecorder(onStop: (base64: string, mimeType: string) =
   async function start(): Promise<boolean> {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg'
+      const mimeType = MediaRecorder.isTypeSupported('audio/mp4')
+        ? 'audio/mp4'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/ogg'
       recorder = new MediaRecorder(stream, { mimeType })
       chunks = []
 

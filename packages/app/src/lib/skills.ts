@@ -1,4 +1,5 @@
 import { gun } from './gun'
+import { getDB } from './db'
 import type { MemberSkill, SkillRole, ProficiencyLevel } from '@plus-ultra/core'
 
 // Composite key: memberId__role
@@ -21,6 +22,11 @@ export async function declareSkill(
     vouchedBy: [],
   }
 
+  // Write to IDB first (survives restarts)
+  const db = await getDB()
+  await db.put('skills', skill, `${tribeId}:${skillKey(memberId, role)}`)
+
+  // Gun for P2P sync (fire and forget)
   return new Promise((resolve) => {
     gun
       .get('tribes')
@@ -78,19 +84,39 @@ export function subscribeToAllSkills(
 ): () => void {
   const skillsMap = new Map<string, MemberSkill>()
 
+  // Seed from IDB immediately (survives restarts)
+  getDB().then(db => db.getAll('skills')).then(all => {
+    for (const s of all) {
+      const skill = s as MemberSkill
+      if (skill.tribeId === tribeId && skill.memberId && skill.role && skill.proficiency) {
+        skillsMap.set(skillKey(skill.memberId, skill.role), skill)
+      }
+    }
+    if (skillsMap.size > 0) callback(Array.from(skillsMap.values()))
+  })
+
   const ref = gun.get('tribes').get(tribeId).get('skills')
 
-  ref.map().on((data: unknown, key: string) => {
-    if (!data || typeof data !== 'object' || key === '_') {
+  function handleSkill(data: unknown, key: string) {
+    if (key === '_') return
+    if (!data || typeof data !== 'object') {
       skillsMap.delete(key)
     } else {
       const s = data as Record<string, unknown>
       if (s.memberId && s.role && s.proficiency) {
-        skillsMap.set(key, s as unknown as MemberSkill)
+        const skill = s as unknown as MemberSkill
+        skillsMap.set(key, skill)
+        // persist Gun-received skills to IDB
+        getDB().then(db => db.put('skills', skill, `${tribeId}:${key}`))
       }
     }
     callback(Array.from(skillsMap.values()))
-  })
+  }
+
+  // once() requests current state from relay
+  ref.map().once(handleSkill)
+  // on() for live updates
+  ref.map().on(handleSkill)
 
   return () => {
     ref.map().off()

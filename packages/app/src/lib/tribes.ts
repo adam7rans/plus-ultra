@@ -94,11 +94,17 @@ export async function createInviteToken(tribeId: string): Promise<string> {
   return token
 }
 
-export function buildInviteUrl(tribeId: string, token: string): string {
+export function buildInviteUrl(tribeId: string, token: string, tribe?: { name: string; location: string; pub?: string }): string {
   const base = typeof window !== 'undefined'
     ? window.location.origin
     : 'https://app.plusultra.network'
-  return `${base}/join?tribe=${tribeId}&token=${token}`
+  const params = new URLSearchParams({ tribe: tribeId, token })
+  if (tribe) {
+    params.set('name', tribe.name)
+    params.set('loc', tribe.location)
+    if (tribe.pub) params.set('pub', tribe.pub)
+  }
+  return `${base}/join?${params.toString()}`
 }
 
 export async function validateAndConsumeToken(
@@ -106,9 +112,18 @@ export async function validateAndConsumeToken(
   token: string
 ): Promise<{ valid: boolean; reason?: string }> {
   return new Promise((resolve) => {
+    // Short timeout — if Gun has no data (no relay, offline), allow join anyway.
+    // In offline mode the URL itself is the trust; single-use enforcement requires a relay.
+    const timeout = setTimeout(() => {
+      console.warn('[tribes] invite token not found in Gun (offline mode) — allowing join')
+      resolve({ valid: true })
+    }, 2000)
+
     gun.get('tribes').get(tribeId).get('invites').get(token).once((data: unknown) => {
+      clearTimeout(timeout)
       if (!data || typeof data !== 'object') {
-        return resolve({ valid: false, reason: 'Token not found' })
+        // Not in Gun — offline mode, allow join
+        return resolve({ valid: true })
       }
       const d = data as { used?: boolean; expiresAt?: number }
       if (d.used) {
@@ -131,17 +146,30 @@ export async function joinTribe(
   token: string,
   memberPub: string,
   displayName?: string,
-  memberEpub?: string
+  memberEpub?: string,
+  fallbackMeta?: { name: string; location: string; pub: string }
 ): Promise<Tribe> {
   const validation = await validateAndConsumeToken(tribeId, token)
   if (!validation.valid) {
     throw new Error(validation.reason ?? 'Invalid invite')
   }
 
-  // Fetch tribe metadata
-  const tribe = await fetchTribeMeta(tribeId)
+  // Fetch tribe metadata — use fallback (from invite URL) if Gun/IDB can't provide it
+  const fetched = await fetchTribeMeta(tribeId)
+  const tribe = fetched ?? (fallbackMeta ? {
+    id: tribeId,
+    pub: fallbackMeta.pub,
+    priv: '',
+    name: fallbackMeta.name,
+    location: fallbackMeta.location,
+    region: '',
+    createdAt: 0,
+    constitutionTemplate: 'council' as const,
+    founderId: '',
+  } : null)
+
   if (!tribe) {
-    throw new Error('Tribe not found')
+    throw new Error('Tribe not found — invite link may be missing tribe info')
   }
 
   // Write member record
@@ -220,6 +248,10 @@ export async function getMyTribes(): Promise<Array<{ tribeId: string; name: stri
 // ─── Member management ───────────────────────────────────────────────────────
 
 async function writeMember(tribeId: string, member: TribeMember): Promise<void> {
+  // Write to IDB first (source of truth, survives process restarts)
+  const db = await getDB()
+  await db.put('members', member, `${tribeId}:${member.pubkey}`)
+  // Gun write for live P2P sync (fire and forget)
   gun.get('tribes').get(tribeId).get('members').get(member.pubkey).put(
     member as unknown as Record<string, unknown>
   )
@@ -231,14 +263,27 @@ export function subscribeToMembers(
 ): () => void {
   const members = new Map<string, TribeMember>()
 
+  // Seed from IDB immediately (survives process restarts, no Gun relay needed)
+  getDB().then(db => db.getAll('members')).then(all => {
+    const prefix = `${tribeId}:`
+    for (const m of all) {
+      const member = m as TribeMember
+      if (member.tribeId === tribeId || String(member.pubkey).startsWith(prefix)) {
+        if (member.pubkey) members.set(member.pubkey, member)
+      }
+    }
+    if (members.size > 0) callback(Array.from(members.values()))
+  })
+
+  // Subscribe to Gun for live updates from peers
   const ref = gun.get('tribes').get(tribeId).get('members')
 
-  ref.map().on((data: unknown, pubkey: string) => {
+  function handleGunMember(data: unknown, pubkey: string) {
     if (!data || typeof data !== 'object') return
-    if (pubkey === '_') return // Gun metadata key
+    if (pubkey === '_') return
     const d = data as Record<string, unknown>
     if (!d.pubkey) return
-    members.set(pubkey, {
+    const member: TribeMember = {
       pubkey: d.pubkey as string,
       tribeId: d.tribeId as string,
       joinedAt: (d.joinedAt as number) ?? 0,
@@ -249,9 +294,21 @@ export function subscribeToMembers(
       declaredReturnAt: d.declaredReturnAt as number | undefined,
       role: d.role as TribeMember['role'] | undefined,
       epub: d.epub as string | undefined,
-    })
+    }
+    if (members.has(pubkey) &&
+        members.get(pubkey)!.lastSeen >= (member.lastSeen ?? 0) &&
+        members.get(pubkey)!.pubkey) return  // skip stale partial updates
+    members.set(pubkey, member)
+    // Persist Gun-received members to IDB too
+    getDB().then(db => db.put('members', member, `${tribeId}:${pubkey}`))
     callback(Array.from(members.values()))
-  })
+  }
+
+  // once() explicitly requests current state from relay (needed when this context
+  // connects after members were already written — relay won't push unsolicited)
+  ref.map().once(handleGunMember)
+  // on() for live real-time updates going forward
+  ref.map().on(handleGunMember)
 
   return () => {
     ref.map().off()

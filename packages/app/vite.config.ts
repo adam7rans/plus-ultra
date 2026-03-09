@@ -2,13 +2,18 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [
-    react(),
-  ],
+  plugins: [react()],
+  optimizeDeps: {
+    esbuildOptions: {
+      // Gun.js expects Node.js 'global' — map it to browser globalThis
+      define: {
+        global: 'globalThis',
+      },
+    },
+  },
   resolve: {
     alias: {
-      // Gun.js needs this for browser compat
       'gun/sea': 'gun/sea.js',
-    }
-  }
+    },
+  },
 })

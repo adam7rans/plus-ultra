@@ -1,11 +1,26 @@
+import { useState } from 'react'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useTribe } from '../contexts/TribeContext'
 import { shortId } from '../lib/identity'
 import { Link } from '@tanstack/react-router'
+import CameraQrScanner from '../components/CameraQrScanner'
 
 export default function HomeScreen() {
   const { identity, loading: identityLoading } = useIdentity()
   const { myTribes, loadingTribes } = useTribe()
+  const [scanning, setScanning] = useState(false)
+
+  function handleQrScan(data: string) {
+    setScanning(false)
+    try {
+      const url = new URL(data)
+      if (!url.searchParams.get('tribe') || !url.searchParams.get('token')) return
+      // Navigate to the join page — reuse the same path+search the invite URL contains
+      window.location.href = url.pathname + url.search
+    } catch {
+      // Not a valid URL — ignore
+    }
+  }
 
   if (identityLoading) {
     return (
@@ -21,11 +36,11 @@ export default function HomeScreen() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-forest-300 tracking-tight">PLUS ULTRA</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Tribal Operating System</p>
+          <p className="text-gray-300 text-sm mt-0.5">Tribal Operating System</p>
         </div>
         <Link to="/identity">
           <div className="card py-2 px-3 cursor-pointer hover:border-forest-600 transition-colors">
-            <div className="text-xs text-gray-500 mb-0.5">ID</div>
+            <div className="text-xs text-gray-300 mb-0.5">ID</div>
             <div className="font-mono text-forest-300 text-sm tracking-wider">
               {identity ? shortId(identity.pub) : '—'}
             </div>
@@ -38,7 +53,7 @@ export default function HomeScreen() {
         <Link to="/identity">
           <div className="card border-warning-700 bg-warning-700/10 mb-4 cursor-pointer hover:border-warning-500 transition-colors">
             <p className="text-warning-400 text-sm font-semibold">⚠ Back up your identity</p>
-            <p className="text-gray-500 text-xs mt-0.5">
+            <p className="text-gray-300 text-xs mt-0.5">
               Losing your phone without a backup means losing tribe access forever.
             </p>
           </div>
@@ -48,7 +63,7 @@ export default function HomeScreen() {
       {/* Tribes section */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest">My Tribes</h2>
+          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-widest">My Tribes</h2>
         </div>
 
         {loadingTribes ? (
@@ -69,7 +84,7 @@ export default function HomeScreen() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-semibold text-gray-100">{tribe.name}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{tribe.location}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">{tribe.location}</div>
                     </div>
                     <span className="text-forest-500 text-lg">→</span>
                   </div>
@@ -80,17 +95,29 @@ export default function HomeScreen() {
         )}
       </div>
 
+      {/* QR scanner */}
+      {scanning && (
+        <div className="mb-4">
+          <CameraQrScanner onScan={handleQrScan} onClose={() => setScanning(false)} />
+        </div>
+      )}
+
       {/* Actions */}
       <div className="space-y-3">
         <Link to="/create-tribe" className="block">
           <button className="btn-primary w-full">+ Create New Tribe</button>
         </Link>
-        <p className="text-center text-gray-600 text-xs">Have an invite link? Open it to join a tribe.</p>
+        <button
+          className="btn-secondary w-full"
+          onClick={() => setScanning(prev => !prev)}
+        >
+          {scanning ? 'Cancel Scan' : '📷 Scan QR to Join'}
+        </button>
       </div>
 
       {/* Diagnostics link (dev/validation only) */}
       <div className="mt-8 text-center">
-        <Link to="/diagnostics" className="text-xs text-gray-700 hover:text-gray-500">
+        <Link to="/diagnostics" className="text-xs text-gray-500 hover:text-gray-400">
           diagnostics
         </Link>
       </div>

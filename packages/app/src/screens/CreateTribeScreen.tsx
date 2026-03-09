@@ -30,7 +30,6 @@ export default function CreateTribeScreen() {
   const [location, setLocation] = useState('')
   const [region, setRegion] = useState('')
   const [constitution, setConstitution] = useState<Tribe['constitutionTemplate']>('council')
-  const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,7 +46,7 @@ export default function CreateTribeScreen() {
       const tribe = await createTribe(
         { name: name.trim(), location: location.trim(), region: region.trim(), constitutionTemplate: constitution },
         identity.pub,
-        displayName.trim() || undefined,
+        identity.displayName,
         identity.epub
       )
       // Notify TribeContext to refresh
@@ -71,25 +70,9 @@ export default function CreateTribeScreen() {
       </p>
 
       <div className="space-y-5">
-        {/* Your display name */}
-        <div>
-          <label className="label">
-            Your display name
-            <span className="text-gray-600 font-normal ml-1">(optional)</span>
-          </label>
-          <input
-            className="input"
-            type="text"
-            placeholder="Defaults to your short ID"
-            value={displayName}
-            onChange={e => setDisplayName(e.target.value)}
-            maxLength={40}
-          />
-        </div>
-
         {/* Tribe name */}
         <div>
-          <label className="label">Tribe name</label>
+          <label className="label">Tribe name <span className="text-danger-400">*</span></label>
           <input
             className="input"
             type="text"
@@ -102,7 +85,7 @@ export default function CreateTribeScreen() {
 
         {/* Location */}
         <div>
-          <label className="label">Location</label>
+          <label className="label">Location <span className="text-danger-400">*</span></label>
           <input
             className="input"
             type="text"
@@ -116,7 +99,7 @@ export default function CreateTribeScreen() {
 
         {/* Region */}
         <div>
-          <label className="label">Region</label>
+          <label className="label">Region <span className="text-danger-400">*</span></label>
           <input
             className="input"
             type="text"

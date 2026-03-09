@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { loadIdentity, generateIdentity, restoreIdentity as restoreIdentityLib } from '../lib/identity'
+import { loadIdentity, generateIdentity, restoreIdentity as restoreIdentityLib, saveDisplayName as saveDisplayNameLib } from '../lib/identity'
 import type { Identity } from '@plus-ultra/core'
 
 interface IdentityContextValue {
   identity: Identity | null
   loading: boolean
   restoreIdentity: (raw: string) => Promise<void>
+  saveDisplayName: (name: string) => Promise<void>
 }
 
 const IdentityContext = createContext<IdentityContextValue | null>(null)
@@ -34,8 +35,13 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     setIdentity(id)
   }
 
+  async function saveDisplayName(name: string) {
+    await saveDisplayNameLib(name)
+    setIdentity(prev => prev ? { ...prev, displayName: name.trim() || undefined } : prev)
+  }
+
   return (
-    <IdentityContext.Provider value={{ identity, loading, restoreIdentity }}>
+    <IdentityContext.Provider value={{ identity, loading, restoreIdentity, saveDisplayName }}>
       {children}
     </IdentityContext.Provider>
   )

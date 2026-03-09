@@ -72,5 +72,14 @@ export function useDMChannel(myPub: string, theirPub: string) {
     }
   }, [channelId])
 
-  return { messages, loading, channelId }
+  // Optimistically add a sent message to local state immediately,
+  // without waiting for the Gun map().on() callback to fire
+  function inject(msg: Message) {
+    setMessages(prev => {
+      if (prev.some(m => m.id === msg.id)) return prev
+      return [...prev, msg].sort((a, b) => a.sentAt - b.sentAt)
+    })
+  }
+
+  return { messages, loading, channelId, inject }
 }

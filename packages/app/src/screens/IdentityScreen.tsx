@@ -8,11 +8,13 @@ import { Link } from '@tanstack/react-router'
 type View = 'main' | 'backup' | 'restore'
 
 export default function IdentityScreen() {
-  const { identity, loading, restoreIdentity } = useIdentity()
+  const { identity, loading, restoreIdentity, saveDisplayName } = useIdentity()
   const [view, setView] = useState<View>('main')
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [restoreSuccess, setRestoreSuccess] = useState(false)
   const [showPrivateWarning, setShowPrivateWarning] = useState(false)
+  const [displayNameInput, setDisplayNameInput] = useState('')
+  const [editingDisplayName, setEditingDisplayName] = useState(false)
 
   if (loading || !identity) {
     return (
@@ -24,6 +26,12 @@ export default function IdentityScreen() {
 
   async function handleBackupShown() {
     await markBackedUp()
+  }
+
+  async function handleSaveDisplayName() {
+    await saveDisplayName(displayNameInput)
+    setEditingDisplayName(false)
+    setDisplayNameInput('')
   }
 
   async function handleQrScanned(data: string) {
@@ -122,26 +130,66 @@ export default function IdentityScreen() {
       {/* Public key display */}
       <div className="card mb-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-500 uppercase tracking-widest">Public Key</span>
-          <span className="text-xs text-gray-600">Safe to share</span>
+          <span className="text-xs text-gray-300 uppercase tracking-widest">Public Key</span>
+          <span className="text-xs text-gray-400">Safe to share</span>
         </div>
         <div className="font-mono text-forest-300 text-xl tracking-wider mb-2">
           {shortId(identity.pub)}
         </div>
-        <div className="text-xs text-gray-600 font-mono break-all leading-relaxed">
+        <div className="text-xs text-gray-400 font-mono break-all leading-relaxed">
           {identity.pub}
         </div>
+      </div>
+
+      {/* Display name */}
+      <div className="card mb-4">
+        <div className="text-xs text-gray-300 uppercase tracking-widest mb-3">Display Name</div>
+        {identity.displayName && !editingDisplayName ? (
+          <div className="flex items-center justify-between">
+            <span className="text-gray-100 font-semibold">{identity.displayName}</span>
+            <button
+              className="text-xs text-forest-400 hover:text-forest-300"
+              onClick={() => { setDisplayNameInput(identity.displayName ?? ''); setEditingDisplayName(true) }}
+            >
+              Edit
+            </button>
+          </div>
+        ) : (
+          <>
+            {!identity.displayName && (
+              <p className="text-xs text-gray-500 mb-3">Not set — tribe members see your short ID (<span className="font-mono text-forest-300">{shortId(identity.pub)}</span>) instead.</p>
+            )}
+            <div className="flex gap-2">
+              <input
+                className="input flex-1 text-sm"
+                type="text"
+                placeholder="Your name"
+                value={displayNameInput}
+                onChange={e => setDisplayNameInput(e.target.value)}
+                maxLength={40}
+                autoFocus
+              />
+              <button
+                className="btn-primary text-sm px-4"
+                onClick={handleSaveDisplayName}
+                disabled={!displayNameInput.trim()}
+              >
+                Save
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Private key — hidden */}
       <div className="card mb-6 border-danger-700/30">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-500 uppercase tracking-widest">Private Key</span>
+          <span className="text-xs text-gray-300 uppercase tracking-widest">Private Key</span>
           <span className="text-xs text-danger-400">Never share</span>
         </div>
         {showPrivateWarning ? (
           <div>
-            <div className="text-xs text-gray-600 font-mono break-all leading-relaxed mb-2">
+            <div className="text-xs text-gray-400 font-mono break-all leading-relaxed mb-2">
               {identity.priv}
             </div>
             <button
@@ -153,7 +201,7 @@ export default function IdentityScreen() {
           </div>
         ) : (
           <button
-            className="text-xs text-gray-600 hover:text-gray-400"
+            className="text-xs text-gray-400 hover:text-gray-200"
             onClick={() => setShowPrivateWarning(true)}
           >
             ••••••••••••••••••••••••••••••• (tap to reveal)
@@ -169,7 +217,7 @@ export default function IdentityScreen() {
             {identity.backedUp ? 'Identity backed up' : 'Not backed up — do this now'}
           </span>
         </div>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-300 mt-1">
           {identity.backedUp
             ? 'You have a backup QR code for this identity.'
             : 'Without a backup, losing your phone means losing your tribe access forever.'}
@@ -186,7 +234,7 @@ export default function IdentityScreen() {
         </button>
       </div>
 
-      <p className="text-xs text-gray-600 text-center mt-6">
+      <p className="text-xs text-gray-400 text-center mt-6">
         Created {new Date(identity.createdAt).toLocaleDateString()}
       </p>
     </div>
