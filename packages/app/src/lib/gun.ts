@@ -1,17 +1,6 @@
-import Gun from 'gun'
-import 'gun/sea'
-import 'gun/lib/radix'
-import 'gun/lib/radisk'
-import 'gun/lib/store'
-import 'gun/lib/rindexed'
-
-const relayUrl = import.meta.env.VITE_GUN_RELAY ?? 'http://localhost:8765/gun'
-
-export const gun = Gun({
-  peers: [relayUrl],
-  localStorage: false,  // use IndexedDB via gun/lib/rindexed instead
-  radisk: true,
-})
-
-export { Gun }
+// Re-export from gun-init, which creates the Gun instance and sets window.GUN.
+// gun/sea is NOT imported here — identity.ts, tribes.ts, and messaging.ts import it
+// directly. By the time those modules load, main.tsx has already run gun-init.ts first,
+// so window.GUN is set and gun/sea bootstraps correctly.
+export { gun, Gun } from './gun-init'
 export type { IGunInstance } from 'gun'
