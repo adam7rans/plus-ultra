@@ -22,4 +22,5 @@ export interface TribeMember {
   declaredReturnAt?: number
   role?: SkillRole
   displayName: string
+  epub?: string
 }

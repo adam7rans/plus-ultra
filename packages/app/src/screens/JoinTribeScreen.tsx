@@ -40,7 +40,7 @@ export default function JoinTribeScreen() {
     setJoining(true)
     setError(null)
     try {
-      await joinTribe(tribeId, token, identity.pub, displayName.trim() || undefined)
+      await joinTribe(tribeId, token, identity.pub, displayName.trim() || undefined, identity.epub)
       window.dispatchEvent(new Event('tribe-joined'))
       await navigate({ to: '/tribe/$tribeId', params: { tribeId } })
     } catch (err) {

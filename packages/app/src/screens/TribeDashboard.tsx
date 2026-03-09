@@ -69,6 +69,20 @@ export default function TribeDashboard() {
             <SurvivabilityScore score={score} hasCriticalGap={criticalGaps.length > 0} />
           </div>
 
+          {/* Tribe channel */}
+          <Link
+            to="/tribe/$tribeId/channel"
+            params={{ tribeId }}
+            className="flex items-center gap-3 card mb-4 hover:border-forest-600 transition-colors"
+          >
+            <span className="text-2xl">📡</span>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-gray-100 text-sm">Tribe Channel</div>
+              <div className="text-xs text-gray-500">Tribe-wide messages</div>
+            </div>
+            <span className="text-forest-400 text-lg">→</span>
+          </Link>
+
           {/* Declare skills CTA if user has none */}
           {mySkillCount === 0 && (
             <div className="card border-forest-600 bg-forest-900/30 mb-4">
@@ -131,6 +145,7 @@ export default function TribeDashboard() {
                     key={member.pubkey}
                     member={member}
                     isYou={member.pubkey === identity?.pub}
+                    tribeId={tribeId}
                   />
                 ))}
               </div>

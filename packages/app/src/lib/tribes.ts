@@ -15,7 +15,8 @@ export async function createTribe(
     constitutionTemplate: Tribe['constitutionTemplate']
   },
   founderPub: string,
-  founderDisplayName?: string
+  founderDisplayName?: string,
+  founderEpub?: string
 ): Promise<Tribe> {
   const tribeId = nanoid()
   // Tribe gets its own cryptographic keypair
@@ -56,6 +57,7 @@ export async function createTribe(
     status: 'active',
     attachmentScore: 1.0,
     displayName: founderDisplayName ?? shortId(founderPub),
+    epub: founderEpub,
   }
   await writeMember(tribeId, founderMember)
 
@@ -129,7 +131,8 @@ export async function joinTribe(
   tribeId: string,
   token: string,
   memberPub: string,
-  displayName?: string
+  displayName?: string,
+  memberEpub?: string
 ): Promise<Tribe> {
   const validation = await validateAndConsumeToken(tribeId, token)
   if (!validation.valid) {
@@ -151,6 +154,7 @@ export async function joinTribe(
     status: 'active',
     attachmentScore: 1.0,
     displayName: displayName ?? shortId(memberPub),
+    epub: memberEpub,
   }
   await writeMember(tribeId, member)
 
@@ -237,6 +241,7 @@ export function subscribeToMembers(
       displayName: (d.displayName as string) ?? '',
       declaredReturnAt: d.declaredReturnAt as number | undefined,
       role: d.role as TribeMember['role'] | undefined,
+      epub: d.epub as string | undefined,
     })
     callback(Array.from(members.values()))
   })

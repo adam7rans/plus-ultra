@@ -1,9 +1,11 @@
+import { Link } from '@tanstack/react-router'
 import { currentAttachmentScore } from '@plus-ultra/core'
 import type { TribeMember } from '@plus-ultra/core'
 
 interface Props {
   member: TribeMember
   isYou: boolean
+  tribeId: string
 }
 
 const STATUS_COLORS: Record<TribeMember['status'], string> = {
@@ -13,7 +15,7 @@ const STATUS_COLORS: Record<TribeMember['status'], string> = {
   departed: 'bg-gray-600',
 }
 
-export default function MemberCard({ member, isYou }: Props) {
+export default function MemberCard({ member, isYou, tribeId }: Props) {
   const score = currentAttachmentScore(member)
   const scorePercent = Math.round(score * 100)
 
@@ -48,6 +50,18 @@ export default function MemberCard({ member, isYou }: Props) {
         </div>
         <div className="text-xs text-gray-600">bond</div>
       </div>
+
+      {/* DM button */}
+      {!isYou && (
+        <Link
+          to="/tribe/$tribeId/dm/$memberPub"
+          params={{ tribeId, memberPub: member.pubkey }}
+          className="text-gray-600 hover:text-forest-400 transition-colors flex-shrink-0 pl-1"
+          title={`Message ${member.displayName}`}
+        >
+          <span className="text-base">💬</span>
+        </Link>
+      )}
     </div>
   )
 }

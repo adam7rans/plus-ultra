@@ -7,6 +7,8 @@ import CreateTribeScreen from './screens/CreateTribeScreen'
 import JoinTribeScreen from './screens/JoinTribeScreen'
 import TribeDashboard from './screens/TribeDashboard'
 import SkillsDeclarationScreen from './screens/SkillsDeclarationScreen'
+import TribeChannelScreen from './screens/TribeChannelScreen'
+import DirectMessageScreen from './screens/DirectMessageScreen'
 
 function RootLayout() {
   return (
@@ -58,6 +60,18 @@ const skillsRoute = createRoute({
   component: SkillsDeclarationScreen,
 })
 
+const tribeChannelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/channel',
+  component: TribeChannelScreen,
+})
+
+const dmRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/dm/$memberPub',
+  component: DirectMessageScreen,
+})
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   identityRoute,
@@ -65,6 +79,8 @@ const routeTree = rootRoute.addChildren([
   joinRoute,
   tribeDashboardRoute,
   skillsRoute,
+  tribeChannelRoute,
+  dmRoute,
 ])
 
 export const router = createRouter({ routeTree })

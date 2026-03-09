@@ -47,7 +47,8 @@ export default function CreateTribeScreen() {
       const tribe = await createTribe(
         { name: name.trim(), location: location.trim(), region: region.trim(), constitutionTemplate: constitution },
         identity.pub,
-        displayName.trim() || undefined
+        displayName.trim() || undefined,
+        identity.epub
       )
       // Notify TribeContext to refresh
       window.dispatchEvent(new Event('tribe-joined'))

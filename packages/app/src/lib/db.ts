@@ -44,13 +44,24 @@ export interface AppDB {
       used: boolean
     }
   }
+  messages: {
+    key: string
+    value: unknown
+  }
+  'channel-reads': {
+    key: string
+    value: {
+      channelId: string
+      lastReadAt: number
+    }
+  }
 }
 
 let _db: IDBPDatabase<AppDB> | null = null
 
 export async function getDB(): Promise<IDBPDatabase<AppDB>> {
   if (_db) return _db
-  _db = await openDB<AppDB>('plus-ultra', 2, {
+  _db = await openDB<AppDB>('plus-ultra', 3, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         if (!db.objectStoreNames.contains('identity')) {
@@ -69,6 +80,14 @@ export async function getDB(): Promise<IDBPDatabase<AppDB>> {
         }
         if (!db.objectStoreNames.contains('invite-tokens')) {
           db.createObjectStore('invite-tokens')
+        }
+      }
+      if (oldVersion < 3) {
+        if (!db.objectStoreNames.contains('messages')) {
+          db.createObjectStore('messages')
+        }
+        if (!db.objectStoreNames.contains('channel-reads')) {
+          db.createObjectStore('channel-reads')
         }
       }
     },
