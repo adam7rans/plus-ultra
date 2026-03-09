@@ -20,12 +20,16 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' wss://gun-relay.prepper.network https://gun-relay.prepper.network; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; connect-src 'self' ws://localhost:* http://localhost:* wss://gun-relay.prepper.network https://gun-relay.prepper.network; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:"
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "macOS": {
+      "entitlements": "./entitlements.plist",
+      "minimumSystemVersion": "10.15"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -26,7 +26,7 @@
   }
 
   .btn-secondary {
-    @apply border border-forest-600 hover:border-forest-400 text-forest-300 hover:text-forest-200 font-semibold py-3 px-6 rounded-lg transition-colors duration-150 active:scale-95;
+    @apply border border-forest-600 hover:border-forest-400 text-forest-300 hover:text-forest-300 font-semibold py-3 px-6 rounded-lg transition-colors duration-150 active:scale-95;
   }
 
   .btn-danger {

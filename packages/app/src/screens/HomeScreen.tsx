@@ -87,6 +87,13 @@ export default function HomeScreen() {
         </Link>
         <p className="text-center text-gray-600 text-xs">Have an invite link? Open it to join a tribe.</p>
       </div>
+
+      {/* Diagnostics link (dev/validation only) */}
+      <div className="mt-8 text-center">
+        <Link to="/diagnostics" className="text-xs text-gray-700 hover:text-gray-500">
+          diagnostics
+        </Link>
+      </div>
     </div>
   )
 }
