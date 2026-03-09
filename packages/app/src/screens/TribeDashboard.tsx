@@ -13,8 +13,8 @@ import MemberCard from '../components/MemberCard'
 export default function TribeDashboard() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId' })
   const { identity } = useIdentity()
-  const { setActiveTribeId } = useTribe()
-
+  const { setActiveTribeId, myTribes } = useTribe()
+  const localRef = myTribes.find(t => t.tribeId === tribeId)
   const [tribe, setTribe] = useState<Tribe | null>(null)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
@@ -25,7 +25,7 @@ export default function TribeDashboard() {
 
   useEffect(() => {
     setActiveTribeId(tribeId)
-    fetchTribeMeta(tribeId).then(setTribe)
+    fetchTribeMeta(tribeId).then(t => { if (t) setTribe(t) })
   }, [tribeId, setActiveTribeId])
 
   async function handleGenerateInvite() {
@@ -56,12 +56,12 @@ export default function TribeDashboard() {
         ← All Tribes
       </Link>
 
-      {tribe ? (
+      {(tribe ?? localRef) ? (
         <>
           {/* Header */}
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-100">{tribe.name}</h2>
-            <p className="text-gray-500 text-sm mt-0.5">{tribe.location} · {members.length} member{members.length !== 1 ? 's' : ''}</p>
+            <h2 className="text-2xl font-bold text-gray-100">{tribe?.name ?? localRef?.name}</h2>
+            <p className="text-gray-500 text-sm mt-0.5">{tribe?.location ?? localRef?.location} · {members.length} member{members.length !== 1 ? 's' : ''}</p>
           </div>
 
           {/* Survivability score */}

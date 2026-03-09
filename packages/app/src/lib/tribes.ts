@@ -34,18 +34,18 @@ export async function createTribe(
     founderId: founderPub,
   }
 
-  // Write public tribe data to Gun (no priv key)
-  await new Promise<void>((resolve) => {
-    gun.get('tribes').get(tribeId).put({
-      id: tribeId,
-      pub: tribePair.pub,
-      name: tribe.name,
-      location: tribe.location,
-      region: tribe.region,
-      createdAt: tribe.createdAt,
-      constitutionTemplate: tribe.constitutionTemplate,
-      founderId: founderPub,
-    }, () => resolve())
+  // Write public tribe data to Gun (no priv key) — fire and forget.
+  // Gun is for P2P sync; IDB is source of truth. Don't block on ack —
+  // with no relay connected, the ack callback never fires.
+  gun.get('tribes').get(tribeId).put({
+    id: tribeId,
+    pub: tribePair.pub,
+    name: tribe.name,
+    location: tribe.location,
+    region: tribe.region,
+    createdAt: tribe.createdAt,
+    constitutionTemplate: tribe.constitutionTemplate,
+    founderId: founderPub,
   })
 
   // Write founder as first member
@@ -71,6 +71,8 @@ export async function createTribe(
     name: tribe.name,
     location: tribe.location,
   }, tribeId)
+  // Cache full tribe metadata for offline dashboard load
+  await db.put('tribe-cache', tribe, tribeId)
 
   return tribe
 }
@@ -81,14 +83,12 @@ export async function createInviteToken(tribeId: string): Promise<string> {
   const token = nanoid(16)
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000 // 24 hours
 
-  await new Promise<void>((resolve) => {
-    gun.get('tribes').get(tribeId).get('invites').get(token).put({
-      token,
-      tribeId,
-      createdAt: Date.now(),
-      expiresAt,
-      used: false,
-    }, () => resolve())
+  gun.get('tribes').get(tribeId).get('invites').get(token).put({
+    token,
+    tribeId,
+    createdAt: Date.now(),
+    expiresAt,
+    used: false,
   })
 
   return token
@@ -117,10 +117,9 @@ export async function validateAndConsumeToken(
       if (d.expiresAt && Date.now() > d.expiresAt) {
         return resolve({ valid: false, reason: 'Invite link expired' })
       }
-      // Mark as used
-      gun.get('tribes').get(tribeId).get('invites').get(token).put({ used: true }, () => {
-        resolve({ valid: true })
-      })
+      // Mark as used (fire and forget)
+      gun.get('tribes').get(tribeId).get('invites').get(token).put({ used: true })
+      resolve({ valid: true })
     })
   })
 }
@@ -167,6 +166,8 @@ export async function joinTribe(
     name: tribe.name,
     location: tribe.location,
   }, tribeId)
+  // Cache full tribe metadata for offline dashboard load
+  await db.put('tribe-cache', tribe, tribeId)
 
   return tribe
 }
@@ -174,24 +175,33 @@ export async function joinTribe(
 // ─── Fetch helpers ────────────────────────────────────────────────────────────
 
 export async function fetchTribeMeta(tribeId: string): Promise<Tribe | null> {
+  // Check local cache first — Gun in-memory graph doesn't survive restarts
+  const db = await getDB()
+  const cached = await db.get('tribe-cache', tribeId)
+  if (cached) return cached as Tribe
+
+  // Fall back to Gun with a short timeout (for tribes joined from remote peers)
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => resolve(null), 5000)
+    const timeout = setTimeout(() => resolve(null), 3000)
     gun.get('tribes').get(tribeId).once((data: unknown) => {
       clearTimeout(timeout)
       if (!data || typeof data !== 'object') return resolve(null)
       const d = data as Record<string, unknown>
       if (!d.id || !d.name) return resolve(null)
-      resolve({
+      const tribe: Tribe = {
         id: d.id as string,
         pub: (d.pub as string) ?? '',
-        priv: '', // never fetched from Gun
+        priv: '',
         name: d.name as string,
         location: (d.location as string) ?? '',
         region: (d.region as string) ?? '',
         createdAt: (d.createdAt as number) ?? 0,
         constitutionTemplate: (d.constitutionTemplate as Tribe['constitutionTemplate']) ?? 'council',
         founderId: (d.founderId as string) ?? '',
-      })
+      }
+      // Cache it for next time
+      void db.put('tribe-cache', tribe, tribeId)
+      resolve(tribe)
     })
   })
 }
@@ -210,12 +220,9 @@ export async function getMyTribes(): Promise<Array<{ tribeId: string; name: stri
 // ─── Member management ───────────────────────────────────────────────────────
 
 async function writeMember(tribeId: string, member: TribeMember): Promise<void> {
-  return new Promise((resolve) => {
-    gun.get('tribes').get(tribeId).get('members').get(member.pubkey).put(
-      member as unknown as Record<string, unknown>,
-      () => resolve()
-    )
-  })
+  gun.get('tribes').get(tribeId).get('members').get(member.pubkey).put(
+    member as unknown as Record<string, unknown>
+  )
 }
 
 export function subscribeToMembers(

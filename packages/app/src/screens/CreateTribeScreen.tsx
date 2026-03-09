@@ -73,11 +73,14 @@ export default function CreateTribeScreen() {
       <div className="space-y-5">
         {/* Your display name */}
         <div>
-          <label className="label">Your display name</label>
+          <label className="label">
+            Your display name
+            <span className="text-gray-600 font-normal ml-1">(optional)</span>
+          </label>
           <input
             className="input"
             type="text"
-            placeholder="How you'll appear to tribe members"
+            placeholder="Defaults to your short ID"
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
             maxLength={40}

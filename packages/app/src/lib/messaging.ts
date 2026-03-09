@@ -118,19 +118,15 @@ export async function decryptDMContent(
 // ─── Gun write helpers ────────────────────────────────────────────────────────
 
 async function writeMessage(tribeId: string, _channelId: string, message: Message): Promise<void> {
-  return new Promise((resolve) => {
-    tribeChannelRef(tribeId)
-      .get(message.id)
-      .put(message as unknown as Record<string, unknown>, () => resolve())
-  })
+  tribeChannelRef(tribeId)
+    .get(message.id)
+    .put(message as unknown as Record<string, unknown>)
 }
 
 async function writeDM(channelId: string, message: Message): Promise<void> {
-  return new Promise((resolve) => {
-    dmChannelRef(channelId)
-      .get(message.id)
-      .put(message as unknown as Record<string, unknown>, () => resolve())
-  })
+  dmChannelRef(channelId)
+    .get(message.id)
+    .put(message as unknown as Record<string, unknown>)
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────────

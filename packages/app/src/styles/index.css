@@ -22,7 +22,7 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-forest-500 hover:bg-forest-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-150 active:scale-95;
+    @apply bg-forest-500 hover:bg-forest-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none;
   }
 
   .btn-secondary {
