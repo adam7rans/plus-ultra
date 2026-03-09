@@ -10,6 +10,7 @@
   "dependencies": {
     "@plus-ultra/core": "*",
     "@tanstack/react-router": "^1.48.0",
+    "@tauri-apps/api": "^2.0.1",
     "gun": "^0.2020.1240",
     "idb": "^8.0.0",
     "nanoid": "^5.0.7",
@@ -18,6 +19,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0-rc.18",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
