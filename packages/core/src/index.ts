@@ -1,7 +1,7 @@
 // Types
 export type { Identity } from './types/identity.js'
 export type { Tribe, TribeMember, MemberType, AuthorityRole } from './types/tribe.js'
-export type { SkillRole, SkillDomain, ScalingCurve, ProficiencyLevel, MemberSkill, RoleSpec } from './types/skills.js'
+export type { SkillRole, SkillDomain, ScalingCurve, ProficiencyLevel, MemberSkill, RoleSpec, Specialization, RoleSpecializations, MemberProfile, SkillDeclaration } from './types/skills.js'
 export type { Message, QueuedMessage, MessageType } from './types/messaging.js'
 export type { AssetCategory, AssetType, AssetUnit, AssetScalingCurve, AssetSpec, TribeAsset } from './types/assets.js'
 export type { EventType, RecurrenceFrequency, RecurrenceRule, ScheduledEvent } from './types/events.js'
@@ -13,6 +13,13 @@ export {
   ROLES_BY_TIER, ROLES_BY_DOMAIN, DOMAINS_BY_TIER, DOMAIN_META,
   slotsNeeded, totalSlotsNeeded, activeRoles,
 } from './lib/role-registry.js'
+
+// Specialization registry
+export {
+  DEFAULT_EXPERIENCE_OPTIONS,
+  SPECIALIZATION_REGISTRY, SPECIALIZATIONS_BY_ROLE,
+  getSpecializationsForRole,
+} from './lib/specialization-registry.js'
 
 // Asset registry & scaling
 export {

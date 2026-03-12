@@ -47,7 +47,7 @@ export default function JoinTribeScreen() {
         : undefined
       await joinTribe(tribeId, token, identity.pub, identity.displayName, identity.epub, fallback)
       window.dispatchEvent(new Event('tribe-joined'))
-      await navigate({ to: '/tribe/$tribeId', params: { tribeId } })
+      await navigate({ to: '/tribe/$tribeId/onboarding', params: { tribeId } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join tribe')
       setJoining(false)

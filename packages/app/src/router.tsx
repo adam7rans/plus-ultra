@@ -14,6 +14,7 @@ import TribeSchematicScreen from './screens/TribeSchematicScreen'
 import MyStationScreen from './screens/MyStationScreen'
 import MyPeopleScreen from './screens/MyPeopleScreen'
 import ScheduleScreen from './screens/ScheduleScreen'
+import OnboardingScreen from './screens/OnboardingScreen'
 
 function RootLayout() {
   return (
@@ -101,6 +102,12 @@ const scheduleRoute = createRoute({
   component: ScheduleScreen,
 })
 
+const onboardingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/onboarding',
+  component: OnboardingScreen,
+})
+
 const diagnosticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/diagnostics',
@@ -120,6 +127,7 @@ const routeTree = rootRoute.addChildren([
   myStationRoute,
   myPeopleRoute,
   scheduleRoute,
+  onboardingRoute,
   diagnosticsRoute,
 ])
 

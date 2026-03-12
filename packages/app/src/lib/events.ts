@@ -56,6 +56,52 @@ export async function createEvent(
   return event
 }
 
+export async function updateEvent(
+  tribeId: string,
+  eventId: string,
+  updates: Partial<Pick<ScheduledEvent, 'type' | 'title' | 'description' | 'startAt' | 'durationMin' | 'recurrence' | 'assignedTo' | 'location'>>,
+): Promise<ScheduledEvent | null> {
+  const db = await getDB()
+  const existing = await db.get('events', `${tribeId}:${eventId}`)
+  if (!existing) return null
+
+  const updated: ScheduledEvent = { ...(existing as ScheduledEvent), ...updates }
+  await db.put('events', updated, `${tribeId}:${eventId}`)
+
+  // Gun sync (fire and forget)
+  const gunData: Record<string, unknown> = { ...updates }
+  if (updates.assignedTo) gunData.assignedTo = JSON.stringify(updates.assignedTo)
+  if (updates.recurrence) gunData.recurrence = JSON.stringify(updates.recurrence)
+  for (const [k, v] of Object.entries(gunData)) {
+    if (v === undefined) delete gunData[k]
+  }
+
+  gun
+    .get('tribes')
+    .get(tribeId)
+    .get('events')
+    .get(eventId)
+    .put(gunData as unknown as Record<string, unknown>)
+
+  return updated
+}
+
+export async function deleteEvent(
+  tribeId: string,
+  eventId: string,
+): Promise<void> {
+  const db = await getDB()
+  await db.delete('events', `${tribeId}:${eventId}`)
+
+  // Gun: set to null to signal deletion
+  gun
+    .get('tribes')
+    .get(tribeId)
+    .get('events')
+    .get(eventId)
+    .put(null as unknown as Record<string, unknown>)
+}
+
 export async function cancelEvent(
   tribeId: string,
   eventId: string,

@@ -3,7 +3,7 @@ import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useEvents } from '../hooks/useEvents'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
-import { createEvent, cancelEvent } from '../lib/events'
+import { createEvent, updateEvent, deleteEvent, cancelEvent } from '../lib/events'
 import { fetchTribeMeta } from '../lib/tribes'
 import {
   EVENT_TYPE_META, ALL_EVENT_TYPES,
@@ -36,8 +36,9 @@ export default function ScheduleScreen() {
   const [viewDate, setViewDate] = useState(new Date())
   const [filterType, setFilterType] = useState<EventType | 'all'>('all')
   const [showCreate, setShowCreate] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<ScheduledEvent | null>(null)
 
-  // Create form state
+  // Form state (shared between create and edit)
   const [newType, setNewType] = useState<EventType>('duty')
   const [newTitle, setNewTitle] = useState('')
   const [newDesc, setNewDesc] = useState('')
@@ -75,6 +76,36 @@ export default function ScheduleScreen() {
     setViewDate(d)
   }
 
+  function resetForm() {
+    setNewType('duty')
+    setNewTitle('')
+    setNewDesc('')
+    setNewDate(todayStr())
+    setNewTime('08:00')
+    setNewDuration(60)
+    setNewFreq('once')
+    setNewLocation('')
+  }
+
+  function startEdit(event: ScheduledEvent) {
+    setEditingEvent(event)
+    setShowCreate(false)
+    setNewType(event.type)
+    setNewTitle(event.title)
+    setNewDesc(event.description)
+    const d = new Date(event.startAt)
+    setNewDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
+    setNewTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`)
+    setNewDuration(event.durationMin)
+    setNewFreq(event.recurrence.frequency)
+    setNewLocation(event.location)
+  }
+
+  function cancelEdit() {
+    setEditingEvent(null)
+    resetForm()
+  }
+
   async function handleCreate() {
     if (!identity || !newTitle.trim()) return
     const [y, m, d] = newDate.split('-').map(Number)
@@ -93,9 +124,31 @@ export default function ScheduleScreen() {
     })
 
     setShowCreate(false)
-    setNewTitle('')
-    setNewDesc('')
-    setNewLocation('')
+    resetForm()
+  }
+
+  async function handleUpdate() {
+    if (!editingEvent || !newTitle.trim()) return
+    const [y, m, d] = newDate.split('-').map(Number)
+    const [hh, mm] = newTime.split(':').map(Number)
+    const startAt = new Date(y, m - 1, d, hh, mm).getTime()
+
+    await updateEvent(tribeId, editingEvent.id, {
+      type: newType,
+      title: newTitle.trim(),
+      description: newDesc.trim(),
+      startAt,
+      durationMin: newDuration,
+      recurrence: { frequency: newFreq },
+      location: newLocation.trim(),
+    })
+
+    cancelEdit()
+  }
+
+  async function handleDelete(eventId: string) {
+    await deleteEvent(tribeId, eventId)
+    if (editingEvent?.id === eventId) cancelEdit()
   }
 
   return (
@@ -119,17 +172,23 @@ export default function ScheduleScreen() {
           {showCreateBtn && (
             <button
               className="btn-primary text-sm px-3 py-1.5"
-              onClick={() => setShowCreate(prev => !prev)}
+              onClick={() => {
+                if (editingEvent) cancelEdit()
+                else setShowCreate(prev => !prev)
+              }}
             >
-              {showCreate ? 'Cancel' : '+ Event'}
+              {showCreate || editingEvent ? 'Cancel' : '+ Event'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Create form */}
-      {showCreate && (
-        <div className="card border-forest-600 mb-4 space-y-3">
+      {/* Create / Edit form */}
+      {(showCreate || editingEvent) && (
+        <div className={`card mb-4 space-y-3 ${editingEvent ? 'border-warning-600' : 'border-forest-600'}`}>
+          {editingEvent && (
+            <div className="text-xs text-warning-400 font-semibold">✏️ Editing: {editingEvent.title}</div>
+          )}
           <div>
             <label className="text-xs text-gray-400 block mb-1">Type</label>
             <div className="flex flex-wrap gap-1.5">
@@ -237,13 +296,31 @@ export default function ScheduleScreen() {
             />
           </div>
 
-          <button
-            className="btn-primary w-full"
-            onClick={handleCreate}
-            disabled={!newTitle.trim()}
-          >
-            Create Event
-          </button>
+          {editingEvent ? (
+            <div className="flex gap-2">
+              <button
+                className="btn-primary flex-1"
+                onClick={handleUpdate}
+                disabled={!newTitle.trim()}
+              >
+                Save Changes
+              </button>
+              <button
+                className="flex-1 border border-danger-600 text-danger-400 hover:bg-danger-900/30 rounded-lg py-2 text-sm font-medium"
+                onClick={() => handleDelete(editingEvent.id)}
+              >
+                Delete
+              </button>
+            </div>
+          ) : (
+            <button
+              className="btn-primary w-full"
+              onClick={handleCreate}
+              disabled={!newTitle.trim()}
+            >
+              Create Event
+            </button>
+          )}
         </div>
       )}
 
@@ -358,10 +435,26 @@ export default function ScheduleScreen() {
                   <span className="text-xs text-gray-600">{occ.event.durationMin}m</span>
                   {canCancel && !isPast && (
                     <button
+                      className="text-xs text-forest-400 hover:text-forest-300"
+                      onClick={() => startEdit(occ.event)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {canCancel && !isPast && (
+                    <button
                       className="text-xs text-danger-400 hover:text-danger-300"
                       onClick={() => cancelEvent(tribeId, occ.event.id)}
                     >
                       Cancel
+                    </button>
+                  )}
+                  {canCancel && (
+                    <button
+                      className="text-xs text-gray-600 hover:text-danger-400"
+                      onClick={() => handleDelete(occ.event.id)}
+                    >
+                      Delete
                     </button>
                   )}
                 </div>
