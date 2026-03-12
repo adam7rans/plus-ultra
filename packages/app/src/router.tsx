@@ -10,6 +10,10 @@ import SkillsDeclarationScreen from './screens/SkillsDeclarationScreen'
 import TribeChannelScreen from './screens/TribeChannelScreen'
 import DirectMessageScreen from './screens/DirectMessageScreen'
 import DiagnosticsScreen from './screens/DiagnosticsScreen'
+import TribeSchematicScreen from './screens/TribeSchematicScreen'
+import MyStationScreen from './screens/MyStationScreen'
+import MyPeopleScreen from './screens/MyPeopleScreen'
+import ScheduleScreen from './screens/ScheduleScreen'
 
 function RootLayout() {
   return (
@@ -73,6 +77,30 @@ const dmRoute = createRoute({
   component: DirectMessageScreen,
 })
 
+const tribeSchematicRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/schematic',
+  component: TribeSchematicScreen,
+})
+
+const myStationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/station',
+  component: MyStationScreen,
+})
+
+const myPeopleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/people',
+  component: MyPeopleScreen,
+})
+
+const scheduleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/schedule',
+  component: ScheduleScreen,
+})
+
 const diagnosticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/diagnostics',
@@ -88,6 +116,10 @@ const routeTree = rootRoute.addChildren([
   skillsRoute,
   tribeChannelRoute,
   dmRoute,
+  tribeSchematicRoute,
+  myStationRoute,
+  myPeopleRoute,
+  scheduleRoute,
   diagnosticsRoute,
 ])
 

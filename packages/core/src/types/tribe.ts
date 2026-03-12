@@ -1,5 +1,10 @@
 import type { SkillRole } from './skills.js'
 
+export type MemberType = 'adult' | 'dependent' | 'child' | 'elder'
+
+// Organizational authority — separate from skill roles (capabilities)
+export type AuthorityRole = 'founder' | 'elder_council' | 'lead' | 'member' | 'restricted'
+
 export interface Tribe {
   id: string
   pub: string             // tribe's Gun SEA public key
@@ -20,6 +25,8 @@ export interface TribeMember {
   status: 'active' | 'away_declared' | 'away_undeclared' | 'departed'
   attachmentScore: number // 0.0 to 1.0
   declaredReturnAt?: number
+  memberType: MemberType  // adult, child, elder, dependent
+  authorityRole?: AuthorityRole  // organizational authority (default: 'member')
   role?: SkillRole
   displayName: string
   epub?: string

@@ -6,6 +6,8 @@ import { createInviteToken, buildInviteUrl, fetchTribeMeta } from '../lib/tribes
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
 import type { Tribe } from '@plus-ultra/core'
 import SurvivabilityScore from '../components/SurvivabilityScore'
+import NowAndUpNext from '../components/NowAndUpNext'
+import { useEvents } from '../hooks/useEvents'
 import BucketGrid from '../components/BucketGrid'
 import CriticalGapsPanel from '../components/CriticalGapsPanel'
 import MemberCard from '../components/MemberCard'
@@ -42,6 +44,7 @@ export default function TribeDashboard() {
   const [showBuckets, setShowBuckets] = useState(false)
 
   const { score, bucketScores, members, skills, criticalGaps, warnings } = useSurvivabilityScore(tribeId)
+  const events = useEvents(tribeId)
 
   const [tribePub, setTribePub] = useState<string>('')
 
@@ -97,19 +100,62 @@ export default function TribeDashboard() {
             <SurvivabilityScore score={score} hasCriticalGap={criticalGaps.length > 0} />
           </div>
 
-          {/* Tribe channel */}
-          <Link
-            to="/tribe/$tribeId/channel"
-            params={{ tribeId }}
-            className="flex items-center gap-3 card mb-4 hover:border-forest-600 transition-colors"
-          >
-            <span className="text-2xl">📡</span>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-gray-100 text-sm">Tribe Channel</div>
-              <div className="text-xs text-gray-400">Tribe-wide messages</div>
-            </div>
-            <span className="text-forest-400 text-lg">→</span>
-          </Link>
+          {/* Now + Up Next */}
+          <div className="mb-4">
+            <NowAndUpNext tribeId={tribeId} events={events} />
+          </div>
+
+          {/* Navigation cards */}
+          <div className="space-y-2 mb-4">
+            <Link
+              to="/tribe/$tribeId/channel"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">📡</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Tribe Channel</div>
+                <div className="text-xs text-gray-400">Tribe-wide messages</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/schematic"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">🗺️</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Tribe Schematic</div>
+                <div className="text-xs text-gray-400">Bird's eye view — roles, resources, readiness</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/station"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">🪖</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">My Station</div>
+                <div className="text-xs text-gray-400">Your team, inventory, and priorities</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/people"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">👨‍👩‍👧</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">My People</div>
+                <div className="text-xs text-gray-400">Family and friends</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+          </div>
 
           {/* Declare skills CTA if user has none */}
           {mySkillCount === 0 && (
@@ -168,14 +214,19 @@ export default function TribeDashboard() {
               </div>
             ) : (
               <div className="space-y-2">
-                {members.map(member => (
-                  <MemberCard
-                    key={member.pubkey}
-                    member={member}
-                    isYou={member.pubkey === identity?.pub}
-                    tribeId={tribeId}
-                  />
-                ))}
+                {members.map(member => {
+                  const actorMember = identity ? members.find(m => m.pubkey === identity.pub) : undefined
+                  return (
+                    <MemberCard
+                      key={member.pubkey}
+                      member={member}
+                      isYou={member.pubkey === identity?.pub}
+                      tribeId={tribeId}
+                      tribe={tribe}
+                      actorMember={actorMember}
+                    />
+                  )
+                })}
               </div>
             )}
           </div>

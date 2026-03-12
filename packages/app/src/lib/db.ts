@@ -63,6 +63,14 @@ export interface AppDB {
     key: string   // `${tribeId}:${memberId}__${role}`
     value: unknown
   }
+  'my-people': {
+    key: string   // `${tribeId}:${myPubkey}`
+    value: unknown
+  }
+  events: {
+    key: string   // `${tribeId}:${eventId}`
+    value: unknown
+  }
 }
 
 let _db: IDBPDatabase<AppDB> | null = null
@@ -74,7 +82,7 @@ export function closeDB(): void {
 
 export async function getDB(): Promise<IDBPDatabase<AppDB>> {
   if (_db) return _db
-  _db = await openDB<AppDB>('plus-ultra', 5, {
+  _db = await openDB<AppDB>('plus-ultra', 7, {
     blocked() {
       // Another tab has the DB open at an older version — force it to close
       // so our upgrade can proceed (stale tab will reload automatically)
@@ -119,6 +127,16 @@ export async function getDB(): Promise<IDBPDatabase<AppDB>> {
       if (oldVersion < 5) {
         if (!db.objectStoreNames.contains('skills')) {
           db.createObjectStore('skills')
+        }
+      }
+      if (oldVersion < 6) {
+        if (!db.objectStoreNames.contains('my-people')) {
+          db.createObjectStore('my-people')
+        }
+      }
+      if (oldVersion < 7) {
+        if (!db.objectStoreNames.contains('events')) {
+          db.createObjectStore('events')
         }
       }
     },

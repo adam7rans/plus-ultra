@@ -56,6 +56,8 @@ export async function createTribe(
     lastSeen: Date.now(),
     status: 'active',
     attachmentScore: 1.0,
+    memberType: 'adult',
+    authorityRole: 'founder',
     displayName: founderDisplayName ?? shortId(founderPub),
     epub: founderEpub,
   }
@@ -180,6 +182,7 @@ export async function joinTribe(
     lastSeen: Date.now(),
     status: 'active',
     attachmentScore: 1.0,
+    memberType: 'adult',
     displayName: displayName ?? shortId(memberPub),
     epub: memberEpub,
   }
@@ -290,6 +293,8 @@ export function subscribeToMembers(
       lastSeen: (d.lastSeen as number) ?? 0,
       status: (d.status as TribeMember['status']) ?? 'active',
       attachmentScore: (d.attachmentScore as number) ?? 1.0,
+      memberType: (d.memberType as TribeMember['memberType']) ?? 'adult',
+      authorityRole: d.authorityRole as TribeMember['authorityRole'] | undefined,
       displayName: (d.displayName as string) ?? '',
       declaredReturnAt: d.declaredReturnAt as number | undefined,
       role: d.role as TribeMember['role'] | undefined,
@@ -317,4 +322,21 @@ export function subscribeToMembers(
 
 export async function updateLastSeen(tribeId: string, pubkey: string): Promise<void> {
   gun.get('tribes').get(tribeId).get('members').get(pubkey).put({ lastSeen: Date.now() } as unknown as Record<string, unknown>)
+}
+
+export async function setAuthorityRole(
+  tribeId: string,
+  targetPubkey: string,
+  authorityRole: TribeMember['authorityRole'],
+): Promise<void> {
+  const db = await getDB()
+  const key = `${tribeId}:${targetPubkey}`
+  const existing = await db.get('members', key)
+  if (existing) {
+    const updated = { ...(existing as TribeMember), authorityRole }
+    await db.put('members', updated, key)
+  }
+  gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(
+    { authorityRole } as unknown as Record<string, unknown>
+  )
 }
