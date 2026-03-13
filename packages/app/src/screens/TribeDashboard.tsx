@@ -4,6 +4,9 @@ import { useTribe } from '../contexts/TribeContext'
 import { useIdentity } from '../contexts/IdentityContext'
 import { createInviteToken, buildInviteUrl, fetchTribeMeta } from '../lib/tribes'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
+import { useInventory } from '../hooks/useInventory'
+import { useNotifications } from '../hooks/useNotifications'
+import { assetReadiness, getAuthority, hasAuthority } from '@plus-ultra/core'
 import type { Tribe } from '@plus-ultra/core'
 import SurvivabilityScore from '../components/SurvivabilityScore'
 import NowAndUpNext from '../components/NowAndUpNext'
@@ -12,6 +15,14 @@ import BucketGrid from '../components/BucketGrid'
 import CriticalGapsPanel from '../components/CriticalGapsPanel'
 import MemberCard from '../components/MemberCard'
 import QrDisplay from '../components/QrDisplay'
+import NotificationsPanel from '../components/NotificationsPanel'
+import SendAlertModal from '../components/SendAlertModal'
+import AlertOverlay from '../components/AlertOverlay'
+import { subscribeToAlerts } from '../lib/notifications'
+import type { TribeAlert } from '../lib/notifications'
+import { pushSupported, subscribeToPush, unsubscribeFromPush, isPushSubscribed } from '../lib/push'
+import { useChannelUnread, useDMUnreadCounts } from '../hooks/useChannelUnread'
+import { useProposals } from '../hooks/useProposals'
 
 export default function TribeDashboard() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId' })
@@ -42,9 +53,26 @@ export default function TribeDashboard() {
     setTimeout(() => setShareSuccess(false), 2000)
   }
   const [showBuckets, setShowBuckets] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showSendAlert, setShowSendAlert] = useState(false)
+  const [activeAlert, setActiveAlert] = useState<TribeAlert | null>(null)
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushLoading, setPushLoading] = useState(false)
 
   const { score, bucketScores, members, skills, criticalGaps, warnings } = useSurvivabilityScore(tribeId)
   const events = useEvents(tribeId)
+  const inventory = useInventory(tribeId)
+  const readiness = Math.round(assetReadiness(members.length || 1, inventory.map(i => ({ asset: i.asset, quantity: i.quantity }))) * 100)
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications(tribeId, identity?.pub ?? null)
+  const tribeChannelUnread = useChannelUnread('tribe-wide')
+  const dmUnreadCounts = useDMUnreadCounts(identity?.pub ?? '', members.map(m => m.pubkey).filter(p => p !== identity?.pub))
+  const { proposals: allProposals } = useProposals(tribeId)
+  const openProposalCount = allProposals.filter(p => p.status === 'open').length
+
+  // Determine if user can send alerts (elder_council+)
+  const myMember = identity ? members.find(m => m.pubkey === identity.pub) : undefined
+  const myAuth = myMember && tribe ? getAuthority(myMember, tribe) : 'member'
+  const canSendAlerts = hasAuthority(myAuth, 'elder_council')
 
   const [tribePub, setTribePub] = useState<string>('')
 
@@ -56,6 +84,39 @@ export default function TribeDashboard() {
       getDB().then(db => db.get('my-tribes', tribeId).then(r => { if (r?.tribePub) setTribePub(r.tribePub) }))
     )
   }, [tribeId, setActiveTribeId])
+
+  // Check push subscription status
+  useEffect(() => {
+    isPushSubscribed().then(setPushEnabled)
+  }, [])
+
+  async function handleTogglePush() {
+    if (!identity) return
+    setPushLoading(true)
+    try {
+      if (pushEnabled) {
+        await unsubscribeFromPush(tribeId, identity.pub)
+        setPushEnabled(false)
+      } else {
+        const ok = await subscribeToPush(tribeId, identity.pub)
+        setPushEnabled(ok)
+      }
+    } finally {
+      setPushLoading(false)
+    }
+  }
+
+  // Subscribe to live alerts for full-screen overlay
+  useEffect(() => {
+    const unsub = subscribeToAlerts(tribeId, (alert) => {
+      // Don't show your own alerts
+      if (alert.senderPub === identity?.pub) return
+      setActiveAlert(alert)
+      // Vibrate if supported
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200])
+    })
+    return unsub
+  }, [tribeId, identity?.pub])
 
   async function handleGenerateInvite() {
     setLoadingInvite(true)
@@ -90,14 +151,88 @@ export default function TribeDashboard() {
       {(tribe ?? localRef) ? (
         <>
           {/* Header */}
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-100">{tribe?.name ?? localRef?.name}</h2>
-            <p className="text-gray-400 text-sm mt-0.5">{tribe?.location ?? localRef?.location} · {members.length} member{members.length !== 1 ? 's' : ''}</p>
+          <div className="mb-6 flex items-start justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-100">{tribe?.name ?? localRef?.name}</h2>
+              <p className="text-gray-400 text-sm mt-0.5">{tribe?.location ?? localRef?.location} · {members.length} member{members.length !== 1 ? 's' : ''}</p>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              {canSendAlerts && (
+                <button
+                  className="text-lg hover:scale-110 transition-transform"
+                  onClick={() => setShowSendAlert(true)}
+                  title="Send Alert"
+                >
+                  🚨
+                </button>
+              )}
+              <button
+                className="relative text-lg hover:scale-110 transition-transform"
+                onClick={() => setShowNotifications(prev => !prev)}
+                title="Notifications"
+              >
+                🔔
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              <Link
+                to="/tribe/$tribeId/settings"
+                params={{ tribeId }}
+                className="text-lg hover:scale-110 transition-transform"
+                title="Tribe Settings"
+              >
+                ⚙️
+              </Link>
+            </div>
           </div>
+
+          {/* Notifications panel */}
+          {showNotifications && (
+            <div className="mb-4 space-y-2">
+              <NotificationsPanel
+                notifications={notifications}
+                onMarkRead={markRead}
+                onMarkAllRead={markAllRead}
+                onClose={() => setShowNotifications(false)}
+              />
+              {pushSupported() && (
+                <div className="card flex items-center justify-between py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">📲</span>
+                    <span className="text-xs text-gray-300">Push notifications</span>
+                  </div>
+                  <button
+                    className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                      pushEnabled
+                        ? 'border-forest-500 bg-forest-900/50 text-forest-300'
+                        : 'border-forest-800 text-gray-400 hover:border-forest-600'
+                    }`}
+                    onClick={handleTogglePush}
+                    disabled={pushLoading}
+                  >
+                    {pushLoading ? '...' : pushEnabled ? 'Enabled ✓' : 'Enable'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Survivability score */}
           <div className="mb-4">
             <SurvivabilityScore score={score} hasCriticalGap={criticalGaps.length > 0} />
+          </div>
+
+          <div className="mb-4 flex items-center gap-3">
+            <div className="card flex-1 flex items-center gap-2 py-2">
+              <span className="text-sm">📦</span>
+              <span className="text-xs text-gray-400">Asset Readiness</span>
+              <span className={`text-sm font-mono font-bold ml-auto ${
+                readiness >= 70 ? 'text-forest-400' : readiness >= 40 ? 'text-warning-400' : 'text-danger-400'
+              }`}>{readiness}%</span>
+            </div>
           </div>
 
           {/* Now + Up Next */}
@@ -117,6 +252,11 @@ export default function TribeDashboard() {
                 <div className="font-semibold text-gray-100 text-sm">Tribe Channel</div>
                 <div className="text-xs text-gray-400">Tribe-wide messages</div>
               </div>
+              {tribeChannelUnread > 0 && (
+                <span className="w-5 h-5 rounded-full bg-forest-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                  {tribeChannelUnread > 9 ? '9+' : tribeChannelUnread}
+                </span>
+              )}
               <span className="text-forest-400 text-lg">→</span>
             </Link>
             <Link
@@ -124,7 +264,7 @@ export default function TribeDashboard() {
               params={{ tribeId }}
               className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
             >
-              <span className="text-2xl">🗺️</span>
+              <span className="text-2xl">📋</span>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-gray-100 text-sm">Tribe Schematic</div>
                 <div className="text-xs text-gray-400">Bird's eye view — roles, resources, readiness</div>
@@ -153,6 +293,50 @@ export default function TribeDashboard() {
                 <div className="font-semibold text-gray-100 text-sm">My People</div>
                 <div className="text-xs text-gray-400">Family and friends</div>
               </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/inventory"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">📦</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Inventory</div>
+                <div className="text-xs text-gray-400">Track assets and supplies</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/proposals"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">🗳️</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Proposals</div>
+                <div className="text-xs text-gray-400">Decisions and governance</div>
+              </div>
+              {openProposalCount > 0 && (
+                <span className="w-5 h-5 rounded-full bg-forest-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                  {openProposalCount > 9 ? '9+' : openProposalCount}
+                </span>
+              )}
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/map"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">🗺️</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Map</div>
+                <div className="text-xs text-gray-400">Territory, pins, and patrol routes</div>
+              </div>
+              {tribe?.lat && (
+                <span className="text-xs text-forest-400 flex-shrink-0">Coordinates set</span>
+              )}
               <span className="text-forest-400 text-lg">→</span>
             </Link>
           </div>
@@ -224,6 +408,8 @@ export default function TribeDashboard() {
                       tribeId={tribeId}
                       tribe={tribe}
                       actorMember={actorMember}
+                      skills={skills}
+                      dmUnreadCount={dmUnreadCounts.get(member.pubkey)}
                     />
                   )
                 })}
@@ -293,6 +479,24 @@ export default function TribeDashboard() {
         <div className="flex items-center justify-center py-20">
           <div className="text-forest-400 text-sm animate-pulse">Loading tribe...</div>
         </div>
+      )}
+
+      {/* Send Alert modal */}
+      {showSendAlert && identity && (
+        <SendAlertModal
+          tribeId={tribeId}
+          senderPub={identity.pub}
+          senderName={myMember?.displayName ?? 'Unknown'}
+          onClose={() => setShowSendAlert(false)}
+        />
+      )}
+
+      {/* Full-screen alert overlay */}
+      {activeAlert && (
+        <AlertOverlay
+          alert={activeAlert}
+          onDismiss={() => setActiveAlert(null)}
+        />
       )}
     </div>
   )

@@ -21,6 +21,10 @@ export function createVoiceRecorder(onStop: (base64: string, mimeType: string) =
         : MediaRecorder.isTypeSupported('audio/webm')
         ? 'audio/webm'
         : 'audio/ogg'
+      // Brief hardware stabilization — WKWebView/macOS mic needs ~200ms to warm up;
+      // without this the first ~500ms of audio has a dropout as the ADC spins up.
+      await new Promise<void>(resolve => setTimeout(resolve, 250))
+
       recorder = new MediaRecorder(stream, { mimeType })
       chunks = []
 
@@ -104,7 +108,7 @@ function blobToBase64(blob: Blob): Promise<string> {
     const reader = new FileReader()
     reader.onload = () => {
       const result = reader.result as string
-      resolve(result.split(',')[1]) // strip data URL prefix
+      resolve(result.split(',')[1].replace(/\s+/g, '')) // strip prefix + any whitespace
     }
     reader.onerror = reject
     reader.readAsDataURL(blob)

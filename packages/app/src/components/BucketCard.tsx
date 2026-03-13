@@ -1,7 +1,7 @@
-import type { RoleMeta } from '../lib/roles'
+import type { RoleSpec } from '@plus-ultra/core'
 
 interface Props {
-  meta: RoleMeta
+  meta: RoleSpec
   score: number        // 0.0 to 1.0+
   memberCount: number  // how many people declared this skill
   minimum: number      // minimum required

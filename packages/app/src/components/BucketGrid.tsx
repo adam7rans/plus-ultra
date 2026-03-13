@@ -1,22 +1,8 @@
-import { TIER_1_ROLES, TIER_2_ROLES, TIER_3_ROLES } from '@plus-ultra/core'
-import type { SkillRole, TribeMember, MemberSkill } from '@plus-ultra/core'
-import { ROLE_META } from '../lib/roles'
+import type { SkillRole, MemberSkill, TribeMember } from '@plus-ultra/core'
+import { DOMAINS_BY_TIER, DOMAIN_META, ROLES_BY_DOMAIN, slotsNeeded } from '@plus-ultra/core'
 import BucketCard from './BucketCard'
 
-// Inline minimum calculation to avoid importing the private MINIMUMS map
-function getMinimum(role: SkillRole, memberCount: number): number {
-  switch (role) {
-    case 'medical': return Math.ceil(memberCount / 25)
-    case 'food_production': return Math.max(2, Math.ceil(memberCount / 10))
-    case 'security_tactical': return Math.max(1, Math.ceil(memberCount / 20))
-    case 'water_plumbing': return 1
-    case 'electrical_solar': return 1
-    case 'construction': return Math.max(1, Math.ceil(memberCount / 30))
-    case 'cooking_preservation': return Math.max(1, Math.ceil(memberCount / 25))
-    case 'comms_tech': return 1
-    default: return 0
-  }
-}
+const TIER_LABELS = ['Tier 1 — Critical', 'Tier 2 — Essential', 'Tier 3 — Multipliers']
 
 interface Props {
   bucketScores: Record<SkillRole, number>
@@ -24,30 +10,47 @@ interface Props {
   skills: MemberSkill[]
 }
 
-const TIERS = [
-  { label: 'Tier 1 — Critical', roles: TIER_1_ROLES },
-  { label: 'Tier 2 — Essential', roles: TIER_2_ROLES },
-  { label: 'Tier 3 — Multipliers', roles: TIER_3_ROLES },
-]
-
 export default function BucketGrid({ bucketScores, members, skills }: Props) {
+  const memberCount = members.length
+
   return (
-    <div className="space-y-5">
-      {TIERS.map(({ label, roles }) => (
-        <div key={label}>
-          <h4 className="text-xs text-gray-500 uppercase tracking-widest mb-2">{label}</h4>
-          <div className="grid grid-cols-2 gap-2">
-            {roles.map(role => {
-              const memberCount = skills.filter(s => s.role === role).length
-              const minimum = getMinimum(role, members.length)
+    <div className="space-y-6">
+      {DOMAINS_BY_TIER.map((domains, tierIdx) => (
+        <div key={tierIdx}>
+          <h4 className="text-xs text-gray-500 uppercase tracking-widest mb-3">
+            {TIER_LABELS[tierIdx]}
+          </h4>
+          <div className="space-y-4">
+            {domains.map(domain => {
+              const meta = DOMAIN_META[domain]
+              const roles = ROLES_BY_DOMAIN[domain]
+              // Only show roles that are active at this population
+              const activeRoles = roles.filter(r => slotsNeeded(memberCount, r) > 0)
+              if (activeRoles.length === 0) return null
+
               return (
-                <BucketCard
-                  key={role}
-                  meta={ROLE_META[role]}
-                  score={bucketScores[role] ?? 0}
-                  memberCount={memberCount}
-                  minimum={minimum}
-                />
+                <div key={domain}>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-sm">{meta.icon}</span>
+                    <span className="text-xs font-semibold text-gray-400">{meta.label}</span>
+                    <span className="text-xs text-gray-600">({activeRoles.length} roles)</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {activeRoles.map(roleSpec => {
+                      const needed = slotsNeeded(memberCount, roleSpec)
+                      const filled = skills.filter(s => s.role === roleSpec.role).length
+                      return (
+                        <BucketCard
+                          key={roleSpec.role}
+                          meta={roleSpec}
+                          score={bucketScores[roleSpec.role] ?? 0}
+                          memberCount={filled}
+                          minimum={needed}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
               )
             })}
           </div>

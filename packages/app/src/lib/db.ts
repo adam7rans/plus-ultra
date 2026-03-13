@@ -71,6 +71,42 @@ export interface AppDB {
     key: string   // `${tribeId}:${eventId}`
     value: unknown
   }
+  inventory: {
+    key: string   // `${tribeId}:${assetType}`
+    value: unknown
+  }
+  notifications: {
+    key: string   // `${tribeId}:${notificationId}`
+    value: unknown
+  }
+  alerts: {
+    key: string   // `${tribeId}:${alertId}`
+    value: unknown
+  }
+  proposals: {
+    key: string   // `${tribeId}:${proposalId}`
+    value: unknown
+  }
+  'proposal-votes': {
+    key: string   // `${proposalId}:${memberPub}`
+    value: unknown
+  }
+  'proposal-comments': {
+    key: string   // `${proposalId}:${commentId}`
+    value: unknown
+  }
+  'map-pins': {
+    key: string   // `${tribeId}:${pinId}`
+    value: unknown
+  }
+  'patrol-routes': {
+    key: string   // `${tribeId}:${routeId}`
+    value: unknown
+  }
+  'map-territory': {
+    key: string   // tribeId
+    value: unknown
+  }
 }
 
 let _db: IDBPDatabase<AppDB> | null = null
@@ -82,7 +118,7 @@ export function closeDB(): void {
 
 export async function getDB(): Promise<IDBPDatabase<AppDB>> {
   if (_db) return _db
-  _db = await openDB<AppDB>('plus-ultra', 7, {
+  _db = await openDB<AppDB>('plus-ultra', 11, {
     blocked() {
       // Another tab has the DB open at an older version — force it to close
       // so our upgrade can proceed (stale tab will reload automatically)
@@ -138,6 +174,29 @@ export async function getDB(): Promise<IDBPDatabase<AppDB>> {
         if (!db.objectStoreNames.contains('events')) {
           db.createObjectStore('events')
         }
+      }
+      if (oldVersion < 8) {
+        if (!db.objectStoreNames.contains('inventory')) {
+          db.createObjectStore('inventory')
+        }
+      }
+      if (oldVersion < 9) {
+        if (!db.objectStoreNames.contains('notifications')) {
+          db.createObjectStore('notifications')
+        }
+        if (!db.objectStoreNames.contains('alerts')) {
+          db.createObjectStore('alerts')
+        }
+      }
+      if (oldVersion < 10) {
+        db.createObjectStore('proposals')
+        db.createObjectStore('proposal-votes')
+        db.createObjectStore('proposal-comments')
+      }
+      if (oldVersion < 11) {
+        db.createObjectStore('map-pins')
+        db.createObjectStore('patrol-routes')
+        db.createObjectStore('map-territory')
       }
     },
   })

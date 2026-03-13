@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { closeDB } from '../lib/db'
+import { getQueueStats } from '../lib/messaging'
 
 const isDev = import.meta.env.DEV
 
@@ -75,6 +76,15 @@ export default function DiagnosticsScreen() {
       label: 'WebCrypto',
       value: typeof crypto?.subtle !== 'undefined' ? 'available' : 'MISSING',
       ok: typeof crypto?.subtle !== 'undefined',
+    })
+
+    // Message queue
+    getQueueStats().then(({ pending, maxAttempts }) => {
+      setResults(prev => [...prev, {
+        label: 'Message Queue',
+        value: pending === 0 ? 'empty' : `${pending} pending (max ${maxAttempts} attempts)`,
+        ok: pending === 0,
+      }])
     })
 
     setResults(out)

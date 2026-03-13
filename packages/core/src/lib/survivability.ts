@@ -1,24 +1,11 @@
-import type { SkillRole, ProficiencyLevel, MemberSkill } from '../types/skills.js'
+import type { SkillRole, ProficiencyLevel, MemberSkill, SkillDomain } from '../types/skills.js'
 import type { Tribe, TribeMember } from '../types/tribe.js'
+import { ROLE_REGISTRY, ROLE_BY_KEY, ROLES_BY_DOMAIN, DOMAINS_BY_TIER, slotsNeeded } from './role-registry.js'
 
-export const TIER_1_ROLES: SkillRole[] = ['medical', 'food_production', 'security_tactical', 'water_plumbing']
-export const TIER_2_ROLES: SkillRole[] = ['electrical_solar', 'construction', 'cooking_preservation', 'comms_tech']
-export const TIER_3_ROLES: SkillRole[] = ['teaching', 'strategy_leadership', 'drone_surveillance', 'hardware_repair']
-
-const MINIMUMS: Record<SkillRole, (memberCount: number) => number> = {
-  medical:              (n) => Math.ceil(n / 25),
-  food_production:      (n) => Math.max(2, Math.ceil(n / 10)),
-  security_tactical:    (n) => Math.max(1, Math.ceil(n / 20)),
-  water_plumbing:       (_n) => 1,
-  electrical_solar:     (_n) => 1,
-  construction:         (n) => Math.max(1, Math.ceil(n / 30)),
-  cooking_preservation: (n) => Math.max(1, Math.ceil(n / 25)),
-  comms_tech:           (_n) => 1,
-  teaching:             (_n) => 0,
-  strategy_leadership:  (_n) => 0,
-  drone_surveillance:   (_n) => 0,
-  hardware_repair:      (_n) => 0,
-}
+// Re-export for backward compatibility
+export const TIER_1_ROLES: SkillRole[] = ROLE_REGISTRY.filter(r => r.tier === 1).map(r => r.role)
+export const TIER_2_ROLES: SkillRole[] = ROLE_REGISTRY.filter(r => r.tier === 2).map(r => r.role)
+export const TIER_3_ROLES: SkillRole[] = ROLE_REGISTRY.filter(r => r.tier === 3).map(r => r.role)
 
 const PROFICIENCY_WEIGHT: Record<ProficiencyLevel, number> = {
   basic: 0.5,
@@ -27,17 +14,23 @@ const PROFICIENCY_WEIGHT: Record<ProficiencyLevel, number> = {
   verified_expert: 1.3,
 }
 
-export function bucketScore(role: SkillRole, members: TribeMember[], skills: MemberSkill[]): number {
-  const qualified = skills.filter(s => s.role === role)
-  if (qualified.length === 0) return 0
+// Score a single role (0.0 – 1.0)
+export function roleScore(role: SkillRole, memberCount: number, skills: MemberSkill[]): number {
+  const spec = ROLE_BY_KEY[role]
+  if (!spec) return 0
 
-  const minimum = MINIMUMS[role](members.length)
-  if (minimum === 0) {
-    return Math.min(1, qualified.length / 3)
+  const needed = slotsNeeded(memberCount, spec)
+  const qualified = skills.filter(s => s.role === role)
+
+  // Role not yet needed at this population
+  if (needed === 0) {
+    return qualified.length > 0 ? Math.min(1, qualified.length / 3) : 1
   }
 
+  if (qualified.length === 0) return 0
+
   const effectiveCount = qualified.reduce((sum, s) => sum + PROFICIENCY_WEIGHT[s.proficiency], 0)
-  const ratio = effectiveCount / minimum
+  const ratio = effectiveCount / needed
 
   if (ratio === 0) return 0
   if (ratio < 1) return 0.6 * ratio
@@ -45,10 +38,35 @@ export function bucketScore(role: SkillRole, members: TribeMember[], skills: Mem
   return 0.6 + 0.4 * Math.min(1, (ratio - 1) / 2)
 }
 
+// Score an entire domain (average of its role scores)
+export function domainScore(domain: SkillDomain, memberCount: number, skills: MemberSkill[]): number {
+  const roles = ROLES_BY_DOMAIN[domain]
+  if (!roles || roles.length === 0) return 0
+
+  // Only score roles that are active at this population
+  const active = roles.filter(r => slotsNeeded(memberCount, r) > 0)
+  if (active.length === 0) return 1 // all roles below minPop — domain is "satisfied"
+
+  const scores = active.map(r => roleScore(r.role, memberCount, skills))
+  return scores.reduce((a, b) => a + b, 0) / scores.length
+}
+
+// Keep backward-compatible bucketScore (now scores individual roles)
+export function bucketScore(role: SkillRole, members: TribeMember[], skills: MemberSkill[]): number {
+  return roleScore(role, members.length, skills)
+}
+
 export function survivabilityScore(_tribe: Tribe, members: TribeMember[], skills: MemberSkill[]): number {
-  const tier1Scores = TIER_1_ROLES.map(r => bucketScore(r, members, skills))
-  const tier2Scores = TIER_2_ROLES.map(r => bucketScore(r, members, skills))
-  const tier3Scores = TIER_3_ROLES.map(r => bucketScore(r, members, skills))
+  const n = members.length
+  if (n === 0) return 0
+
+  const tier1Domains = DOMAINS_BY_TIER[0] // medical, food, security, water
+  const tier2Domains = DOMAINS_BY_TIER[1] // energy, construction, comms, logistics
+  const tier3Domains = DOMAINS_BY_TIER[2] // knowledge, governance, craft
+
+  const tier1Scores = tier1Domains.map(d => domainScore(d, n, skills))
+  const tier2Scores = tier2Domains.map(d => domainScore(d, n, skills))
+  const tier3Scores = tier3Domains.map(d => domainScore(d, n, skills))
 
   const tier1Min = Math.min(...tier1Scores)
   const tier1Avg = tier1Scores.reduce((a, b) => a + b, 0) / tier1Scores.length
@@ -58,5 +76,6 @@ export function survivabilityScore(_tribe: Tribe, members: TribeMember[], skills
   const raw = (tier1Avg * 0.6) + (tier2Avg * 0.3) + (tier3Avg * 0.1)
   const score = Math.round(raw * 100)
 
+  // If any Tier 1 domain is at zero, cap the score
   return tier1Min === 0 ? Math.min(25, score) : score
 }

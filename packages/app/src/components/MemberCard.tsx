@@ -3,9 +3,9 @@ import { Link } from '@tanstack/react-router'
 import {
   currentAttachmentScore,
   getAuthority, canManageRoles, assignableRoles,
-  AUTHORITY_META,
+  AUTHORITY_META, ROLE_BY_KEY,
 } from '@plus-ultra/core'
-import type { TribeMember, Tribe, AuthorityRole } from '@plus-ultra/core'
+import type { TribeMember, Tribe, AuthorityRole, MemberSkill } from '@plus-ultra/core'
 import { setAuthorityRole } from '../lib/tribes'
 
 interface Props {
@@ -14,6 +14,8 @@ interface Props {
   tribeId: string
   tribe?: Tribe | null
   actorMember?: TribeMember
+  skills?: MemberSkill[]
+  dmUnreadCount?: number
 }
 
 const STATUS_COLORS: Record<TribeMember['status'], string> = {
@@ -23,7 +25,7 @@ const STATUS_COLORS: Record<TribeMember['status'], string> = {
   departed: 'bg-gray-600',
 }
 
-export default function MemberCard({ member, isYou, tribeId, tribe, actorMember }: Props) {
+export default function MemberCard({ member, isYou, tribeId, tribe, actorMember, skills = [], dmUnreadCount }: Props) {
   const score = currentAttachmentScore(member)
   const scorePercent = Math.round(score * 100)
   const auth = tribe ? getAuthority(member, tribe) : (member.authorityRole ?? 'member')
@@ -37,6 +39,10 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember 
 
   const [showRoles, setShowRoles] = useState(false)
 
+  // Skill preview: show top 3 role icons
+  const memberSkills = skills.filter(s => s.memberId === member.pubkey)
+  const topRoleSpecs = memberSkills.slice(0, 3).map(s => ROLE_BY_KEY[s.role]).filter(Boolean)
+
   async function handleSetRole(role: AuthorityRole) {
     await setAuthorityRole(tribeId, member.pubkey, role)
     setShowRoles(false)
@@ -44,7 +50,11 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember 
 
   return (
     <div className="card">
-      <div className="flex items-center gap-3">
+      <Link
+        to="/tribe/$tribeId/member/$memberPub"
+        params={{ tribeId, memberPub: member.pubkey }}
+        className="flex items-center gap-3"
+      >
         {/* Status dot */}
         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_COLORS[member.status]}`} />
 
@@ -69,7 +79,18 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember 
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-gray-500">{member.role ?? 'No role declared'}</span>
+            {topRoleSpecs.length > 0 ? (
+              <>
+                {topRoleSpecs.map(spec => (
+                  <span key={spec.role} className="text-xs text-gray-500">{spec.icon}</span>
+                ))}
+                {memberSkills.length > 3 && (
+                  <span className="text-xs text-gray-600">+{memberSkills.length - 3}</span>
+                )}
+              </>
+            ) : (
+              <span className="text-xs text-gray-500">{member.role ?? 'No role declared'}</span>
+            )}
           </div>
         </div>
 
@@ -84,29 +105,35 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember 
           </div>
           <div className="text-xs text-gray-600">bond</div>
         </div>
+      </Link>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {showRoleMenu && (
-            <button
-              className="text-gray-600 hover:text-forest-400 transition-colors"
-              onClick={() => setShowRoles(prev => !prev)}
-              title="Manage role"
-            >
-              <span className="text-base">⚙️</span>
-            </button>
-          )}
-          {!isYou && (
-            <Link
-              to="/tribe/$tribeId/dm/$memberPub"
-              params={{ tribeId, memberPub: member.pubkey }}
-              className="text-gray-600 hover:text-forest-400 transition-colors pl-1"
-              title={`Message ${member.displayName}`}
-            >
-              <span className="text-base">💬</span>
-            </Link>
-          )}
-        </div>
+      {/* Actions — outside the Link to prevent navigation on click */}
+      <div className="flex items-center gap-1 justify-end -mt-8 mr-0 relative z-10">
+        {showRoleMenu && (
+          <button
+            className="text-gray-600 hover:text-forest-400 transition-colors"
+            onClick={() => setShowRoles(prev => !prev)}
+            title="Manage role"
+          >
+            <span className="text-base">⚙️</span>
+          </button>
+        )}
+        {!isYou && (
+          <Link
+            to="/tribe/$tribeId/dm/$memberPub"
+            params={{ tribeId, memberPub: member.pubkey }}
+            className="relative text-gray-600 hover:text-forest-400 transition-colors pl-1"
+            title={`Message ${member.displayName}`}
+            onClick={e => e.stopPropagation()}
+          >
+            <span className="text-base">💬</span>
+            {dmUnreadCount && dmUnreadCount > 0 ? (
+              <span className="absolute -top-1 -right-0.5 w-3.5 h-3.5 rounded-full bg-forest-500 text-white text-[8px] font-bold flex items-center justify-center">
+                {dmUnreadCount > 9 ? '9+' : dmUnreadCount}
+              </span>
+            ) : null}
+          </Link>
+        )}
       </div>
 
       {/* Role management dropdown */}

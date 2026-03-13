@@ -113,6 +113,9 @@ export interface MemberSkill {
   proficiency: ProficiencyLevel
   declaredAt: number
   vouchedBy: string[]   // pubkeys of vouching members
+  specializations?: string[]    // keys from Specialization registry
+  yearsExperience?: string      // e.g. "3–7 years" (matches EXPERIENCE_OPTIONS)
+  notes?: string
 }
 
 // ── Specialization registry types ──────────────────────────────────

@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid'
 import SEA from 'gun/sea'
 import { gun } from './gun'
 import { getDB } from './db'
+import { triggerPush } from './push'
 import type { Message, QueuedMessage } from '@plus-ultra/core'
 
 // ─── Channel helpers ─────────────────────────────────────────────────────────
@@ -30,7 +31,8 @@ export async function sendTribeMessage(
   senderPair: { pub: string; priv: string; epub: string; epriv: string },
   type: Message['type'],
   content: string,
-  mimeType?: string
+  mimeType?: string,
+  replyTo?: string
 ): Promise<void> {
   const id = nanoid()
   const sentAt = Date.now()
@@ -50,6 +52,7 @@ export async function sendTribeMessage(
     mimeType,
     sentAt,
     sig,
+    ...(replyTo ? { replyTo } : {}),
   }
 
   await writeMessage(tribeId, 'tribe-wide', message)
@@ -64,7 +67,8 @@ export async function sendDM(
   recipientEpub: string,
   type: Message['type'],
   content: string,
-  mimeType?: string
+  mimeType?: string,
+  replyTo?: string
 ): Promise<Message> {
   const id = nanoid()
   const sentAt = Date.now()
@@ -93,10 +97,19 @@ export async function sendDM(
     mimeType,
     sentAt,
     sig,
+    ...(replyTo ? { replyTo } : {}),
   }
 
   await writeDM(channelId, message)
   await cacheMessage(message)
+
+  // Fire push notification for the recipient (grid-up only, fire and forget)
+  void triggerPush(
+    tribeId, recipientPub, '💬 New Message',
+    `${content.slice(0, 100)}`,
+    { url: `/tribe/${tribeId}/dm/${senderId}`, tag: `dm-${channelId}` }
+  )
+
   return message
 }
 
@@ -239,6 +252,16 @@ function parseMessage(data: unknown): Message | null {
   if (!data || typeof data !== 'object') return null
   const raw = gunUnescape(data as Record<string, unknown>)
   if (!raw.id || !raw.senderId || !raw.sentAt) return null
+
+  let reactions: Record<string, string[]> | undefined
+  if (raw.reactions) {
+    try {
+      reactions = typeof raw.reactions === 'string'
+        ? JSON.parse(raw.reactions)
+        : raw.reactions as Record<string, string[]>
+    } catch { /* malformed — ignore */ }
+  }
+
   return {
     id: raw.id as string,
     tribeId: (raw.tribeId as string) ?? '',
@@ -250,6 +273,8 @@ function parseMessage(data: unknown): Message | null {
     sentAt: raw.sentAt as number,
     deliveredAt: raw.deliveredAt as number | undefined,
     sig: (raw.sig as string) ?? '',
+    replyTo: raw.replyTo as string | undefined,
+    reactions,
   }
 }
 
@@ -284,12 +309,17 @@ export async function queueMessage(message: Message): Promise<void> {
   await db.put('queued-messages', queued as unknown, message.id)
 }
 
-export async function flushQueue(): Promise<void> {
+const MAX_QUEUE_ATTEMPTS = 5
+
+export async function flushQueue(): Promise<{ sent: number; dropped: number; remaining: number }> {
   const db = await getDB()
   const queued = await db.getAll('queued-messages') as unknown as QueuedMessage[]
+  let sent = 0
+  let dropped = 0
+
   for (const item of queued) {
+    const { message } = item
     try {
-      const { message } = item
       if (message.channelId === 'tribe-wide') {
         await writeMessage(message.tribeId, message.channelId, message)
       } else {
@@ -297,10 +327,67 @@ export async function flushQueue(): Promise<void> {
       }
       await cacheMessage(message)
       await db.delete('queued-messages', message.id)
+      sent++
     } catch {
-      // Will retry next flush
+      const newAttempts = item.attempts + 1
+      if (newAttempts >= MAX_QUEUE_ATTEMPTS) {
+        // Give up after max attempts
+        await db.delete('queued-messages', message.id)
+        dropped++
+      } else {
+        await db.put('queued-messages', { ...item, attempts: newAttempts } as unknown, message.id)
+      }
     }
   }
+
+  const remaining = (await db.count('queued-messages'))
+  return { sent, dropped, remaining }
+}
+
+export async function getQueueStats(): Promise<{ pending: number; maxAttempts: number }> {
+  const db = await getDB()
+  const pending = await db.count('queued-messages')
+  return { pending, maxAttempts: MAX_QUEUE_ATTEMPTS }
+}
+
+// ─── Reactions ────────────────────────────────────────────────────────────────
+
+async function applyReaction(messageId: string, emoji: string, pubkey: string): Promise<Record<string, string[]>> {
+  const db = await getDB()
+  const existing = await db.get('messages', messageId) as Message | undefined
+  const reactions = { ...(existing?.reactions ?? {}) }
+  const pubkeys = reactions[emoji] ?? []
+  if (!pubkeys.includes(pubkey)) {
+    reactions[emoji] = [...pubkeys, pubkey]
+  }
+  if (existing) {
+    await db.put('messages', { ...existing, reactions } as unknown, messageId)
+  }
+  return reactions
+}
+
+export async function addTribeReaction(
+  tribeId: string,
+  messageId: string,
+  emoji: string,
+  pubkey: string
+): Promise<void> {
+  const reactions = await applyReaction(messageId, emoji, pubkey)
+  tribeChannelRef(tribeId)
+    .get(messageId)
+    .put({ reactions: JSON.stringify(reactions) } as unknown as Record<string, unknown>)
+}
+
+export async function addDMReaction(
+  channelId: string,
+  messageId: string,
+  emoji: string,
+  pubkey: string
+): Promise<void> {
+  const reactions = await applyReaction(messageId, emoji, pubkey)
+  dmChannelRef(channelId)
+    .get(messageId)
+    .put({ reactions: JSON.stringify(reactions) } as unknown as Record<string, unknown>)
 }
 
 // ─── Unread tracking ─────────────────────────────────────────────────────────

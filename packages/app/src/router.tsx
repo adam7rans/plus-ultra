@@ -15,6 +15,13 @@ import MyStationScreen from './screens/MyStationScreen'
 import MyPeopleScreen from './screens/MyPeopleScreen'
 import ScheduleScreen from './screens/ScheduleScreen'
 import OnboardingScreen from './screens/OnboardingScreen'
+import InventoryScreen from './screens/InventoryScreen'
+import MemberProfileScreen from './screens/MemberProfileScreen'
+import TribeSettingsScreen from './screens/TribeSettingsScreen'
+import ProposalsScreen from './screens/ProposalsScreen'
+import CreateProposalScreen from './screens/CreateProposalScreen'
+import ProposalDetailScreen from './screens/ProposalDetailScreen'
+import MapScreen from './screens/MapScreen'
 
 function RootLayout() {
   return (
@@ -108,6 +115,50 @@ const onboardingRoute = createRoute({
   component: OnboardingScreen,
 })
 
+const inventoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/inventory',
+  component: InventoryScreen,
+})
+
+const memberProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/member/$memberPub',
+  component: MemberProfileScreen,
+})
+
+const tribeSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/settings',
+  component: TribeSettingsScreen,
+})
+
+const proposalsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/proposals',
+  component: ProposalsScreen,
+})
+
+// IMPORTANT: createProposalRoute must come before proposalDetailRoute
+// so that "new" is not captured as $proposalId
+const createProposalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/proposals/new',
+  component: CreateProposalScreen,
+})
+
+const proposalDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/proposals/$proposalId',
+  component: ProposalDetailScreen,
+})
+
+const mapRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/map',
+  component: MapScreen,
+})
+
 const diagnosticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/diagnostics',
@@ -128,6 +179,13 @@ const routeTree = rootRoute.addChildren([
   myPeopleRoute,
   scheduleRoute,
   onboardingRoute,
+  inventoryRoute,
+  memberProfileRoute,
+  tribeSettingsRoute,
+  proposalsRoute,
+  createProposalRoute,
+  proposalDetailRoute,
+  mapRoute,
   diagnosticsRoute,
 ])
 

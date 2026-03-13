@@ -33,6 +33,33 @@ export default function CreateTribeScreen() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Coordinates (optional)
+  const [showCoords, setShowCoords] = useState(false)
+  const [lat, setLat] = useState('')
+  const [lng, setLng] = useState('')
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [geoError, setGeoError] = useState<string | null>(null)
+
+  function handleUseCurrentLocation() {
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation not supported by this browser')
+      return
+    }
+    setGeoLoading(true)
+    setGeoError(null)
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setLat(pos.coords.latitude.toFixed(6))
+        setLng(pos.coords.longitude.toFixed(6))
+        setGeoLoading(false)
+      },
+      () => {
+        setGeoError('Could not get location — enter coordinates manually')
+        setGeoLoading(false)
+      },
+    )
+  }
+
   async function handleCreate() {
     if (!identity) return
     if (!name.trim() || !location.trim() || !region.trim()) {
@@ -40,18 +67,32 @@ export default function CreateTribeScreen() {
       return
     }
 
+    const parsedLat = lat ? parseFloat(lat) : undefined
+    const parsedLng = lng ? parseFloat(lng) : undefined
+    if ((parsedLat !== undefined && isNaN(parsedLat)) || (parsedLng !== undefined && isNaN(parsedLng))) {
+      setError('Invalid coordinates')
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
       const tribe = await createTribe(
-        { name: name.trim(), location: location.trim(), region: region.trim(), constitutionTemplate: constitution },
+        {
+          name: name.trim(),
+          location: location.trim(),
+          region: region.trim(),
+          constitutionTemplate: constitution,
+          lat: parsedLat,
+          lng: parsedLng,
+        },
         identity.pub,
         identity.displayName,
         identity.epub
       )
       // Notify TribeContext to refresh
       window.dispatchEvent(new Event('tribe-joined'))
-      await navigate({ to: '/tribe/$tribeId', params: { tribeId: tribe.id } })
+      await navigate({ to: '/tribe/$tribeId/onboarding', params: { tribeId: tribe.id } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create tribe')
       setLoading(false)
@@ -108,6 +149,61 @@ export default function CreateTribeScreen() {
             onChange={e => setRegion(e.target.value)}
             maxLength={40}
           />
+        </div>
+
+        {/* Coordinates (optional) */}
+        <div>
+          <button
+            type="button"
+            className="flex items-center gap-2 text-sm text-forest-400 hover:text-forest-300 mb-2"
+            onClick={() => setShowCoords(prev => !prev)}
+          >
+            <span>{showCoords ? '▼' : '▶'}</span>
+            Set Coordinates (optional)
+          </button>
+          {showCoords && (
+            <div className="card bg-forest-950/50 space-y-3">
+              <button
+                type="button"
+                className="btn-secondary w-full text-sm"
+                onClick={handleUseCurrentLocation}
+                disabled={geoLoading}
+              >
+                {geoLoading ? 'Getting location...' : 'Use My Current Location'}
+              </button>
+              {geoError && <p className="text-xs text-danger-400">{geoError}</p>}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label text-xs">Latitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    className="input text-sm"
+                    placeholder="48.8584"
+                    value={lat}
+                    onChange={e => setLat(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label text-xs">Longitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    className="input text-sm"
+                    placeholder="2.2945"
+                    value={lng}
+                    onChange={e => setLng(e.target.value)}
+                  />
+                </div>
+              </div>
+              {lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng)) && (
+                <p className="text-xs text-gray-500">
+                  {Math.abs(parseFloat(lat)).toFixed(4)}° {parseFloat(lat) >= 0 ? 'N' : 'S'},&nbsp;
+                  {Math.abs(parseFloat(lng)).toFixed(4)}° {parseFloat(lng) >= 0 ? 'E' : 'W'}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Constitution */}

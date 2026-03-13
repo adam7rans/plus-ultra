@@ -11,6 +11,8 @@ export interface Message {
   sentAt: number        // unix timestamp
   deliveredAt?: number
   sig: string           // Gun SEA signature
+  replyTo?: string      // message ID this is replying to
+  reactions?: Record<string, string[]>  // emoji → array of pubkeys
 }
 
 export interface QueuedMessage {

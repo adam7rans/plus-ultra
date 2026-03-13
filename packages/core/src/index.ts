@@ -1,10 +1,13 @@
 // Types
+export type { LatLng, TribeMapPin, PatrolRoute, TribeTerritory, PinAssetType } from './types/map.js'
+export { PINNABLE_ASSET_TYPES } from './types/map.js'
 export type { Identity } from './types/identity.js'
 export type { Tribe, TribeMember, MemberType, AuthorityRole } from './types/tribe.js'
 export type { SkillRole, SkillDomain, ScalingCurve, ProficiencyLevel, MemberSkill, RoleSpec, Specialization, RoleSpecializations, MemberProfile, SkillDeclaration } from './types/skills.js'
 export type { Message, QueuedMessage, MessageType } from './types/messaging.js'
 export type { AssetCategory, AssetType, AssetUnit, AssetScalingCurve, AssetSpec, TribeAsset } from './types/assets.js'
 export type { EventType, RecurrenceFrequency, RecurrenceRule, ScheduledEvent } from './types/events.js'
+export type { Proposal, Vote, ProposalComment, ProposalScope, ProposalStatus, ProposalOutcome, VoteChoice } from './types/proposals.js'
 export type { TribeScale, ScaleLevel } from './lib/tribe-scale.js'
 
 // Role registry & scaling
@@ -39,6 +42,11 @@ export {
   getAffinityDomains, getAffinityAssets,
   canEditInventory, getEditableCategories,
 } from './lib/role-affinity.js'
+
+// Governance & voting
+export {
+  proposalDuration, isExpired, canVote, eligibleVoters, quorumRequired, computeOutcome,
+} from './lib/governance.js'
 
 // Authority & permissions
 export {

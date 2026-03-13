@@ -15,6 +15,8 @@ export interface Tribe {
   createdAt: number
   constitutionTemplate: 'direct_democracy' | 'council' | 'hybrid'
   founderId: string       // public key of the founder
+  lat?: number            // optional home coordinate
+  lng?: number
 }
 
 export interface TribeMember {
@@ -30,4 +32,9 @@ export interface TribeMember {
   role?: SkillRole
   displayName: string
   epub?: string
+  // Profile fields (collected during onboarding)
+  bio?: string
+  photo?: string               // base64 data URL — stored in IDB only, not synced via Gun
+  availability?: 'full_time' | 'part_time' | 'on_call'
+  physicalLimitations?: string
 }

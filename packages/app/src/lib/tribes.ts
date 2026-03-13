@@ -13,6 +13,8 @@ export async function createTribe(
     location: string
     region: string
     constitutionTemplate: Tribe['constitutionTemplate']
+    lat?: number
+    lng?: number
   },
   founderPub: string,
   founderDisplayName?: string,
@@ -32,12 +34,14 @@ export async function createTribe(
     createdAt: Date.now(),
     constitutionTemplate: params.constitutionTemplate,
     founderId: founderPub,
+    ...(params.lat !== undefined ? { lat: params.lat } : {}),
+    ...(params.lng !== undefined ? { lng: params.lng } : {}),
   }
 
   // Write public tribe data to Gun (no priv key) — fire and forget.
   // Gun is for P2P sync; IDB is source of truth. Don't block on ack —
   // with no relay connected, the ack callback never fires.
-  gun.get('tribes').get(tribeId).put({
+  const gunTribeData: Record<string, unknown> = {
     id: tribeId,
     pub: tribePair.pub,
     name: tribe.name,
@@ -46,7 +50,10 @@ export async function createTribe(
     createdAt: tribe.createdAt,
     constitutionTemplate: tribe.constitutionTemplate,
     founderId: founderPub,
-  })
+  }
+  if (tribe.lat !== undefined) gunTribeData.lat = tribe.lat
+  if (tribe.lng !== undefined) gunTribeData.lng = tribe.lng
+  gun.get('tribes').get(tribeId).put(gunTribeData)
 
   // Write founder as first member
   const founderMember: TribeMember = {
@@ -299,6 +306,16 @@ export function subscribeToMembers(
       declaredReturnAt: d.declaredReturnAt as number | undefined,
       role: d.role as TribeMember['role'] | undefined,
       epub: d.epub as string | undefined,
+      // Profile fields synced from peers
+      bio: d.bio as string | undefined,
+      availability: d.availability as TribeMember['availability'] | undefined,
+      physicalLimitations: d.physicalLimitations as string | undefined,
+      // photo is NOT synced via Gun — preserve local copy from IDB if it exists
+    }
+    // Preserve local photo (not synced via Gun) by merging from IDB if present
+    const localRecord = members.get(pubkey)
+    if (localRecord?.photo && !member.photo) {
+      member.photo = localRecord.photo
     }
     if (members.has(pubkey) &&
         members.get(pubkey)!.lastSeen >= (member.lastSeen ?? 0) &&
@@ -324,6 +341,44 @@ export async function updateLastSeen(tribeId: string, pubkey: string): Promise<v
   gun.get('tribes').get(tribeId).get('members').get(pubkey).put({ lastSeen: Date.now() } as unknown as Record<string, unknown>)
 }
 
+// ─── Profile update ───────────────────────────────────────────────────────────
+
+export async function updateMemberProfile(
+  tribeId: string,
+  pubkey: string,
+  profile: {
+    bio?: string
+    photo?: string          // base64 — IDB only, not synced via Gun (too large)
+    availability?: 'full_time' | 'part_time' | 'on_call'
+    physicalLimitations?: string
+    memberType?: TribeMember['memberType']
+  }
+): Promise<void> {
+  const db = await getDB()
+  const key = `${tribeId}:${pubkey}`
+  const existing = (await db.get('members', key)) as TribeMember | undefined
+  if (!existing) return
+
+  const updated: TribeMember = {
+    ...existing,
+    ...(profile.bio !== undefined ? { bio: profile.bio } : {}),
+    ...(profile.photo !== undefined ? { photo: profile.photo } : {}),
+    ...(profile.availability !== undefined ? { availability: profile.availability } : {}),
+    ...(profile.physicalLimitations !== undefined ? { physicalLimitations: profile.physicalLimitations } : {}),
+    ...(profile.memberType !== undefined ? { memberType: profile.memberType } : {}),
+  }
+
+  // Write full record to IDB (includes photo)
+  await db.put('members', updated, key)
+
+  // Sync to Gun — exclude photo (too large for P2P mesh)
+  const { photo: _photo, ...gunFields } = updated
+  void _photo // suppress unused variable warning
+  gun.get('tribes').get(tribeId).get('members').get(pubkey).put(
+    gunFields as unknown as Record<string, unknown>
+  )
+}
+
 export async function setAuthorityRole(
   tribeId: string,
   targetPubkey: string,
@@ -339,4 +394,95 @@ export async function setAuthorityRole(
   gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(
     { authorityRole } as unknown as Record<string, unknown>
   )
+}
+
+// ─── Tribe metadata update ────────────────────────────────────────────────────
+
+export async function updateTribeMeta(
+  tribeId: string,
+  updates: { name?: string; location?: string; region?: string; lat?: number; lng?: number }
+): Promise<void> {
+  const db = await getDB()
+  const normalizedRegion = updates.region?.toLowerCase().replace(/\s+/g, '-')
+
+  // Update tribe-cache (full Tribe object)
+  const cached = await db.get('tribe-cache', tribeId) as Tribe | undefined
+  if (cached) {
+    const updated: Tribe = {
+      ...cached,
+      ...(updates.name !== undefined ? { name: updates.name } : {}),
+      ...(updates.location !== undefined ? { location: updates.location } : {}),
+      ...(normalizedRegion !== undefined ? { region: normalizedRegion } : {}),
+      ...(updates.lat !== undefined ? { lat: updates.lat } : {}),
+      ...(updates.lng !== undefined ? { lng: updates.lng } : {}),
+    }
+    await db.put('tribe-cache', updated, tribeId)
+  }
+
+  // Update my-tribes entry (name + location displayed on home screen)
+  const myTribe = await db.get('my-tribes', tribeId)
+  if (myTribe) {
+    await db.put('my-tribes', {
+      ...myTribe,
+      ...(updates.name !== undefined ? { name: updates.name } : {}),
+      ...(updates.location !== undefined ? { location: updates.location } : {}),
+    }, tribeId)
+  }
+
+  // Sync to Gun
+  const gunPayload: Record<string, unknown> = {}
+  if (updates.name !== undefined) gunPayload.name = updates.name
+  if (updates.location !== undefined) gunPayload.location = updates.location
+  if (normalizedRegion !== undefined) gunPayload.region = normalizedRegion
+  if (updates.lat !== undefined) gunPayload.lat = updates.lat
+  if (updates.lng !== undefined) gunPayload.lng = updates.lng
+  gun.get('tribes').get(tribeId).put(gunPayload)
+}
+
+// ─── Leave tribe ──────────────────────────────────────────────────────────────
+
+export async function leaveTribe(tribeId: string, memberPub: string): Promise<void> {
+  const db = await getDB()
+
+  // Mark member as departed in IDB + Gun so peers see the status change
+  const key = `${tribeId}:${memberPub}`
+  const existing = await db.get('members', key) as TribeMember | undefined
+  if (existing) {
+    const updated: TribeMember = { ...existing, status: 'departed' }
+    await db.put('members', updated, key)
+    gun.get('tribes').get(tribeId).get('members').get(memberPub).put(
+      updated as unknown as Record<string, unknown>
+    )
+  }
+
+  // Remove tribe from local membership stores
+  await db.delete('my-tribes', tribeId)
+  await db.delete('tribe-cache', tribeId)
+}
+
+// ─── Remove member (admin action) ────────────────────────────────────────────
+
+export async function removeMember(tribeId: string, targetPubkey: string): Promise<void> {
+  const db = await getDB()
+  const key = `${tribeId}:${targetPubkey}`
+  const existing = await db.get('members', key) as TribeMember | undefined
+  if (existing) {
+    const updated: TribeMember = { ...existing, status: 'departed' }
+    await db.put('members', updated, key)
+    // Write full updated record so Gun merge doesn't drop the lastSeen check
+    gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(
+      updated as unknown as Record<string, unknown>
+    )
+  }
+}
+
+// ─── Delete tribe (founder only) ─────────────────────────────────────────────
+
+export async function deleteTribe(tribeId: string): Promise<void> {
+  // Mark deleted in Gun so other peers see it
+  gun.get('tribes').get(tribeId).put({ deleted: true, deletedAt: Date.now() } as unknown as Record<string, unknown>)
+
+  const db = await getDB()
+  await db.delete('my-tribes', tribeId)
+  await db.delete('tribe-cache', tribeId)
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { declareSkill } from '../lib/skills'
+import { updateMemberProfile } from '../lib/tribes'
 import { DOMAIN_META, ROLES_BY_DOMAIN } from '../lib/roles'
 import type { SkillDomain, SkillRole, ProficiencyLevel, MemberType } from '@plus-ultra/core'
 import { getSpecializationsForRole } from '@plus-ultra/core'
@@ -173,8 +174,27 @@ export default function OnboardingScreen() {
     try {
       await saveDisplayName(displayName.trim())
 
+      // Persist profile fields collected in onboarding steps 1 + 4
+      // Map UI availability value (hyphenated) to the type value (underscored)
+      const availabilityMap: Record<string, 'full_time' | 'part_time' | 'on_call'> = {
+        'full-time': 'full_time',
+        'part-time': 'part_time',
+        'on-call': 'on_call',
+      }
+      await updateMemberProfile(tribeId, identity.pub, {
+        bio: bio.trim() || undefined,
+        photo: photoPreview ?? undefined,
+        availability: availability ? (availabilityMap[availability] ?? undefined) : undefined,
+        physicalLimitations: limitations.trim() || undefined,
+        memberType: memberType ?? 'adult',
+      })
+
+      // Persist skills with specializations + experience
       const promises = Array.from(roleSelections.entries()).map(([role, sel]) =>
-        declareSkill(tribeId, identity.pub, role, sel.proficiency)
+        declareSkill(tribeId, identity.pub, role, sel.proficiency, {
+          specializations: sel.specializations.length ? sel.specializations : undefined,
+          yearsExperience: sel.experience || undefined,
+        })
       )
       await Promise.all(promises)
 

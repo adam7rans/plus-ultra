@@ -6,3 +6,5 @@ dist/
 .env.local
 packages/app/dist/
 packages/core/dist/
+relay/push-subscriptions.json
+relay/radata/

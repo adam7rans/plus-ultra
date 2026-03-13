@@ -7,11 +7,18 @@ function skillKey(memberId: string, role: SkillRole): string {
   return `${memberId}__${role}`
 }
 
+export interface SkillOpts {
+  specializations?: string[]
+  yearsExperience?: string
+  notes?: string
+}
+
 export async function declareSkill(
   tribeId: string,
   memberId: string,
   role: SkillRole,
-  proficiency: ProficiencyLevel
+  proficiency: ProficiencyLevel,
+  opts?: SkillOpts
 ): Promise<void> {
   const skill: MemberSkill = {
     memberId,
@@ -20,6 +27,9 @@ export async function declareSkill(
     proficiency,
     declaredAt: Date.now(),
     vouchedBy: [],
+    ...(opts?.specializations?.length ? { specializations: opts.specializations } : {}),
+    ...(opts?.yearsExperience ? { yearsExperience: opts.yearsExperience } : {}),
+    ...(opts?.notes ? { notes: opts.notes } : {}),
   }
 
   // Write to IDB first (survives restarts)
@@ -27,14 +37,51 @@ export async function declareSkill(
   await db.put('skills', skill, `${tribeId}:${skillKey(memberId, role)}`)
 
   // Gun for P2P sync (fire and forget)
+  // Gun can't store JS arrays as node values; serialize specializations as JSON string
+  const gunPayload: Record<string, unknown> = {
+    ...skill,
+    specializations: skill.specializations ? JSON.stringify(skill.specializations) : undefined,
+  }
+
   return new Promise((resolve) => {
     gun
       .get('tribes')
       .get(tribeId)
       .get('skills')
       .get(skillKey(memberId, role))
-      .put(skill as unknown as Record<string, unknown>, () => resolve())
+      .put(gunPayload as Record<string, unknown>, () => resolve())
   })
+}
+
+export async function vouchForSkill(
+  tribeId: string,
+  memberId: string,
+  role: SkillRole,
+  voucherPub: string
+): Promise<void> {
+  const db = await getDB()
+  const key = `${tribeId}:${skillKey(memberId, role)}`
+  const existing = (await db.get('skills', key)) as MemberSkill | undefined
+  if (!existing) return
+
+  // Don't double-vouch
+  if (existing.vouchedBy?.includes(voucherPub)) return
+
+  const updated: MemberSkill = {
+    ...existing,
+    vouchedBy: [...(existing.vouchedBy ?? []), voucherPub],
+  }
+
+  // IDB first
+  await db.put('skills', updated, key)
+
+  // Gun fire-and-forget — vouchedBy as JSON string (Gun can't store arrays)
+  gun
+    .get('tribes')
+    .get(tribeId)
+    .get('skills')
+    .get(skillKey(memberId, role))
+    .put({ vouchedBy: JSON.stringify(updated.vouchedBy) } as unknown as Record<string, unknown>)
 }
 
 export async function removeSkill(
@@ -104,7 +151,27 @@ export function subscribeToAllSkills(
     } else {
       const s = data as Record<string, unknown>
       if (s.memberId && s.role && s.proficiency) {
-        const skill = s as unknown as MemberSkill
+        // Parse specializations back from JSON string (Gun can't store arrays natively)
+        let parsedSpecs: string[] | undefined
+        if (typeof s.specializations === 'string') {
+          try { parsedSpecs = JSON.parse(s.specializations) } catch { parsedSpecs = undefined }
+        } else if (Array.isArray(s.specializations)) {
+          parsedSpecs = s.specializations as string[]
+        }
+
+        // Parse vouchedBy back from JSON string
+        let parsedVouches: string[] = []
+        if (typeof s.vouchedBy === 'string') {
+          try { parsedVouches = JSON.parse(s.vouchedBy) } catch { parsedVouches = [] }
+        } else if (Array.isArray(s.vouchedBy)) {
+          parsedVouches = s.vouchedBy as string[]
+        }
+
+        const skill: MemberSkill = {
+          ...(s as unknown as MemberSkill),
+          specializations: parsedSpecs,
+          vouchedBy: parsedVouches,
+        }
         skillsMap.set(key, skill)
         // persist Gun-received skills to IDB
         getDB().then(db => db.put('skills', skill, `${tribeId}:${key}`))

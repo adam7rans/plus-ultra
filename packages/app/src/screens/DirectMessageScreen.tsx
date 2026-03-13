@@ -2,21 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useDMChannel } from '../hooks/useChannel'
-import { sendDM, decryptDMContent } from '../lib/messaging'
+import { sendDM, decryptDMContent, addDMReaction, markChannelRead } from '../lib/messaging'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useTribe } from '../contexts/TribeContext'
 import MessageBubble from '../components/MessageBubble'
 import MessageInput from '../components/MessageInput'
-import type { TribeMember } from '@plus-ultra/core'
+import type { Message, TribeMember } from '@plus-ultra/core'
 
 export default function DirectMessageScreen() {
   const { tribeId, memberPub } = useParams({ from: '/tribe/$tribeId/dm/$memberPub' })
   const { identity } = useIdentity()
   const { members } = useTribe()
   const online = useOnlineStatus()
-  const { messages, loading, inject } = useDMChannel(identity?.pub ?? '', memberPub)
+  const { messages, loading, inject, channelId } = useDMChannel(identity?.pub ?? '', memberPub)
   const [decrypted, setDecrypted] = useState<Map<string, string>>(new Map())
+  const sentPlaintexts = useRef<Map<string, string>>(new Map())
   const bottomRef = useRef<HTMLDivElement>(null)
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
 
   const recipient = members.find(m => m.pubkey === memberPub)
 
@@ -27,13 +29,12 @@ export default function DirectMessageScreen() {
 
     async function decryptAll() {
       const newDecrypted = new Map<string, string>()
-      // ECDH: SEA.secret(otherEpub, myPair) == SEA.secret(myEpub, otherPair)
-      // So both sender and recipient always derive the shared secret using the OTHER person's epub.
       const otherEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
 
       for (const msg of messages) {
-        if (msg.type !== 'text') {
-          newDecrypted.set(msg.id, msg.content)
+        const sentPlaintext = sentPlaintexts.current.get(msg.id)
+        if (sentPlaintext) {
+          newDecrypted.set(msg.id, sentPlaintext)
           continue
         }
         if (!otherEpub) {
@@ -53,17 +54,21 @@ export default function DirectMessageScreen() {
     void decryptAll()
   }, [messages, identity, recipient])
 
+  // Auto-scroll to bottom + mark as read
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length])
+    void markChannelRead(channelId)
+  }, [messages.length, channelId])
 
   async function handleSendText(text: string) {
     if (!identity || !recipient?.epub) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
     const recipientEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
-    const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'text', text)
+    const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'text', text, undefined, replyingTo?.id)
+    sentPlaintexts.current.set(msg.id, text)
     inject(msg)
     setDecrypted(prev => new Map(prev).set(msg.id, text))
+    setReplyingTo(null)
   }
 
   async function handleSendVoice(base64: string, mimeType: string) {
@@ -71,8 +76,10 @@ export default function DirectMessageScreen() {
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
     const recipientEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
     const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'voice', base64, mimeType)
+    sentPlaintexts.current.set(msg.id, base64)
     inject(msg)
     setDecrypted(prev => new Map(prev).set(msg.id, base64))
+    setReplyingTo(null)
   }
 
   async function handleSendPhoto(base64: string, mimeType: string) {
@@ -80,8 +87,15 @@ export default function DirectMessageScreen() {
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
     const recipientEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
     const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'photo', base64, mimeType)
+    sentPlaintexts.current.set(msg.id, base64)
     inject(msg)
     setDecrypted(prev => new Map(prev).set(msg.id, base64))
+    setReplyingTo(null)
+  }
+
+  async function handleReact(msg: Message, emoji: string) {
+    if (!identity) return
+    await addDMReaction(channelId, msg.id, emoji, identity.pub)
   }
 
   const recipientName = recipient?.displayName ?? memberPub.slice(0, 8)
@@ -124,19 +138,46 @@ export default function DirectMessageScreen() {
           </div>
         ) : (
           <>
-            {messages.map(msg => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isMe={msg.senderId === identity?.pub}
-                senderName={recipientName}
-                decryptedContent={decrypted.get(msg.id)}
-              />
-            ))}
+            {messages.map(msg => {
+              const replySource = msg.replyTo ? messages.find(m => m.id === msg.replyTo) : undefined
+              const replyToDecrypted = replySource ? (decrypted.get(replySource.id) ?? (replySource.type !== 'text' ? `[${replySource.type}]` : undefined)) : undefined
+              const replyToSenderName = replySource
+                ? (replySource.senderId === identity?.pub ? 'You' : recipientName)
+                : undefined
+              return (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  isMe={msg.senderId === identity?.pub}
+                  senderName={recipientName}
+                  decryptedContent={decrypted.get(msg.id)}
+                  replyToContent={replyToDecrypted}
+                  replyToSenderName={replyToSenderName}
+                  onReact={(emoji) => handleReact(msg, emoji)}
+                  onReply={() => setReplyingTo(msg)}
+                />
+              )
+            })}
           </>
         )}
         <div ref={bottomRef} />
       </div>
+
+      {/* Reply bar */}
+      {replyingTo && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-forest-900 border-t border-forest-800 flex-shrink-0">
+          <span className="text-xs text-forest-400">↩</span>
+          <span className="text-xs text-gray-400 truncate flex-1">
+            {replyingTo.senderId === identity?.pub ? 'You' : recipientName}:{' '}
+            {replyingTo.type === 'text'
+              ? (decrypted.get(replyingTo.id) ?? '[encrypted]')
+              : `[${replyingTo.type}]`}
+          </span>
+          <button className="text-gray-500 text-xs hover:text-gray-300" onClick={() => setReplyingTo(null)}>
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Input */}
       <div className="flex-shrink-0">

@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useTribeChannel } from '../hooks/useChannel'
-import { sendTribeMessage, queueMessage } from '../lib/messaging'
+import { sendTribeMessage, queueMessage, flushQueue, addTribeReaction, markChannelRead } from '../lib/messaging'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useTribe } from '../contexts/TribeContext'
 import { fetchTribeMeta } from '../lib/tribes'
 import MessageBubble from '../components/MessageBubble'
 import MessageInput from '../components/MessageInput'
-import type { Tribe } from '@plus-ultra/core'
+import type { Message, Tribe } from '@plus-ultra/core'
 import { nanoid } from 'nanoid'
 
 export default function TribeChannelScreen() {
@@ -18,15 +18,28 @@ export default function TribeChannelScreen() {
   const online = useOnlineStatus()
   const { messages, loading } = useTribeChannel(tribeId)
   const [tribe, setTribe] = useState<Tribe | null>(null)
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchTribeMeta(tribeId).then(setTribe)
   }, [tribeId])
 
-  // Auto-scroll to bottom on new messages
+  // Drain queued messages on mount (if online) and whenever we come back online
+  useEffect(() => {
+    if (online) void flushQueue()
+  }, [online])
+
+  useEffect(() => {
+    function handleOnline() { void flushQueue() }
+    window.addEventListener('online', handleOnline)
+    return () => window.removeEventListener('online', handleOnline)
+  }, [])
+
+  // Auto-scroll to bottom on new messages + mark as read
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    void markChannelRead('tribe-wide')
   }, [messages.length])
 
   function getMemberName(pubkey: string): string {
@@ -38,27 +51,35 @@ export default function TribeChannelScreen() {
     if (!identity) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
     if (online) {
-      await sendTribeMessage(tribeId, identity.pub, pair, 'text', text)
+      await sendTribeMessage(tribeId, identity.pub, pair, 'text', text, undefined, replyingTo?.id)
     } else {
-      // Queue for later
       await queueMessage({
         id: nanoid(), tribeId, channelId: 'tribe-wide',
         senderId: identity.pub, type: 'text', content: text,
         sentAt: Date.now(), sig: '',
+        ...(replyingTo ? { replyTo: replyingTo.id } : {}),
       })
     }
+    setReplyingTo(null)
   }
 
   async function handleSendVoice(base64: string, mimeType: string) {
     if (!identity) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
     await sendTribeMessage(tribeId, identity.pub, pair, 'voice', base64, mimeType)
+    setReplyingTo(null)
   }
 
   async function handleSendPhoto(base64: string, mimeType: string) {
     if (!identity) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
     await sendTribeMessage(tribeId, identity.pub, pair, 'photo', base64, mimeType)
+    setReplyingTo(null)
+  }
+
+  async function handleReact(msg: Message, emoji: string) {
+    if (!identity) return
+    await addTribeReaction(tribeId, msg.id, emoji, identity.pub)
   }
 
   return (
@@ -92,18 +113,38 @@ export default function TribeChannelScreen() {
           </div>
         ) : (
           <>
-            {messages.map(msg => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isMe={msg.senderId === identity?.pub}
-                senderName={getMemberName(msg.senderId)}
-              />
-            ))}
+            {messages.map(msg => {
+              const replySource = msg.replyTo ? messages.find(m => m.id === msg.replyTo) : undefined
+              return (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  isMe={msg.senderId === identity?.pub}
+                  senderName={getMemberName(msg.senderId)}
+                  replyToContent={replySource ? (replySource.type === 'text' ? replySource.content : `[${replySource.type}]`) : undefined}
+                  replyToSenderName={replySource ? getMemberName(replySource.senderId) : undefined}
+                  onReact={(emoji) => handleReact(msg, emoji)}
+                  onReply={() => setReplyingTo(msg)}
+                />
+              )
+            })}
           </>
         )}
         <div ref={bottomRef} />
       </div>
+
+      {/* Reply bar */}
+      {replyingTo && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-forest-900 border-t border-forest-800 flex-shrink-0">
+          <span className="text-xs text-forest-400">↩</span>
+          <span className="text-xs text-gray-400 truncate flex-1">
+            {getMemberName(replyingTo.senderId)}: {replyingTo.type === 'text' ? replyingTo.content : `[${replyingTo.type}]`}
+          </span>
+          <button className="text-gray-500 text-xs hover:text-gray-300" onClick={() => setReplyingTo(null)}>
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Input */}
       <div className="flex-shrink-0">

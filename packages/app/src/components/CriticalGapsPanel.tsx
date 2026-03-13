@@ -1,10 +1,10 @@
 import type { SkillRole } from '@plus-ultra/core'
-import { ROLE_META } from '../lib/roles'
+import { ROLE_BY_KEY } from '@plus-ultra/core'
 import { Link } from '@tanstack/react-router'
 
 interface Props {
-  criticalGaps: SkillRole[]   // tier 1 at zero
-  warnings: SkillRole[]       // below minimum
+  criticalGaps: SkillRole[]
+  warnings: SkillRole[]
   tribeId: string
 }
 
@@ -27,7 +27,7 @@ export default function CriticalGapsPanel({ criticalGaps, warnings, tribeId }: P
           </p>
           <div className="space-y-1.5">
             {criticalGaps.map(role => {
-              const meta = ROLE_META[role]
+              const meta = ROLE_BY_KEY[role]
               return (
                 <div key={role} className="flex items-center gap-2">
                   <span className="text-sm">{meta.icon}</span>
@@ -47,7 +47,7 @@ export default function CriticalGapsPanel({ criticalGaps, warnings, tribeId }: P
           </p>
           <div className="space-y-1.5">
             {warnings.map(role => {
-              const meta = ROLE_META[role]
+              const meta = ROLE_BY_KEY[role]
               return (
                 <div key={role} className="flex items-center gap-2">
                   <span className="text-sm">{meta.icon}</span>
