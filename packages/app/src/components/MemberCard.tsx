@@ -3,10 +3,10 @@ import { Link } from '@tanstack/react-router'
 import {
   currentAttachmentScore,
   getAuthority, canManageRoles, assignableRoles,
-  AUTHORITY_META, ROLE_BY_KEY,
+  AUTHORITY_META, ROLE_BY_KEY, canDiplomatize, roleFitScore,
 } from '@plus-ultra/core'
-import type { TribeMember, Tribe, AuthorityRole, MemberSkill } from '@plus-ultra/core'
-import { setAuthorityRole } from '../lib/tribes'
+import type { TribeMember, Tribe, AuthorityRole, MemberSkill, PsychDimensions } from '@plus-ultra/core'
+import { setAuthorityRole, setDiplomatStatus } from '../lib/tribes'
 
 interface Props {
   member: TribeMember
@@ -16,6 +16,7 @@ interface Props {
   actorMember?: TribeMember
   skills?: MemberSkill[]
   dmUnreadCount?: number
+  psychDimensions?: PsychDimensions
 }
 
 const STATUS_COLORS: Record<TribeMember['status'], string> = {
@@ -25,7 +26,7 @@ const STATUS_COLORS: Record<TribeMember['status'], string> = {
   departed: 'bg-gray-600',
 }
 
-export default function MemberCard({ member, isYou, tribeId, tribe, actorMember, skills = [], dmUnreadCount }: Props) {
+export default function MemberCard({ member, isYou, tribeId, tribe, actorMember, skills = [], dmUnreadCount, psychDimensions }: Props) {
   const score = currentAttachmentScore(member)
   const scorePercent = Math.round(score * 100)
   const auth = tribe ? getAuthority(member, tribe) : (member.authorityRole ?? 'member')
@@ -37,7 +38,21 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
     : []
   const showRoleMenu = canManage && availableRoles.length > 0
 
+  // Diplomat management: actor must be able to diplomatize and not managing themselves
+  const actorCanDiplomat = actorMember && tribe ? canDiplomatize(actorMember, tribe) : false
+  const canToggleDiplomat = actorCanDiplomat && canManage && !isYou
+
   const [showRoles, setShowRoles] = useState(false)
+  const [togglingDiplomat, setTogglingDiplomat] = useState(false)
+
+  async function handleToggleDiplomat() {
+    setTogglingDiplomat(true)
+    try {
+      await setDiplomatStatus(tribeId, member.pubkey, !member.isDiplomat)
+    } finally {
+      setTogglingDiplomat(false)
+    }
+  }
 
   // Skill preview: show top 3 role icons
   const memberSkills = skills.filter(s => s.memberId === member.pubkey)
@@ -138,29 +153,57 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
 
       {/* Role management dropdown */}
       {showRoles && (
-        <div className="mt-3 pt-3 border-t border-forest-800">
-          <div className="text-xs text-gray-400 mb-2">Set authority role:</div>
-          <div className="flex flex-wrap gap-1.5">
-            {availableRoles.map(role => {
-              const meta = AUTHORITY_META[role]
-              const isActive = auth === role
-              return (
-                <button
-                  key={role}
-                  className={`px-2.5 py-1.5 rounded text-xs border flex items-center gap-1 ${
-                    isActive
-                      ? 'border-forest-500 bg-forest-900/50 text-forest-300'
-                      : 'border-forest-800 text-gray-400 hover:border-forest-600'
-                  }`}
-                  onClick={() => handleSetRole(role)}
-                  disabled={isActive}
-                >
-                  <span>{meta.icon}</span>
-                  <span>{meta.label}</span>
-                </button>
-              )
-            })}
+        <div className="mt-3 pt-3 border-t border-forest-800 space-y-3">
+          <div>
+            <div className="text-xs text-gray-400 mb-2">Set authority role:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {availableRoles.map(role => {
+                const meta = AUTHORITY_META[role]
+                const isActive = auth === role
+                const fitPct = psychDimensions ? Math.round(roleFitScore(psychDimensions, role) * 100) : null
+                return (
+                  <button
+                    key={role}
+                    className={`px-2.5 py-1.5 rounded text-xs border flex items-center gap-1 ${
+                      isActive
+                        ? 'border-forest-500 bg-forest-900/50 text-forest-300'
+                        : 'border-forest-800 text-gray-400 hover:border-forest-600'
+                    }`}
+                    onClick={() => handleSetRole(role)}
+                    disabled={isActive}
+                  >
+                    <span>{meta.icon}</span>
+                    <span>{meta.label}</span>
+                    {fitPct !== null && (
+                      <span className="text-[10px] text-gray-500 ml-0.5">{fitPct}% fit</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
+
+          {canToggleDiplomat && (
+            <div>
+              <div className="text-xs text-gray-400 mb-2">Federation:</div>
+              <button
+                className={`px-2.5 py-1.5 rounded text-xs border flex items-center gap-1 ${
+                  member.isDiplomat
+                    ? 'border-forest-500 bg-forest-900/50 text-forest-300'
+                    : 'border-forest-800 text-gray-400 hover:border-forest-600'
+                }`}
+                onClick={handleToggleDiplomat}
+                disabled={togglingDiplomat}
+              >
+                <span>{member.isDiplomat ? 'Diplomat ✓' : 'Designate as Diplomat'}</span>
+              </button>
+              {member.isDiplomat && (
+                <p className="text-xs text-gray-600 mt-1">
+                  Tribe founder must share the encryption key separately for full access.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

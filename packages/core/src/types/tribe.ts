@@ -9,6 +9,7 @@ export interface Tribe {
   id: string
   pub: string             // tribe's Gun SEA public key
   priv: string            // tribe's private key — stored only on founder's device initially
+  epub?: string           // tribe's encryption public key — shared in contact cards for federation
   name: string
   location: string        // city / region, plain text
   region: string          // e.g. "texas", "california" — for tier 2 grouping later
@@ -32,6 +33,7 @@ export interface TribeMember {
   role?: SkillRole
   displayName: string
   epub?: string
+  isDiplomat?: boolean         // can initiate/participate in inter-tribe federation
   // Profile fields (collected during onboarding)
   bio?: string
   photo?: string               // base64 data URL — stored in IDB only, not synced via Gun

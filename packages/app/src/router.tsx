@@ -22,6 +22,12 @@ import ProposalsScreen from './screens/ProposalsScreen'
 import CreateProposalScreen from './screens/CreateProposalScreen'
 import ProposalDetailScreen from './screens/ProposalDetailScreen'
 import MapScreen from './screens/MapScreen'
+import TrainingScreen from './screens/TrainingScreen'
+import ConnectScreen from './screens/ConnectScreen'
+import FederationScreen from './screens/FederationScreen'
+import FederationChannelScreen from './screens/FederationChannelScreen'
+import PsychOverviewScreen from './screens/PsychOverviewScreen'
+import PsychAssessmentScreen from './screens/PsychAssessmentScreen'
 
 function RootLayout() {
   return (
@@ -159,6 +165,44 @@ const mapRoute = createRoute({
   component: MapScreen,
 })
 
+const trainingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/training',
+  component: TrainingScreen,
+})
+
+const connectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/connect',
+  component: ConnectScreen,
+})
+
+const federationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/federation',
+  component: FederationScreen,
+})
+
+// IMPORTANT: federationChannelRoute must come after federationRoute
+const federationChannelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/federation/$channelId',
+  component: FederationChannelScreen,
+})
+
+const psychOverviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/psych',
+  component: PsychOverviewScreen,
+})
+
+// IMPORTANT: psychAssessmentRoute must come after psychOverviewRoute
+const psychAssessmentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/psych/assessment',
+  component: PsychAssessmentScreen,
+})
+
 const diagnosticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/diagnostics',
@@ -186,6 +230,12 @@ const routeTree = rootRoute.addChildren([
   createProposalRoute,
   proposalDetailRoute,
   mapRoute,
+  trainingRoute,
+  connectRoute,
+  federationRoute,
+  federationChannelRoute,
+  psychOverviewRoute,
+  psychAssessmentRoute,
   diagnosticsRoute,
 ])
 

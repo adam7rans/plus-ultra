@@ -44,6 +44,7 @@ export async function createTribe(
   const gunTribeData: Record<string, unknown> = {
     id: tribeId,
     pub: tribePair.pub,
+    epub: tribePair.epub,
     name: tribe.name,
     location: tribe.location,
     region: tribe.region,
@@ -77,6 +78,8 @@ export async function createTribe(
     joinedAt: Date.now(),
     tribePub: tribePair.pub,
     tribePriv: tribePair.priv,
+    tribeEpub: tribePair.epub,
+    tribeEpriv: tribePair.epriv,
     name: tribe.name,
     location: tribe.location,
   }, tribeId)
@@ -230,6 +233,7 @@ export async function fetchTribeMeta(tribeId: string): Promise<Tribe | null> {
         id: d.id as string,
         pub: (d.pub as string) ?? '',
         priv: '',
+        epub: d.epub as string | undefined,
         name: d.name as string,
         location: (d.location as string) ?? '',
         region: (d.region as string) ?? '',
@@ -306,6 +310,7 @@ export function subscribeToMembers(
       declaredReturnAt: d.declaredReturnAt as number | undefined,
       role: d.role as TribeMember['role'] | undefined,
       epub: d.epub as string | undefined,
+      isDiplomat: d.isDiplomat === true ? true : undefined,
       // Profile fields synced from peers
       bio: d.bio as string | undefined,
       availability: d.availability as TribeMember['availability'] | undefined,
@@ -376,6 +381,23 @@ export async function updateMemberProfile(
   void _photo // suppress unused variable warning
   gun.get('tribes').get(tribeId).get('members').get(pubkey).put(
     gunFields as unknown as Record<string, unknown>
+  )
+}
+
+export async function setDiplomatStatus(
+  tribeId: string,
+  targetPubkey: string,
+  isDiplomat: boolean,
+): Promise<void> {
+  const db = await getDB()
+  const key = `${tribeId}:${targetPubkey}`
+  const existing = await db.get('members', key)
+  if (existing) {
+    const updated = { ...(existing as TribeMember), isDiplomat: isDiplomat || undefined }
+    await db.put('members', updated, key)
+  }
+  gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(
+    { isDiplomat: isDiplomat || null } as unknown as Record<string, unknown>
   )
 }
 

@@ -266,7 +266,7 @@ _The PWA is built. Now make it distributable in grid-down scenarios._
 
 _These are important but not blocking the core loop of: create tribe → invite members → declare skills → coordinate._
 
-### 8.1 Inter-tribe federation `🔲`
+### 8.1 Inter-tribe federation `✅`
 - Tribe-to-tribe messaging via Gun
 - Trade/barter proposals between tribes
 - Alliance system with shared threat intelligence
@@ -285,19 +285,19 @@ _These are important but not blocking the core loop of: create tribe → invite 
 - Public votes with voter list; threaded comments; withdraw by creator
 - Auto-close on ProposalsScreen (5s delay, 1-min buffer)
 
-### 8.4 Training & skill progression `🔲`
+### 8.4 Training & skill progression `✅`
 - Track training sessions completed
 - Skill level-up based on vouches + training hours
 - Cross-training recommendations based on tribe gaps
 - Certification tracking (e.g., HAM license, EMT cert)
 
-### 8.5 Resource consumption tracking `🔲`
+### 8.5 Resource consumption tracking `✅`
 - Track daily consumption rates for stores (food, water, fuel, ammo)
 - Auto-calculate "days until depletion" based on consumption rate
 - Alerts when reserves drop below thresholds
 - Historical burn rate charts
 
-### 8.6 Psychological profiling (deferred) `🔲`
+### 8.6 Psychological profiling `✅`
 - Decision-making style assessment
 - Stress response tendencies
 - Leadership compatibility matrix

@@ -176,6 +176,15 @@ export function canSetAuthority(
   return true
 }
 
+/** Can this member initiate or participate in inter-tribe federation? */
+export function canDiplomatize(member: TribeMember, tribe: Tribe): boolean {
+  const auth = getAuthority(member, tribe)
+  // Founders are always able to diplomatize
+  if (auth === 'founder') return true
+  // Explicitly designated diplomats can too
+  return member.isDiplomat === true
+}
+
 /** Which roles can an actor assign to a target? */
 export function assignableRoles(
   actor: TribeMember,

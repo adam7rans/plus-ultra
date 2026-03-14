@@ -4,8 +4,9 @@ import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
 import { useInventory } from '../hooks/useInventory'
 import {
   getAffinityDomains, getAffinityAssets,
-  ROLE_BY_KEY, ROLES_BY_DOMAIN, slotsNeeded,
+  ROLE_BY_KEY, ROLE_REGISTRY, ROLES_BY_DOMAIN, slotsNeeded,
   ASSET_BY_KEY, assetsNeeded,
+  bucketScore,
 } from '@plus-ultra/core'
 import type { SkillRole, SkillDomain } from '@plus-ultra/core'
 
@@ -49,6 +50,33 @@ export default function MyStationScreen() {
       const have = skills.filter(s => s.role === roleSpec.role).length
       if (have < needed) {
         myGaps.push({ role: roleSpec.role, needed, have })
+      }
+    }
+  }
+
+  // Cross-training recommendations: gap roles where my domains provide affinity
+  const crossTrainRecs: { role: SkillRole; slotsNeeded: number; affinityMatch: boolean }[] = []
+  if (myRoles.length > 0) {
+    const gapRoles = ROLE_REGISTRY
+      .filter(spec => {
+        if (myRoles.includes(spec.role)) return false
+        const needed = slotsNeeded(memberCount, spec)
+        if (needed === 0) return false
+        const score = bucketScore(spec.role, members, skills)
+        return score < 0.6
+      })
+      .sort((a, b) => a.tier - b.tier || bucketScore(a.role, members, skills) - bucketScore(b.role, members, skills))
+
+    for (const spec of gapRoles) {
+      const roleAffinityDomains = getAffinityDomains([spec.role])
+      const hasAffinity = myDomains.some(d => roleAffinityDomains.includes(d))
+      if (hasAffinity) {
+        crossTrainRecs.push({
+          role: spec.role,
+          slotsNeeded: slotsNeeded(memberCount, spec),
+          affinityMatch: true,
+        })
+        if (crossTrainRecs.length >= 3) break
       }
     }
   }
@@ -176,6 +204,36 @@ export default function MyStationScreen() {
                   <span className="text-xs font-mono text-warning-400">
                     {have}/{needed}
                   </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Cross-Training Opportunities */}
+      {crossTrainRecs.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-xs text-gray-300 uppercase tracking-widest mb-2">
+            Cross-Training Opportunities
+          </h3>
+          <div className="card space-y-2">
+            {crossTrainRecs.map(({ role, slotsNeeded: slots }) => {
+              const spec = ROLE_BY_KEY[role]
+              return (
+                <div key={role} className="flex items-center gap-2">
+                  <span className="text-sm">{spec.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-gray-300 font-medium">{spec.label}</div>
+                    <div className="text-xs text-gray-500">{slots} slot{slots !== 1 ? 's' : ''} needed · your {spec.domain} skills transfer</div>
+                  </div>
+                  <Link
+                    to="/tribe/$tribeId/training"
+                    params={{ tribeId }}
+                    className="text-xs text-forest-400 hover:text-forest-300 flex-shrink-0"
+                  >
+                    Learn →
+                  </Link>
                 </div>
               )
             })}

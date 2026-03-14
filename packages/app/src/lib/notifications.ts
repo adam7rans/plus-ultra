@@ -12,6 +12,13 @@ export type NotificationType =
   | 'role_change'
   | 'new_member'
   | 'vouch_received'
+  | 'resource_warning'
+  | 'resource_critical'
+  | 'federated_alert'
+  | 'trade_proposal'
+  | 'trade_response'
+  | 'trade_fulfilled'
+  | 'federation_contact'
 
 export interface Notification {
   id: string

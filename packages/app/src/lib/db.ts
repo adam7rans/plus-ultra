@@ -35,6 +35,8 @@ export interface AppDB {
       joinedAt: number
       tribePub: string
       tribePriv?: string
+      tribeEpub?: string    // tribe's encryption pubkey — stored for federation
+      tribeEpriv?: string   // tribe's encryption privkey — held by founder + diplomats
       name: string
       location: string
     }
@@ -107,6 +109,38 @@ export interface AppDB {
     key: string   // tribeId
     value: unknown
   }
+  'training-sessions': {
+    key: string   // `${tribeId}:${sessionId}`
+    value: unknown
+  }
+  'certifications': {
+    key: string   // `${tribeId}:${memberId}:${certId}`
+    value: unknown
+  }
+  'consumption-log': {
+    key: string   // `${tribeId}:${entryId}`
+    value: unknown
+  }
+  'federation-relationships': {
+    key: string   // `${myTribeId}:${channelId}`
+    value: unknown
+  }
+  'federation-messages': {
+    key: string   // `${channelId}:${messageId}`
+    value: unknown
+  }
+  'federation-trades': {
+    key: string   // `${channelId}:${proposalId}`
+    value: unknown
+  }
+  'psych-profiles': {
+    key: string   // `${tribeId}:${memberPub}`
+    value: unknown
+  }
+  'peer-ratings': {
+    key: string   // `${tribeId}:${ratedPub}:${weekHash}`
+    value: unknown
+  }
 }
 
 let _db: IDBPDatabase<AppDB> | null = null
@@ -118,7 +152,7 @@ export function closeDB(): void {
 
 export async function getDB(): Promise<IDBPDatabase<AppDB>> {
   if (_db) return _db
-  _db = await openDB<AppDB>('plus-ultra', 11, {
+  _db = await openDB<AppDB>('plus-ultra', 15, {
     blocked() {
       // Another tab has the DB open at an older version — force it to close
       // so our upgrade can proceed (stale tab will reload automatically)
@@ -197,6 +231,22 @@ export async function getDB(): Promise<IDBPDatabase<AppDB>> {
         db.createObjectStore('map-pins')
         db.createObjectStore('patrol-routes')
         db.createObjectStore('map-territory')
+      }
+      if (oldVersion < 12) {
+        db.createObjectStore('training-sessions')
+        db.createObjectStore('certifications')
+      }
+      if (oldVersion < 13) {
+        db.createObjectStore('consumption-log')
+      }
+      if (oldVersion < 14) {
+        db.createObjectStore('federation-relationships')
+        db.createObjectStore('federation-messages')
+        db.createObjectStore('federation-trades')
+      }
+      if (oldVersion < 15) {
+        db.createObjectStore('psych-profiles')
+        db.createObjectStore('peer-ratings')
       }
     },
   })

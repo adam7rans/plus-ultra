@@ -23,6 +23,11 @@ import type { TribeAlert } from '../lib/notifications'
 import { pushSupported, subscribeToPush, unsubscribeFromPush, isPushSubscribed } from '../lib/push'
 import { useChannelUnread, useDMUnreadCounts } from '../hooks/useChannelUnread'
 import { useProposals } from '../hooks/useProposals'
+import { useConsumption } from '../hooks/useConsumption'
+import { useFederation } from '../hooks/useFederation'
+import { useFederatedAlerts } from '../hooks/useFederatedAlerts'
+import { getLocalTribeEpub, getLocalTribeEpriv } from '../lib/federation'
+import { useTribePsychProfiles } from '../hooks/useTribePsychProfiles'
 
 export default function TribeDashboard() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId' })
@@ -68,6 +73,18 @@ export default function TribeDashboard() {
   const dmUnreadCounts = useDMUnreadCounts(identity?.pub ?? '', members.map(m => m.pubkey).filter(p => p !== identity?.pub))
   const { proposals: allProposals } = useProposals(tribeId)
   const openProposalCount = allProposals.filter(p => p.status === 'open').length
+  const consumption = useConsumption(tribeId, members.length, inventory)
+  const { relationships } = useFederation(tribeId)
+  const psychProfiles = useTribePsychProfiles(tribeId)
+  const [fedEpub, setFedEpub] = useState<string | null>(null)
+  const [fedEpriv, setFedEpriv] = useState<string | null>(null)
+  useEffect(() => {
+    getLocalTribeEpub(tribeId).then(setFedEpub)
+    getLocalTribeEpriv(tribeId).then(setFedEpriv)
+  }, [tribeId])
+  const federatedAlerts = useFederatedAlerts(relationships, fedEpub, fedEpriv)
+  const recentFedAlerts = federatedAlerts.filter(a => Date.now() - a.sentAt < 24 * 60 * 60 * 1000)
+  const alliedCount = relationships.filter(r => r.status === 'allied').length
 
   // Determine if user can send alerts (elder_council+)
   const myMember = identity ? members.find(m => m.pubkey === identity.pub) : undefined
@@ -232,6 +249,18 @@ export default function TribeDashboard() {
               <span className={`text-sm font-mono font-bold ml-auto ${
                 readiness >= 70 ? 'text-forest-400' : readiness >= 40 ? 'text-warning-400' : 'text-danger-400'
               }`}>{readiness}%</span>
+              {(() => {
+                const statuses = Array.from(consumption.values()).map(d => d.status)
+                const critCount = statuses.filter(s => s === 'critical').length
+                const warnCount = statuses.filter(s => s === 'warning').length
+                if (critCount > 0) return (
+                  <span className="text-xs text-danger-400 ml-1">{critCount} critical</span>
+                )
+                if (warnCount > 0) return (
+                  <span className="text-xs text-warning-400 ml-1">{warnCount} low</span>
+                )
+                return null
+              })()}
             </div>
           </div>
 
@@ -339,6 +368,68 @@ export default function TribeDashboard() {
               )}
               <span className="text-forest-400 text-lg">→</span>
             </Link>
+            <Link
+              to="/tribe/$tribeId/training"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">🎓</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Training & Skills</div>
+                <div className="text-xs text-gray-400">Sessions, certifications, and level-ups</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/federation"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">🤝</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Federation</div>
+                <div className="text-xs text-gray-400">
+                  {alliedCount > 0 ? `${alliedCount} allied tribe${alliedCount !== 1 ? 's' : ''}` : 'Inter-tribe contacts and trade'}
+                </div>
+              </div>
+              {recentFedAlerts.length > 0 && (
+                <span className="w-5 h-5 rounded-full bg-warning-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                  {recentFedAlerts.length > 9 ? '9+' : recentFedAlerts.length}
+                </span>
+              )}
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            {(() => {
+              const archetypeCounts = new Map<string, number>()
+              for (const p of psychProfiles.values()) {
+                archetypeCounts.set(p.archetype, (archetypeCounts.get(p.archetype) ?? 0) + 1)
+              }
+              const summary = Array.from(archetypeCounts.entries())
+                .map(([arch, ct]) => `${ct} ${arch}${ct !== 1 ? 's' : ''}`)
+                .join(', ')
+              const withoutProfile = members.filter(m => !psychProfiles.has(m.pubkey)).length
+              return (
+                <Link
+                  to="/tribe/$tribeId/psych"
+                  params={{ tribeId }}
+                  className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+                >
+                  <span className="text-2xl">🧠</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-gray-100 text-sm">Psychology</div>
+                    <div className="text-xs text-gray-400">
+                      {psychProfiles.size === 0 ? 'No profiles yet — take the assessment' : summary}
+                    </div>
+                  </div>
+                  {withoutProfile > 0 && (
+                    <span className="w-5 h-5 rounded-full bg-forest-700 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                      {withoutProfile > 9 ? '9+' : withoutProfile}
+                    </span>
+                  )}
+                  <span className="text-forest-400 text-lg">→</span>
+                </Link>
+              )
+            })()}
           </div>
 
           {/* Declare skills CTA if user has none */}
@@ -410,6 +501,7 @@ export default function TribeDashboard() {
                       actorMember={actorMember}
                       skills={skills}
                       dmUnreadCount={dmUnreadCounts.get(member.pubkey)}
+                      psychDimensions={psychProfiles.get(member.pubkey)?.dimensions}
                     />
                   )
                 })}

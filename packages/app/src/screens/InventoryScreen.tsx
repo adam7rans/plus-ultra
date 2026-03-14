@@ -3,13 +3,17 @@ import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useInventory } from '../hooks/useInventory'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
+import { useConsumption } from '../hooks/useConsumption'
 import { updateAsset } from '../lib/inventory'
+import { logConsumption } from '../lib/consumption'
 import {
   CATEGORY_ORDER, CATEGORY_META, ASSETS_BY_CATEGORY,
   assetsNeeded, assetReadiness,
   canEditInventory,
 } from '@plus-ultra/core'
-import type { AssetCategory, AssetType, AssetSpec } from '@plus-ultra/core'
+import type { AssetCategory, AssetType, AssetSpec, TribeAsset } from '@plus-ultra/core'
+import type { AssetConsumptionData } from '../hooks/useConsumption'
+import type { ConsumptionEntry } from '@plus-ultra/core'
 
 export default function InventoryScreen() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId/inventory' })
@@ -17,6 +21,7 @@ export default function InventoryScreen() {
   const inventory = useInventory(tribeId)
   const { members, skills } = useSurvivabilityScore(tribeId)
   const memberCount = members.length
+  const consumption = useConsumption(tribeId, memberCount, inventory)
 
   const myRoles = identity ? skills.filter(s => s.memberId === identity.pub).map(s => s.role) : []
 
@@ -28,12 +33,22 @@ export default function InventoryScreen() {
   const [expanded, setExpanded] = useState<Set<AssetCategory>>(
     () => new Set(CATEGORY_ORDER.length > 0 ? [CATEGORY_ORDER[0]] : [])
   )
+  const [expandedAssets, setExpandedAssets] = useState<Set<AssetType>>(new Set())
 
   function toggleCategory(cat: AssetCategory) {
     setExpanded(prev => {
       const next = new Set(prev)
       if (next.has(cat)) next.delete(cat)
       else next.add(cat)
+      return next
+    })
+  }
+
+  function toggleAsset(asset: AssetType) {
+    setExpandedAssets(prev => {
+      const next = new Set(prev)
+      if (next.has(asset)) next.delete(asset)
+      else next.add(asset)
       return next
     })
   }
@@ -141,8 +156,15 @@ export default function InventoryScreen() {
                       memberCount={memberCount}
                       inventoryMap={inventoryMap}
                       canEdit={canEdit}
+                      isStores={cat === 'stores'}
+                      isExpandedAsset={expandedAssets.has(spec.asset)}
+                      consumptionData={consumption.get(spec.asset) ?? null}
+                      onToggleAsset={() => toggleAsset(spec.asset)}
                       onQuantityChange={handleQuantityChange}
                       onNotesChange={handleNotesChange}
+                      onLogConsumption={(amount, periodDays, notes) =>
+                        logConsumption(tribeId, spec.asset, amount, periodDays, identity!.pub, notes, memberCount)
+                      }
                     />
                   ))}
                 </div>
@@ -155,20 +177,157 @@ export default function InventoryScreen() {
   )
 }
 
+// ─── Days badge ────────────────────────────────────────────────────────────
+
+function DaysBadge({ data }: { data: AssetConsumptionData }) {
+  if (data.burnRate === null) return null
+
+  const days = data.daysRemaining
+  const label = days === Infinity ? '--' : `${Math.round(days)}d`
+
+  const colorClass =
+    data.status === 'critical' ? 'bg-danger-900 text-danger-400 border-danger-700' :
+    data.status === 'warning'  ? 'bg-warning-900/50 text-warning-400 border-warning-700' :
+                                 'bg-forest-950 text-forest-400 border-forest-800'
+
+  return (
+    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${colorClass}`}>
+      {label}
+    </span>
+  )
+}
+
+// ─── Sparkline ────────────────────────────────────────────────────────────
+
+function Sparkline({ entries }: { entries: ConsumptionEntry[] }) {
+  const last8 = [...entries].sort((a, b) => a.loggedAt - b.loggedAt).slice(-8)
+  if (last8.length === 0) return null
+
+  const max = Math.max(...last8.map(e => e.amount))
+  const W = 80
+  const H = 24
+  const barW = Math.floor(W / last8.length) - 1
+
+  return (
+    <svg width={W} height={H} className="inline-block" style={{ verticalAlign: 'middle' }}>
+      {last8.map((e, i) => {
+        const barH = max > 0 ? Math.max(2, Math.round((e.amount / max) * (H - 2))) : 2
+        const x = i * (barW + 1)
+        const y = H - barH
+        return (
+          <rect
+            key={e.id}
+            x={x} y={y}
+            width={barW} height={barH}
+            fill="#4ade80"
+            opacity={0.7}
+          />
+        )
+      })}
+    </svg>
+  )
+}
+
+// ─── Log form ─────────────────────────────────────────────────────────────
+
+function LogForm({
+  unitLabel,
+  onSubmit,
+}: {
+  unitLabel: string
+  onSubmit: (amount: number, periodDays: number, notes: string) => Promise<void>
+}) {
+  const [amount, setAmount] = useState('')
+  const [period, setPeriod] = useState('1')
+  const [notes, setNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const amt = parseFloat(amount)
+    const days = parseInt(period, 10)
+    if (!amt || amt <= 0 || !days || days < 1) return
+    setSubmitting(true)
+    try {
+      await onSubmit(amt, days, notes)
+      setAmount('')
+      setPeriod('1')
+      setNotes('')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min="0.1"
+          step="any"
+          value={amount}
+          onChange={e => setAmount(e.target.value)}
+          placeholder="Amount"
+          className="w-24 text-xs bg-forest-950 border border-forest-800 rounded-lg px-2.5 py-1.5 text-gray-300 placeholder:text-gray-700 focus:outline-none focus:border-forest-600"
+          required
+        />
+        <span className="text-xs text-gray-500">{unitLabel}</span>
+        <span className="text-xs text-gray-600 ml-1">over</span>
+        <input
+          type="number"
+          min="1"
+          step="1"
+          value={period}
+          onChange={e => setPeriod(e.target.value)}
+          className="w-14 text-xs bg-forest-950 border border-forest-800 rounded-lg px-2.5 py-1.5 text-gray-300 focus:outline-none focus:border-forest-600"
+          required
+        />
+        <span className="text-xs text-gray-500">days</span>
+      </div>
+      <input
+        type="text"
+        value={notes}
+        onChange={e => setNotes(e.target.value)}
+        placeholder="Notes (optional)"
+        className="w-full text-xs bg-forest-950 border border-forest-800 rounded-lg px-2.5 py-1.5 text-gray-300 placeholder:text-gray-700 focus:outline-none focus:border-forest-600"
+      />
+      <button
+        type="submit"
+        disabled={submitting}
+        className="btn-primary text-xs py-1.5 w-full"
+      >
+        {submitting ? 'Logging...' : 'Log Consumption'}
+      </button>
+    </form>
+  )
+}
+
+// ─── Asset row ────────────────────────────────────────────────────────────
+
 function AssetRow({
   spec,
   memberCount,
   inventoryMap,
   canEdit,
+  isStores,
+  isExpandedAsset,
+  consumptionData,
+  onToggleAsset,
   onQuantityChange,
   onNotesChange,
+  onLogConsumption,
 }: {
   spec: AssetSpec
   memberCount: number
-  inventoryMap: Map<AssetType, { quantity: number; notes: string }>
+  inventoryMap: Map<AssetType, TribeAsset>
   canEdit: boolean
+  isStores: boolean
+  isExpandedAsset: boolean
+  consumptionData: AssetConsumptionData | null
+  onToggleAsset: () => void
   onQuantityChange: (asset: AssetType, delta: number) => void
   onNotesChange: (asset: AssetType, notes: string) => void
+  onLogConsumption: (amount: number, periodDays: number, notes: string) => Promise<unknown>
 }) {
   const needed = assetsNeeded(memberCount, spec)
   const current = inventoryMap.get(spec.asset)
@@ -182,14 +341,21 @@ function AssetRow({
     spec.critical ? 'text-danger-400' :
     'text-gray-500'
 
+  const [showLogForm, setShowLogForm] = useState(false)
+
   return (
     <div className="card">
-      <div className="flex items-center gap-2">
+      {/* Main row — clickable for stores to expand */}
+      <div
+        className={`flex items-center gap-2 ${isStores ? 'cursor-pointer' : ''}`}
+        onClick={isStores ? onToggleAsset : undefined}
+      >
         <span className="text-sm">{spec.icon}</span>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs text-gray-200 truncate">{spec.label}</span>
             {spec.critical && <span className="text-warning-400 text-xs">★</span>}
+            {consumptionData && <DaysBadge data={consumptionData} />}
           </div>
           <div className="text-xs text-gray-600">
             Need ×{needed} {unitLabel}
@@ -197,7 +363,7 @@ function AssetRow({
         </div>
 
         {canEdit ? (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
             <button
               className="w-7 h-7 rounded-lg bg-forest-950 border border-forest-800 text-gray-300 text-sm font-bold hover:border-forest-600 transition-colors"
               onClick={() => onQuantityChange(spec.asset, -1)}
@@ -219,9 +385,14 @@ function AssetRow({
             {have}/{needed}
           </span>
         )}
+
+        {isStores && (
+          <span className="text-gray-600 text-xs ml-1">{isExpandedAsset ? '▲' : '▼'}</span>
+        )}
       </div>
 
-      {canEdit && (
+      {/* Notes input (non-stores categories) */}
+      {canEdit && !isStores && (
         <input
           type="text"
           value={notes}
@@ -229,6 +400,61 @@ function AssetRow({
           placeholder="e.g. Honda EU2200i"
           className="mt-2 w-full text-xs bg-forest-950 border border-forest-800 rounded-lg px-2.5 py-1.5 text-gray-300 placeholder:text-gray-700 focus:outline-none focus:border-forest-600"
         />
+      )}
+
+      {/* Expanded stores panel */}
+      {isStores && isExpandedAsset && (
+        <div className="mt-3 pt-3 border-t border-forest-900">
+          {/* Sparkline + burn rate */}
+          {consumptionData && consumptionData.burnRate !== null ? (
+            <div className="flex items-center gap-3 mb-2">
+              <Sparkline entries={consumptionData.entries} />
+              <span className="text-xs text-gray-400">
+                burn: {consumptionData.burnRate.toFixed(1)} {unitLabel}/day
+              </span>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-600 mb-2">No burn rate data yet</p>
+          )}
+
+          {/* Recent entries */}
+          {consumptionData && consumptionData.entries.length > 0 && (
+            <div className="space-y-1 mb-3">
+              {consumptionData.entries.slice(0, 5).map(entry => {
+                const date = new Date(entry.loggedAt)
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                return (
+                  <div key={entry.id} className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="w-12 shrink-0">{dateStr}</span>
+                    <span className="text-danger-400">-{entry.amount} {unitLabel}</span>
+                    {entry.notes && <span className="truncate text-gray-600">· {entry.notes}</span>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Log consumption */}
+          {canEdit && (
+            <>
+              <button
+                className="text-xs text-forest-400 hover:text-forest-300 transition-colors"
+                onClick={() => setShowLogForm(prev => !prev)}
+              >
+                {showLogForm ? '▲ Hide form' : '[Log Consumption]'}
+              </button>
+              {showLogForm && (
+                <LogForm
+                  unitLabel={unitLabel}
+                  onSubmit={async (amount, periodDays, notes) => {
+                    await onLogConsumption(amount, periodDays, notes)
+                    setShowLogForm(false)
+                  }}
+                />
+              )}
+            </>
+          )}
+        </div>
       )}
     </div>
   )

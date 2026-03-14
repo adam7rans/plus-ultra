@@ -8,8 +8,18 @@ import { castVote, addComment, withdrawProposal, closeProposal } from '../lib/pr
 import {
   getAuthority, canVote, eligibleVoters, quorumRequired, computeOutcome,
 } from '@plus-ultra/core'
-import type { Tribe, TribeMember, VoteChoice } from '@plus-ultra/core'
+import type { Tribe, TribeMember, VoteChoice, PsychArchetype } from '@plus-ultra/core'
 import { subscribeToMembers } from '../lib/tribes'
+import { useTribePsychProfiles } from '../hooks/useTribePsychProfiles'
+
+const ARCHETYPE_BADGE_COLORS: Record<PsychArchetype, string> = {
+  Commander: 'bg-red-900/50 text-red-300 border-red-800',
+  Scout:     'bg-amber-900/50 text-amber-300 border-amber-800',
+  Strategist:'bg-blue-900/50 text-blue-300 border-blue-800',
+  Connector: 'bg-green-900/50 text-green-300 border-green-800',
+  Planner:   'bg-purple-900/50 text-purple-300 border-purple-800',
+  Sustainer: 'bg-cyan-900/50 text-cyan-300 border-cyan-800',
+}
 
 function timeRemaining(closesAt: number): string {
   const diff = closesAt - Date.now()
@@ -36,6 +46,7 @@ export default function ProposalDetailScreen() {
   const [voting, setVoting] = useState(false)
 
   const { proposal, votes, comments, loading } = useProposalDetail(tribeId, proposalId)
+  const psychProfiles = useTribePsychProfiles(tribeId)
 
   useEffect(() => {
     fetchTribeMeta(tribeId).then(t => { if (t) setTribe(t) })
@@ -203,20 +214,28 @@ export default function ProposalDetailScreen() {
         <div className="mb-4">
           <h3 className="text-xs text-gray-400 uppercase tracking-widest mb-2">Votes</h3>
           <div className="flex flex-wrap gap-1.5">
-            {votes.map(v => (
-              <span
-                key={v.memberPub}
-                className={`text-xs px-2 py-0.5 rounded-full border ${
-                  v.choice === 'yes'
-                    ? 'border-forest-600 bg-forest-900/50 text-forest-300'
-                    : v.choice === 'no'
-                      ? 'border-danger-600/50 bg-danger-900/20 text-danger-400'
-                      : 'border-gray-700 bg-gray-900/30 text-gray-400'
-                }`}
-              >
-                {memberName(v.memberPub)} · {v.choice}
-              </span>
-            ))}
+            {votes.map(v => {
+              const archetype = psychProfiles.get(v.memberPub)?.archetype
+              return (
+                <span
+                  key={v.memberPub}
+                  className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                    v.choice === 'yes'
+                      ? 'border-forest-600 bg-forest-900/50 text-forest-300'
+                      : v.choice === 'no'
+                        ? 'border-danger-600/50 bg-danger-900/20 text-danger-400'
+                        : 'border-gray-700 bg-gray-900/30 text-gray-400'
+                  }`}
+                >
+                  {memberName(v.memberPub)} · {v.choice}
+                  {archetype && (
+                    <span className={`px-1 py-0.5 rounded text-[9px] border ${ARCHETYPE_BADGE_COLORS[archetype]}`}>
+                      {archetype}
+                    </span>
+                  )}
+                </span>
+              )
+            })}
           </div>
         </div>
       )}

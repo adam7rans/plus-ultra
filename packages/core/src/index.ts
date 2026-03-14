@@ -8,6 +8,7 @@ export type { Message, QueuedMessage, MessageType } from './types/messaging.js'
 export type { AssetCategory, AssetType, AssetUnit, AssetScalingCurve, AssetSpec, TribeAsset } from './types/assets.js'
 export type { EventType, RecurrenceFrequency, RecurrenceRule, ScheduledEvent } from './types/events.js'
 export type { Proposal, Vote, ProposalComment, ProposalScope, ProposalStatus, ProposalOutcome, VoteChoice } from './types/proposals.js'
+export type { TrainingSession, MemberCertification } from './types/training.js'
 export type { TribeScale, ScaleLevel } from './lib/tribe-scale.js'
 
 // Role registry & scaling
@@ -68,3 +69,31 @@ export type { EventTypeMeta } from './lib/event-registry.js'
 // Algorithms
 export { survivabilityScore, bucketScore, roleScore, domainScore, TIER_1_ROLES, TIER_2_ROLES, TIER_3_ROLES } from './lib/survivability.js'
 export { currentAttachmentScore } from './lib/membership.js'
+
+// Training & skill progression
+export { LEVEL_UP_CRITERIA, getTrainingHoursForSkill, checkLevelUpEligibility } from './lib/training-criteria.js'
+export type { LevelUpEligibilityResult } from './lib/training-criteria.js'
+
+// Federation
+export type {
+  FederationRelationship, FederationRelationshipStatus,
+  FederatedMessage, FederatedTradeProposal, FederatedAlert,
+  TradeItem, TradeStatus,
+} from './types/federation.js'
+export { canDiplomatize } from './lib/permissions.js'
+
+// Consumption tracking
+export type { ConsumptionEntry } from './types/consumption.js'
+export {
+  computeBurnRate, computeDaysRemaining,
+  getDepletionStatus, DEPLETION_THRESHOLDS,
+} from './lib/consumption-rate.js'
+export type { DepletionStatus } from './lib/consumption-rate.js'
+
+// Psychological profiling
+export type { PsychDimensions, PsychArchetype, PsychProfile, PeerRating } from './types/psych.js'
+export {
+  scoreQuiz, computeArchetype, mergeProfileDimensions,
+  toBigFive, roleFitScore, compatibilityScore,
+} from './lib/psych-engine.js'
+export type { BigFiveScores } from './lib/psych-engine.js'
