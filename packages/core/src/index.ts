@@ -134,3 +134,6 @@ export type { ExpenseCategory, TribeExpense, FundContribution } from './types/fi
 // Readiness
 export type { ReadinessFactor, ReadinessDimensionResult, CompositeReadinessReport, ReadinessInput } from './types/readiness.js'
 export { computeCompositeReadiness } from './lib/readiness.js'
+
+// Grid-Down operational mode
+export type { GridMode, GridState } from './types/grid-state.js'

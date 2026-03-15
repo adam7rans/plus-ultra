@@ -177,6 +177,22 @@ export interface AppDB {
     key: string   // `${tribeId}:${planId}`
     value: unknown
   }
+  'tribe-docs': {
+    key: string   // `${tribeId}:${docId}`
+    value: unknown
+  }
+  'tribe-expenses': {
+    key: string   // `${tribeId}:${expenseId}`
+    value: unknown
+  }
+  'tribe-contributions': {
+    key: string   // `${tribeId}:${contributionId}`
+    value: unknown
+  }
+  'grid-state': {
+    key: string   // tribeId
+    value: unknown
+  }
 }
 
 let _db: IDBPDatabase<AppDB> | null = null
@@ -188,7 +204,7 @@ export function closeDB(): void {
 
 export async function getDB(): Promise<IDBPDatabase<AppDB>> {
   if (_db) return _db
-  _db = await openDB<AppDB>('plus-ultra', 21, {
+  _db = await openDB<AppDB>('plus-ultra', 24, {
     blocked() {
       // Another tab has the DB open at an older version — force it to close
       // so our upgrade can proceed (stale tab will reload automatically)
@@ -304,6 +320,16 @@ export async function getDB(): Promise<IDBPDatabase<AppDB>> {
       }
       if (oldVersion < 21) {
         db.createObjectStore('bugout-plans')
+      }
+      if (oldVersion < 22) {
+        db.createObjectStore('tribe-docs')
+      }
+      if (oldVersion < 23) {
+        db.createObjectStore('tribe-expenses')
+        db.createObjectStore('tribe-contributions')
+      }
+      if (oldVersion < 24) {
+        db.createObjectStore('grid-state')
       }
     },
   })

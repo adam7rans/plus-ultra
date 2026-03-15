@@ -11,6 +11,7 @@ export type MusterReason =
   | 'security'
   | 'routine_drill'
   | 'check_in'
+  | 'grid_down_drill'
   | 'other'
 
 export interface MusterCall {
@@ -46,10 +47,11 @@ export const MUSTER_STATUS_META: Record<MusterStatus, { label: string; icon: str
   unknown:         { label: 'Unknown',          icon: '⬜', color: 'text-gray-500' },
 }
 
-export const MUSTER_REASON_META: Record<MusterReason, { label: string; icon: string }> = {
-  emergency:    { label: 'Emergency',    icon: '🚨' },
-  security:     { label: 'Security',     icon: '🔴' },
-  routine_drill:{ label: 'Routine Drill',icon: '📋' },
-  check_in:     { label: 'Check-In',     icon: '✔️' },
-  other:        { label: 'Other',        icon: '📣' },
+export const MUSTER_REASON_META: Record<MusterReason, { label: string; icon: string; description?: string }> = {
+  emergency:      { label: 'Emergency',       icon: '🚨' },
+  security:       { label: 'Security',        icon: '🔴' },
+  routine_drill:  { label: 'Routine Drill',   icon: '📋' },
+  check_in:       { label: 'Check-In',        icon: '✔️' },
+  grid_down_drill:{ label: 'Grid-Down Drill', icon: '⚡', description: 'Simulated grid-down scenario drill' },
+  other:          { label: 'Other',           icon: '📣' },
 }

@@ -28,8 +28,17 @@ Plus Ultra gives tribes the tools to function as self-reliant units:
 - **Resource Consumption Tracking** — log daily consumption rates for food, water, fuel, and ammo. Auto-calculate days until depletion. Depletion status (healthy/warning/critical) surfaced on the dashboard.
 - **Inter-tribe Federation** — encrypted inter-tribe messaging channels, trade/barter proposals, and alliance system. Diplomat role enables inter-tribe diplomacy. Federated threat alerts from allied tribes.
 - **Psychological Profiling** — 18-question self-assessment (10 scenario-based, 8 forced-rank pairs) mapping members across 6 psychological dimensions. Ongoing anonymous peer ratings. Three views: Archetype card, Radar chart, Big Five bars. Surfaces on member profiles, proposals, role assignment, and the tribe dashboard.
+- **Production Tracking** — Log food, water, energy, and materials production. Rolling 30-day production rate vs consumption rate gives net resource position (days-until-depletion adjusted for what the tribe produces). Surfaced on the inventory screen alongside burn rate.
+- **Roll Call / Accountability** — Initiate a tribe-wide muster (leads+). Members respond with status (present, away authorized, away unplanned, injured, need help). Live status board with response time tracking. Muster overlay for incoming calls. History of all past musters with outcomes. Full-screen overlay for incoming musters on the dashboard.
+- **External Contacts** — Track non-member tribe resources: doctors, HAM operators, lawyers, mutual-aid groups, vendors. Searchable by category. Tap-to-copy phone/frequency. Offline-accessible (IDB-backed).
+- **Member Health / Medical Status** — Blood type, allergies, critical medications, and medical conditions stored per member. Current health status updated during roll calls. Read access is role-gated: full data visible to medical roles + elder council; other members see status only.
+- **PACE Comms Plan** — Tribe-wide communications plan covering all four PACE levels (Primary/Alternate/Contingency/Emergency). Check-in schedules, rally points, and code words. Offline-first, export to plaintext for paper backup. HAM certification integration suggests callsigns for radio methods.
 - **Goals & Tasks** — Shared tribe goal layer with horizon classification (immediate / short-term / long-term), milestone tracking, and task assignment. Elder council creates goals; leads create and assign tasks to any member. Progress bars computed from task completion. Proposal-to-goal bridge on passed proposals. My Tasks tab for individual accountability. Full tribe task list filterable by status and priority.
 - **Bug-Out Planning** — Formal evacuation plans tied to patrol routes, vehicles, load priorities, and rally points. Plans progress from draft → ready → active. Activating a plan broadcasts a `bug_out` alert to all tribe members and highlights the designated route in red/dashed on the map with a legend overlay. Elder council manages plans; deactivation returns map to normal.
+- **Knowledge Base / SOPs** — Tribe document library with category tabs (medical, security, food/water, comms, evacuation, governance, training). Markdown content with offline rendering. Version-controlled approval workflow (draft → active). Full-text search. Plaintext export for paper backup.
+- **Financial Tracking** — Shared expense ledger with category icons, paid-by, and split-among tracking. Fund contributions. Member balance view (who owes whom). Grid-up feature; de-emphasized in grid-down mode.
+- **Composite Readiness Score** — Six-dimension operational readiness report (personnel, supply, infrastructure, comms, coordination, cohesion) weighted to a 0–100 composite score with letter grade. Critical gaps listed with suggested actions. Replaces the simpler survivability score widget on the dashboard.
+- **Grid-Down Operational Mode** — Declare tribe-wide grid-down status (real or simulation/drill). Persistent red/amber banner on the dashboard. Nav cards reorder automatically to surface crisis-critical screens (Roll Call, PACE, Inventory, Map, Bug-Out first). Dimmed cards for grid-up-only features (Proposals, Finances, Federation). Drill mode triggered via muster system (`grid_down_drill` reason) with a 4-item checklist card. Auto-expires after 3/5/7 days or manual clear. Gun-synced tribe-wide.
 
 ---
 
@@ -65,7 +74,7 @@ User action
 
 Gun writes are always fire-and-forget. The app never blocks on Gun acks — no relay = no problem, data is in IDB.
 
-### IDB Schema (v21)
+### IDB Schema (v24)
 
 | Store | Key Format | Purpose |
 |-------|------------|---------|
@@ -101,11 +110,15 @@ Gun writes are always fire-and-forget. The app never blocks on Gun acks — no r
 | `muster-responses` | `musterId:memberPub` | Member responses to musters |
 | `production-log` | `tribeId:entryId` | Production tracking entries |
 | `external-contacts` | `tribeId:id` | External contacts (doctors, HAM ops, etc.) |
-| `pace-plan` | `tribeId` | PACE comms plan |
+| `pace-plan` | tribeId | PACE comms plan |
 | `tribe-goals` | `tribeId:goalId` | Tribe goals |
 | `goal-milestones` | `tribeId:milestoneId` | Goal milestones |
 | `tribe-tasks` | `tribeId:taskId` | Tasks linked to goals |
 | `bugout-plans` | `tribeId:planId` | Bug-out evacuation plans |
+| `tribe-docs` | `tribeId:docId` | Knowledge base documents (Markdown, versioned) |
+| `tribe-expenses` | `tribeId:expenseId` | Shared expense ledger |
+| `tribe-contributions` | `tribeId:contributionId` | Fund contributions |
+| `grid-state` | tribeId | Grid-down operational state (mode, expiry, simulation flag) |
 
 ### Cryptography
 
@@ -345,6 +358,15 @@ Local 2-user sync fully validated on macOS (Tauri + Chrome against local Gun rel
 | Psychological profiling (quiz, peer ratings, archetypes) | ✅ |
 | Goals & tasks (tribe objectives, task assignment, progress) | ✅ |
 | Bug-out planning (vehicles, load priorities, route activation) | ✅ |
+| Production tracking (net rate, days-remaining) | ✅ |
+| Roll call / accountability (muster, live status board) | ✅ |
+| External contacts (doctors, HAM ops, vendors) | ✅ |
+| Member health / medical status (blood type, allergies, triage) | ✅ |
+| PACE comms plan (4-level, check-ins, rally points) | ✅ |
+| Knowledge base / SOPs (Markdown, versioned, offline) | ✅ |
+| Financial tracking (shared expenses, fund, balances) | ✅ |
+| Composite readiness score (6-dimension, 0–100) | ✅ |
+| Grid-down operational mode (declare, banner, reorder, drill) | ✅ |
 | Real-time cross-context sync (Tauri ↔ Chrome) | ✅ Validated |
 | Data persistence across restarts (IDB) | ✅ |
 | PWA (offline-capable, installable) | ✅ |

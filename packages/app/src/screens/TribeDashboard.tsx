@@ -31,6 +31,10 @@ import { useFederation } from '../hooks/useFederation'
 import { useFederatedAlerts } from '../hooks/useFederatedAlerts'
 import { getLocalTribeEpub, getLocalTribeEpriv } from '../lib/federation'
 import { useTribePsychProfiles } from '../hooks/useTribePsychProfiles'
+import { useGridState } from '../hooks/useGridState'
+import GridDownBanner from '../components/GridDownBanner'
+import DrillChecklistCard from '../components/DrillChecklistCard'
+import DeclareGridDownModal from '../components/DeclareGridDownModal'
 
 export default function TribeDashboard() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId' })
@@ -65,6 +69,7 @@ export default function TribeDashboard() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showSendAlert, setShowSendAlert] = useState(false)
   const [showInitiateMuster, setShowInitiateMuster] = useState(false)
+  const [showDeclareGridDown, setShowDeclareGridDown] = useState(false)
   const [musterOverlayDismissed, setMusterOverlayDismissed] = useState(false)
   const [activeAlert, setActiveAlert] = useState<TribeAlert | null>(null)
   const [pushEnabled, setPushEnabled] = useState(false)
@@ -100,6 +105,7 @@ export default function TribeDashboard() {
 
   const memberName = myMember?.displayName ?? identity?.pub?.slice(0, 8) ?? 'Unknown'
   const { activeMuster, myResponse, initiateMuster } = useRollCall(tribeId, memberName)
+  const { gridState, isGridDown, setGridDown, clearGridDown } = useGridState(tribeId, memberName)
   const showMusterOverlay =
     activeMuster !== null &&
     !myResponse &&
@@ -191,13 +197,22 @@ export default function TribeDashboard() {
             </div>
             <div className="flex items-center gap-2 mt-1">
               {canInitiateMuster && (
-                <button
-                  className="text-lg hover:scale-110 transition-transform"
-                  onClick={() => setShowInitiateMuster(true)}
-                  title="Call Muster"
-                >
-                  📣
-                </button>
+                <>
+                  <button
+                    className="text-lg hover:scale-110 transition-transform"
+                    onClick={() => setShowDeclareGridDown(true)}
+                    title="Declare Grid-Down"
+                  >
+                    ⚡
+                  </button>
+                  <button
+                    className="text-lg hover:scale-110 transition-transform"
+                    onClick={() => setShowInitiateMuster(true)}
+                    title="Call Muster"
+                  >
+                    📣
+                  </button>
+                </>
               )}
               {canSendAlerts && (
                 <button
@@ -276,6 +291,21 @@ export default function TribeDashboard() {
             </button>
           )}
 
+          {/* Grid-down banner */}
+          {isGridDown && gridState && (
+            <GridDownBanner
+              gridState={gridState}
+              tribeId={tribeId}
+              onClear={clearGridDown}
+              canClear={canSendAlerts}
+            />
+          )}
+
+          {/* Grid-down drill checklist */}
+          {activeMuster?.reason === 'grid_down_drill' && (
+            <DrillChecklistCard tribeId={tribeId} />
+          )}
+
           {/* Survivability score */}
           <div className="mb-4">
             <SurvivabilityScore score={score} hasCriticalGap={criticalGaps.length > 0} />
@@ -320,280 +350,351 @@ export default function TribeDashboard() {
           </div>
 
           {/* Navigation cards */}
-          <div className="space-y-2 mb-4">
-            <Link
-              to="/tribe/$tribeId/channel"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">📡</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Tribe Channel</div>
-                <div className="text-xs text-gray-400">Tribe-wide messages</div>
-              </div>
-              {tribeChannelUnread > 0 && (
-                <span className="w-5 h-5 rounded-full bg-forest-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                  {tribeChannelUnread > 9 ? '9+' : tribeChannelUnread}
-                </span>
-              )}
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/schematic"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">📋</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Tribe Schematic</div>
-                <div className="text-xs text-gray-400">Bird's eye view — roles, resources, readiness</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/station"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">🪖</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">My Station</div>
-                <div className="text-xs text-gray-400">Your team, inventory, and priorities</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/people"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">👨‍👩‍👧</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">My People</div>
-                <div className="text-xs text-gray-400">Family and friends</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/inventory"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">📦</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Inventory</div>
-                <div className="text-xs text-gray-400">Track assets and supplies</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/production"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">🌱</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Production</div>
-                <div className="text-xs text-gray-400">Track food, water, and energy output</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/proposals"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">🗳️</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Proposals</div>
-                <div className="text-xs text-gray-400">Decisions and governance</div>
-              </div>
-              {openProposalCount > 0 && (
-                <span className="w-5 h-5 rounded-full bg-forest-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                  {openProposalCount > 9 ? '9+' : openProposalCount}
-                </span>
-              )}
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/map"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">🗺️</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Map</div>
-                <div className="text-xs text-gray-400">Territory, pins, and patrol routes</div>
-              </div>
-              {tribe?.lat && (
-                <span className="text-xs text-forest-400 flex-shrink-0">Coordinates set</span>
-              )}
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/bugout"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">🚗</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Bug-Out Plan</div>
-                <div className="text-xs text-gray-400">Evacuation plans, vehicles, and load priorities</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/kb"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">📚</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Knowledge Base</div>
-                <div className="text-xs text-gray-400">SOPs, playbooks, and protocols</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/finance"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">💰</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Finances</div>
-                <div className="text-xs text-gray-400">Shared expenses and fund tracking</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/readiness"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">🛡️</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Readiness Report</div>
-                <div className="text-xs text-gray-400">6-dimension operational readiness check</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/training"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">🎓</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Training & Skills</div>
-                <div className="text-xs text-gray-400">Sessions, certifications, and level-ups</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/federation"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">🤝</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Federation</div>
-                <div className="text-xs text-gray-400">
-                  {alliedCount > 0 ? `${alliedCount} allied tribe${alliedCount !== 1 ? 's' : ''}` : 'Inter-tribe contacts and trade'}
-                </div>
-              </div>
-              {recentFedAlerts.length > 0 && (
-                <span className="w-5 h-5 rounded-full bg-warning-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                  {recentFedAlerts.length > 9 ? '9+' : recentFedAlerts.length}
-                </span>
-              )}
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            {(() => {
-              const archetypeCounts = new Map<string, number>()
-              for (const p of psychProfiles.values()) {
-                archetypeCounts.set(p.archetype, (archetypeCounts.get(p.archetype) ?? 0) + 1)
-              }
-              const summary = Array.from(archetypeCounts.entries())
-                .map(([arch, ct]) => `${ct} ${arch}${ct !== 1 ? 's' : ''}`)
-                .join(', ')
-              const withoutProfile = members.filter(m => !psychProfiles.has(m.pubkey)).length
-              return (
-                <Link
-                  to="/tribe/$tribeId/psych"
-                  params={{ tribeId }}
-                  className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-                >
-                  <span className="text-2xl">🧠</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-gray-100 text-sm">Psychology</div>
-                    <div className="text-xs text-gray-400">
-                      {psychProfiles.size === 0 ? 'No profiles yet — take the assessment' : summary}
+          {(() => {
+            // Psych card needs computed values
+            const archetypeCounts = new Map<string, number>()
+            for (const p of psychProfiles.values()) {
+              archetypeCounts.set(p.archetype, (archetypeCounts.get(p.archetype) ?? 0) + 1)
+            }
+            const psychSummary = Array.from(archetypeCounts.entries())
+              .map(([arch, ct]) => `${ct} ${arch}${ct !== 1 ? 's' : ''}`)
+              .join(', ')
+            const withoutProfile = members.filter(m => !psychProfiles.has(m.pubkey)).length
+
+            type NavCard = {
+              id: string
+              dimmedInGridDown?: boolean
+              node: React.ReactNode
+            }
+
+            const allCards: NavCard[] = [
+              {
+                id: 'rollcall',
+                node: (
+                  <Link key="rollcall" to="/tribe/$tribeId/rollcall" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">👥</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Roll Call</div>
+                      <div className="text-xs text-gray-400">
+                        {activeMuster ? 'Muster active — respond now' : 'Accountability and muster history'}
+                      </div>
                     </div>
+                    {activeMuster && <span className="w-2 h-2 rounded-full bg-warning-400 animate-pulse flex-shrink-0" />}
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'comms',
+                node: (
+                  <Link key="comms" to="/tribe/$tribeId/comms" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">📻</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Comms Plan</div>
+                      <div className="text-xs text-gray-400">PACE, check-in schedules, rally points</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'inventory',
+                node: (
+                  <Link key="inventory" to="/tribe/$tribeId/inventory" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">📦</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Inventory</div>
+                      <div className="text-xs text-gray-400">Track assets and supplies</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'map',
+                node: (
+                  <Link key="map" to="/tribe/$tribeId/map" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">🗺️</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Map</div>
+                      <div className="text-xs text-gray-400">Territory, pins, and patrol routes</div>
+                    </div>
+                    {tribe?.lat && <span className="text-xs text-forest-400 flex-shrink-0">Coordinates set</span>}
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'bugout',
+                node: (
+                  <Link key="bugout" to="/tribe/$tribeId/bugout" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">🚗</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Bug-Out Plan</div>
+                      <div className="text-xs text-gray-400">Evacuation plans, vehicles, and load priorities</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'readiness',
+                node: (
+                  <Link key="readiness" to="/tribe/$tribeId/readiness" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">🛡️</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Readiness Report</div>
+                      <div className="text-xs text-gray-400">6-dimension operational readiness check</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'station',
+                node: (
+                  <Link key="station" to="/tribe/$tribeId/station" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">🪖</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">My Station</div>
+                      <div className="text-xs text-gray-400">Your team, inventory, and priorities</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'people',
+                node: (
+                  <Link key="people" to="/tribe/$tribeId/people" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">👨‍👩‍👧</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">My People</div>
+                      <div className="text-xs text-gray-400">Family and friends</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'production',
+                node: (
+                  <Link key="production" to="/tribe/$tribeId/production" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">🌱</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Production</div>
+                      <div className="text-xs text-gray-400">Track food, water, and energy output</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'goals',
+                node: (
+                  <Link key="goals" to="/tribe/$tribeId/goals" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">🎯</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Goals &amp; Tasks</div>
+                      <div className="text-xs text-gray-400">Track tribe objectives and action items</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'schematic',
+                node: (
+                  <Link key="schematic" to="/tribe/$tribeId/schematic" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">📋</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Tribe Schematic</div>
+                      <div className="text-xs text-gray-400">Bird's eye view — roles, resources, readiness</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'training',
+                node: (
+                  <Link key="training" to="/tribe/$tribeId/training" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">🎓</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Training & Skills</div>
+                      <div className="text-xs text-gray-400">Sessions, certifications, and level-ups</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'channel',
+                node: (
+                  <Link key="channel" to="/tribe/$tribeId/channel" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">📡</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Tribe Channel</div>
+                      <div className="text-xs text-gray-400">Tribe-wide messages</div>
+                    </div>
+                    {tribeChannelUnread > 0 && (
+                      <span className="w-5 h-5 rounded-full bg-forest-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                        {tribeChannelUnread > 9 ? '9+' : tribeChannelUnread}
+                      </span>
+                    )}
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'kb',
+                node: (
+                  <Link key="kb" to="/tribe/$tribeId/kb" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">📚</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Knowledge Base</div>
+                      <div className="text-xs text-gray-400">SOPs, playbooks, and protocols</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'psych',
+                node: (
+                  <Link key="psych" to="/tribe/$tribeId/psych" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">🧠</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Psychology</div>
+                      <div className="text-xs text-gray-400">
+                        {psychProfiles.size === 0 ? 'No profiles yet — take the assessment' : psychSummary}
+                      </div>
+                    </div>
+                    {withoutProfile > 0 && (
+                      <span className="w-5 h-5 rounded-full bg-forest-700 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                        {withoutProfile > 9 ? '9+' : withoutProfile}
+                      </span>
+                    )}
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'contacts',
+                node: (
+                  <Link key="contacts" to="/tribe/$tribeId/contacts" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">👤</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Contacts</div>
+                      <div className="text-xs text-gray-400">Doctors, HAM ops, vendors, and allies</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'proposals',
+                dimmedInGridDown: true,
+                node: (
+                  <Link key="proposals" to="/tribe/$tribeId/proposals" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">🗳️</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Proposals</div>
+                      <div className="text-xs text-gray-400">Decisions and governance</div>
+                    </div>
+                    {openProposalCount > 0 && (
+                      <span className="w-5 h-5 rounded-full bg-forest-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                        {openProposalCount > 9 ? '9+' : openProposalCount}
+                      </span>
+                    )}
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'finance',
+                dimmedInGridDown: true,
+                node: (
+                  <Link key="finance" to="/tribe/$tribeId/finance" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">💰</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Finances</div>
+                      <div className="text-xs text-gray-400">Shared expenses and fund tracking</div>
+                    </div>
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+              {
+                id: 'federation',
+                dimmedInGridDown: true,
+                node: (
+                  <Link key="federation" to="/tribe/$tribeId/federation" params={{ tribeId }}
+                    className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
+                    <span className="text-2xl">🤝</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-100 text-sm">Federation</div>
+                      <div className="text-xs text-gray-400">
+                        {alliedCount > 0 ? `${alliedCount} allied tribe${alliedCount !== 1 ? 's' : ''}` : 'Inter-tribe contacts and trade'}
+                      </div>
+                    </div>
+                    {recentFedAlerts.length > 0 && (
+                      <span className="w-5 h-5 rounded-full bg-warning-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                        {recentFedAlerts.length > 9 ? '9+' : recentFedAlerts.length}
+                      </span>
+                    )}
+                    <span className="text-forest-400 text-lg">→</span>
+                  </Link>
+                ),
+              },
+            ]
+
+            // Grid-down priority order (by id)
+            const GRID_DOWN_ORDER = [
+              'rollcall', 'comms', 'inventory', 'map', 'bugout', 'readiness',
+              'station', 'people', 'production', 'goals', 'schematic', 'training',
+              'channel', 'kb', 'psych', 'contacts', 'proposals', 'finance', 'federation',
+            ]
+
+            const orderedCards = isGridDown
+              ? [...allCards].sort((a, b) => {
+                  const ai = GRID_DOWN_ORDER.indexOf(a.id)
+                  const bi = GRID_DOWN_ORDER.indexOf(b.id)
+                  return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+                })
+              : allCards
+
+            return (
+              <div className="space-y-2 mb-4">
+                {orderedCards.map(card => (
+                  <div
+                    key={card.id}
+                    className={isGridDown && card.dimmedInGridDown ? 'opacity-50' : ''}
+                  >
+                    {card.node}
                   </div>
-                  {withoutProfile > 0 && (
-                    <span className="w-5 h-5 rounded-full bg-forest-700 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                      {withoutProfile > 9 ? '9+' : withoutProfile}
-                    </span>
-                  )}
-                  <span className="text-forest-400 text-lg">→</span>
-                </Link>
-              )
-            })()}
-            <Link
-              to="/tribe/$tribeId/rollcall"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">👥</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Roll Call</div>
-                <div className="text-xs text-gray-400">
-                  {activeMuster ? 'Muster active — respond now' : 'Accountability and muster history'}
-                </div>
+                ))}
               </div>
-              {activeMuster && (
-                <span className="w-2 h-2 rounded-full bg-warning-400 animate-pulse flex-shrink-0" />
-              )}
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/goals"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">🎯</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Goals &amp; Tasks</div>
-                <div className="text-xs text-gray-400">Track tribe objectives and action items</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/contacts"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">👤</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Contacts</div>
-                <div className="text-xs text-gray-400">Doctors, HAM ops, vendors, and allies</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-            <Link
-              to="/tribe/$tribeId/comms"
-              params={{ tribeId }}
-              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
-            >
-              <span className="text-2xl">📻</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-100 text-sm">Comms Plan</div>
-                <div className="text-xs text-gray-400">PACE, check-in schedules, rally points</div>
-              </div>
-              <span className="text-forest-400 text-lg">→</span>
-            </Link>
-          </div>
+            )
+          })()}
 
           {/* Declare skills CTA if user has none */}
           {mySkillCount === 0 && (
@@ -734,6 +835,16 @@ export default function TribeDashboard() {
         <div className="flex items-center justify-center py-20">
           <div className="text-forest-400 text-sm animate-pulse">Loading tribe...</div>
         </div>
+      )}
+
+      {/* Declare Grid-Down modal */}
+      {showDeclareGridDown && (
+        <DeclareGridDownModal
+          onDeclare={async (opts) => {
+            await setGridDown(opts)
+          }}
+          onClose={() => setShowDeclareGridDown(false)}
+        />
       )}
 
       {/* Send Alert modal */}

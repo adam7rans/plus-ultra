@@ -3,7 +3,7 @@
 > Created: 2026-03-14
 > Last updated: 2026-03-15
 > Continues from ROADMAP.md (Phases 1–8, all complete).
-> Covers ten new systems identified in the Phase 8 gap analysis.
+> Covers ten new systems identified in the Phase 8 gap analysis, plus Phase 14 operational context.
 
 This document covers what a tribe needs to be a **functioning, organized operational unit** — not just a roster with a chat channel. These features close the gap between "useful app" and "tribe operating system."
 
@@ -23,6 +23,7 @@ This document covers what a tribe needs to be a **functioning, organized operati
 | 12.1 | SOPs / Knowledge Base / Playbooks | ✅ Complete | Yes | Permissions (done), Bug-Out (11.2), PACE (10.2) |
 | 12.2 | Financial / Shared Expense Tracking | ✅ Complete | Grid-up | Inventory (done) |
 | 13.1 | Composite Readiness Score | ✅ Complete | No — synthesizes all | Production (9.1), Health (10.1), all prior phases |
+| 14.1 | Grid-Down Operational Mode | ✅ Complete | Yes — meta-feature | All prior phases |
 
 ---
 
@@ -688,11 +689,11 @@ export interface FundContribution {
 
 ---
 
-## Phase 13 — Intelligence Synthesis `🔲 TODO`
+## Phase 13 — Intelligence Synthesis `✅ Complete`
 
 ---
 
-### 13.1 Composite Readiness Score `🔲`
+### 13.1 Composite Readiness Score `✅`
 
 **Problem:** The survivability score is skills-only. A tribe with all the right skills but no food, injured members, no comms plan, and no goals is not ready. A true readiness picture requires synthesizing across all dimensions.
 
@@ -767,26 +768,79 @@ export interface CompositeReadinessReport {
 
 ---
 
+## Phase 14 — Operational Context `✅ Complete`
+
+_Contextual awareness layer — the app now knows what kind of situation the tribe is in and responds accordingly._
+
+---
+
+### 14.1 Grid-Down Operational Mode `✅`
+
+**Problem:** The app looks and behaves identically whether the tribe is in a peacetime grid-up situation or actively managing a grid-down crisis. In a real emergency, every second spent navigating to the right screen is friction. The dashboard needs to reflect operational state.
+
+**Two states:** `grid-up` (normal) and `grid-down` (crisis). Both real declarations and simulation/drill mode (built on the muster system) are supported.
+
+**IDB changes:** v23 → v24. New store: `grid-state` (key: `tribeId`).
+
+**Data model** (`packages/core/src/types/grid-state.ts`):
+```typescript
+export type GridMode = 'up' | 'down'
+
+export interface GridState {
+  tribeId: string
+  mode: GridMode
+  isSimulation: boolean    // true = drill, false = real declaration
+  setBy: string            // memberPub
+  setByName: string
+  setAt: number
+  expiresAt: number        // 0 = until cleared; else setAt + 3/5/7 days
+  message?: string
+}
+```
+
+**`MusterReason` extension:** Added `'grid_down_drill'` reason for drill-mode musters.
+
+**Lib** (`lib/grid-state.ts`): `getGridState`, `setGridState`, `clearGridState`, `subscribeToGridState` — same single-record Gun pattern as `pace-plan`.
+
+**Hook** (`hooks/useGridState.ts`): `useGridState(tribeId)` — auto-clears expired state, exposes `setGridDown` and `clearGridDown`. Returns `isGridDown`, `isSimulation`, `gridState`.
+
+**Components:**
+- `GridDownBanner` — persistent banner at top of dashboard. Red border for real (`border-danger-500`), amber for drill (`border-warning-500`). Shows expiry countdown and links to Readiness Report.
+- `DrillChecklistCard` — shown alongside active `grid_down_drill` musters. Four manual checkboxes (Respond to muster / Review PACE plan / Check inventory / Review bug-out plan). Links to each screen. Shows "Drill checklist complete ✓" when all checked.
+- `DeclareGridDownModal` — leader-only modal. Type (Real/Simulation), duration (3/5/7 days or until cleared), optional message.
+
+**TribeDashboard changes:**
+- ⚡ button in header (leads+ only) opens `DeclareGridDownModal`
+- `GridDownBanner` renders above SurvivabilityScore when `isGridDown`
+- `DrillChecklistCard` renders when `activeMuster?.reason === 'grid_down_drill'`
+- Nav cards refactored to a typed array — reordered in grid-down to surface Roll Call, PACE, Inventory, Map, Bug-Out, Readiness first. Proposals, Finances, Federation moved to bottom with `opacity-50`.
+
+**Gun sync:** Grid state is tribe-wide via `tribes/${tribeId}/grid-state`. Device A declaration visible on Device B after relay sync.
+
+---
+
 ## Priority Order (recommended build sequence)
 
 ```
-Sprint 1:  9.1 Production Tracking     (~3h) — closes resource picture
-           9.2 Roll Call               (~4h) — critical accountability gap
-           9.3 External Contacts       (~2h) — quick win, high utility
+Sprint 1:  9.1 Production Tracking     (~3h) — closes resource picture  ✅
+           9.2 Roll Call               (~4h) — critical accountability gap  ✅
+           9.3 External Contacts       (~2h) — quick win, high utility  ✅
 
-Sprint 2:  10.1 Health Status          (~3h) — enriches roll call + triage
-           10.2 PACE Comms Plan        (~4h) — existential grid-down feature
+Sprint 2:  10.1 Health Status          (~3h) — enriches roll call + triage  ✅
+           10.2 PACE Comms Plan        (~4h) — existential grid-down feature  ✅
 
-Sprint 3:  11.1 Goals + Tasks          (~6h) — largest feature, highest impact
-           11.2 Bug-Out Planning       (~4h) — companion to PACE
+Sprint 3:  11.1 Goals + Tasks          (~6h) — largest feature, highest impact  ✅
+           11.2 Bug-Out Planning       (~4h) — companion to PACE  ✅
 
-Sprint 4:  12.1 SOPs / Knowledge Base  (~5h) — brings everything together
-           12.2 Financial Tracking     (~3h) — grid-up, lower urgency
+Sprint 4:  12.1 SOPs / Knowledge Base  (~5h) — brings everything together  ✅
+           12.2 Financial Tracking     (~3h) — grid-up, lower urgency  ✅
 
-Sprint 5:  13.1 Composite Readiness    (~5h) — synthesis, best when data is rich
+Sprint 5:  13.1 Composite Readiness    (~5h) — synthesis, best when data is rich  ✅
+
+Sprint 6:  14.1 Grid-Down Mode         (~4h) — operational context layer  ✅
 ```
 
-Total estimated effort: ~39–43 hours of focused development.
+Total estimated effort: ~43–47 hours. All complete.
 
 ---
 
