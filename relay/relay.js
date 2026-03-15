@@ -26,6 +26,13 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   console.warn('[push] No VAPID keys found — push notifications disabled')
 }
 
+const RELAY_PUSH_SECRET = process.env.RELAY_PUSH_SECRET
+if (!RELAY_PUSH_SECRET) {
+  console.warn('[push] RELAY_PUSH_SECRET not set — push endpoints are unauthenticated')
+} else {
+  console.log('[push] RELAY_PUSH_SECRET configured')
+}
+
 // ── Push subscription store (in-memory + file persistence) ──────────
 const SUBS_FILE = path.join(__dirname, 'push-subscriptions.json')
 let subscriptions = new Map() // key: `${tribeId}:${memberPub}`, value: PushSubscription
@@ -41,12 +48,23 @@ function persistSubs() {
   fs.writeFileSync(SUBS_FILE, JSON.stringify(obj, null, 2))
 }
 
+function checkPushAuth(req, res) {
+  if (!RELAY_PUSH_SECRET) return true // not configured — allow (warn already logged)
+  const auth = req.headers.authorization
+  if (!auth || auth !== `Bearer ${RELAY_PUSH_SECRET}`) {
+    res.writeHead(401, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ error: 'Unauthorized' }))
+    return false
+  }
+  return true
+}
+
 // ── HTTP server with CORS + JSON body parsing ───────────────────────
 const server = http.createServer((req, res) => {
   // CORS headers for all requests
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204)
@@ -68,6 +86,7 @@ const server = http.createServer((req, res) => {
 
   // POST /push/subscribe — register a push subscription
   if (req.method === 'POST' && req.url === '/push/subscribe') {
+    if (!checkPushAuth(req, res)) return
     let body = ''
     req.on('data', c => body += c)
     req.on('end', () => {
@@ -93,6 +112,7 @@ const server = http.createServer((req, res) => {
 
   // DELETE /push/subscribe — unregister
   if (req.method === 'DELETE' && req.url === '/push/subscribe') {
+    if (!checkPushAuth(req, res)) return
     let body = ''
     req.on('data', c => body += c)
     req.on('end', () => {
@@ -112,6 +132,7 @@ const server = http.createServer((req, res) => {
 
   // POST /push/send — send a push to specific member(s) or entire tribe
   if (req.method === 'POST' && req.url === '/push/send') {
+    if (!checkPushAuth(req, res)) return
     if (!VAPID_PUBLIC_KEY) {
       res.writeHead(503, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ error: 'Push not configured' }))

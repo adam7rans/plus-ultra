@@ -1,5 +1,12 @@
 // PWA Push Notification client — grid-up only, degrades gracefully
 
+function pushAuthHeader(): HeadersInit {
+  const secret = import.meta.env.VITE_RELAY_PUSH_SECRET
+  return secret
+    ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${secret}` }
+    : { 'Content-Type': 'application/json' }
+}
+
 function getRelayUrl(): string {
   const gunRelay = import.meta.env.VITE_GUN_RELAY ?? 'http://localhost:8765/gun'
   // Strip /gun path to get base URL
@@ -66,7 +73,7 @@ export async function subscribeToPush(
     // Send subscription to relay
     const res = await fetch(`${getRelayUrl()}/push/subscribe`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: pushAuthHeader(),
       body: JSON.stringify({ tribeId, memberPub, subscription: subscription.toJSON() }),
     })
 
@@ -89,7 +96,7 @@ export async function unsubscribeFromPush(
 
     await fetch(`${getRelayUrl()}/push/subscribe`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: pushAuthHeader(),
       body: JSON.stringify({ tribeId, memberPub }),
     })
   } catch {
@@ -120,7 +127,7 @@ export async function triggerPush(
   try {
     const res = await fetch(`${getRelayUrl()}/push/send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: pushAuthHeader(),
       body: JSON.stringify({ tribeId, targetPub, title, body, data }),
     })
     return res.ok

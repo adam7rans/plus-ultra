@@ -3,7 +3,7 @@ import SEA from 'gun/sea'
 import { gun } from './gun'
 import { getDB } from './db'
 import { shortId } from './identity'
-import type { Tribe, TribeMember } from '@plus-ultra/core'
+import type { Tribe, TribeMember, HealthStatus } from '@plus-ultra/core'
 
 // ─── Tribe creation ──────────────────────────────────────────────────────────
 
@@ -315,6 +315,14 @@ export function subscribeToMembers(
       bio: d.bio as string | undefined,
       availability: d.availability as TribeMember['availability'] | undefined,
       physicalLimitations: d.physicalLimitations as string | undefined,
+      // Health fields synced from peers — arrays stored as JSON strings in Gun
+      bloodType: d.bloodType as TribeMember['bloodType'] | undefined,
+      allergies: typeof d.allergies === 'string' ? JSON.parse(d.allergies) as string[] : d.allergies as string[] | undefined,
+      medications: typeof d.medications === 'string' ? JSON.parse(d.medications) as string[] : d.medications as string[] | undefined,
+      medicalConditions: typeof d.medicalConditions === 'string' ? JSON.parse(d.medicalConditions) as string[] : d.medicalConditions as string[] | undefined,
+      currentHealthStatus: d.currentHealthStatus as HealthStatus | undefined,
+      healthStatusUpdatedAt: d.healthStatusUpdatedAt as number | undefined,
+      healthStatusUpdatedBy: d.healthStatusUpdatedBy as string | undefined,
       // photo is NOT synced via Gun — preserve local copy from IDB if it exists
     }
     // Preserve local photo (not synced via Gun) by merging from IDB if present
@@ -496,6 +504,51 @@ export async function removeMember(tribeId: string, targetPubkey: string): Promi
       updated as unknown as Record<string, unknown>
     )
   }
+}
+
+// ─── Health update ───────────────────────────────────────────────────────────
+
+export async function updateMemberHealth(
+  tribeId: string,
+  targetPub: string,
+  health: {
+    bloodType?: TribeMember['bloodType']
+    allergies?: string[]
+    medications?: string[]
+    medicalConditions?: string[]
+    currentHealthStatus?: HealthStatus
+    updatedByPub: string
+  }
+): Promise<void> {
+  const db = await getDB()
+  const key = `${tribeId}:${targetPub}`
+  const existing = (await db.get('members', key)) as TribeMember | undefined
+  if (!existing) return
+
+  const updated: TribeMember = {
+    ...existing,
+    ...(health.bloodType !== undefined ? { bloodType: health.bloodType } : {}),
+    ...(health.allergies !== undefined ? { allergies: health.allergies } : {}),
+    ...(health.medications !== undefined ? { medications: health.medications } : {}),
+    ...(health.medicalConditions !== undefined ? { medicalConditions: health.medicalConditions } : {}),
+    ...(health.currentHealthStatus !== undefined ? { currentHealthStatus: health.currentHealthStatus } : {}),
+    healthStatusUpdatedAt: Date.now(),
+    healthStatusUpdatedBy: health.updatedByPub,
+  }
+
+  await db.put('members', updated, key)
+
+  // Gun: arrays must be serialized to JSON strings (same as waypointsJson pattern)
+  const { photo: _photo, ...baseFields } = updated
+  void _photo
+  const gunFields: Record<string, unknown> = { ...baseFields }
+  if (updated.allergies !== undefined) gunFields.allergies = JSON.stringify(updated.allergies)
+  if (updated.medications !== undefined) gunFields.medications = JSON.stringify(updated.medications)
+  if (updated.medicalConditions !== undefined) gunFields.medicalConditions = JSON.stringify(updated.medicalConditions)
+
+  gun.get('tribes').get(tribeId).get('members').get(targetPub).put(
+    gunFields as unknown as Record<string, unknown>
+  )
 }
 
 // ─── Delete tribe (founder only) ─────────────────────────────────────────────

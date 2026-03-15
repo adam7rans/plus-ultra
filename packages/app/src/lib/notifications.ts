@@ -19,6 +19,7 @@ export type NotificationType =
   | 'trade_response'
   | 'trade_fulfilled'
   | 'federation_contact'
+  | 'muster_called'
 
 export interface Notification {
   id: string

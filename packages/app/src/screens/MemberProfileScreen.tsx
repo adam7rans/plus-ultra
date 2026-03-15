@@ -1,17 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
-import { updateMemberProfile } from '../lib/tribes'
+import { updateMemberProfile, updateMemberHealth } from '../lib/tribes'
 import { vouchForSkill } from '../lib/skills'
 import {
   ROLE_BY_KEY, AUTHORITY_META,
   getAuthority, canManageRoles, assignableRoles,
-  getSpecializationsForRole, toBigFive,
+  getSpecializationsForRole, toBigFive, canViewFullHealth,
 } from '@plus-ultra/core'
-import type { TribeMember, MemberSkill, AuthorityRole, Tribe, PsychArchetype } from '@plus-ultra/core'
+import type { TribeMember, MemberSkill, AuthorityRole, Tribe, PsychArchetype, HealthStatus } from '@plus-ultra/core'
 import { fetchTribeMeta, setAuthorityRole } from '../lib/tribes'
-import { useEffect } from 'react'
 import { usePsychProfile } from '../hooks/usePsychProfile'
 import { hasRatedThisWeek, submitPeerRating } from '../lib/psych'
 
@@ -28,6 +27,16 @@ const AVAILABILITY_LABELS: Record<string, string> = {
   on_call: '📟 On-call',
 }
 
+const HEALTH_STATUS_META: Record<HealthStatus, { label: string; color: string; icon: string }> = {
+  well:          { label: 'Well',          color: 'text-forest-400', icon: '✓' },
+  minor_injury:  { label: 'Minor Injury',  color: 'text-yellow-400', icon: '⚠' },
+  major_injury:  { label: 'Major Injury',  color: 'text-orange-400', icon: '🩹' },
+  critical:      { label: 'Critical',      color: 'text-red-400',    icon: '🚨' },
+  deceased:      { label: 'Deceased',      color: 'text-gray-500',   icon: '✝' },
+}
+
+const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'unknown'] as const
+
 export default function MemberProfileScreen() {
   const { tribeId, memberPub } = useParams({ from: '/tribe/$tribeId/member/$memberPub' })
   const { identity } = useIdentity()
@@ -41,6 +50,17 @@ export default function MemberProfileScreen() {
   const [editAvailability, setEditAvailability] = useState<string>('')
   const [editLimitations, setEditLimitations] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Health edit state
+  const [editBloodType, setEditBloodType] = useState<TribeMember['bloodType'] | ''>('')
+  const [editAllergies, setEditAllergies] = useState<string[]>([])
+  const [editMedications, setEditMedications] = useState<string[]>([])
+  const [editConditions, setEditConditions] = useState<string[]>([])
+  const [allergyInput, setAllergyInput] = useState('')
+  const [medInput, setMedInput] = useState('')
+  const [conditionInput, setConditionInput] = useState('')
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [showEmergencyCard, setShowEmergencyCard] = useState(false)
 
   useEffect(() => {
     fetchTribeMeta(tribeId).then(t => { if (t) setTribe(t) })
@@ -78,11 +98,22 @@ export default function MemberProfileScreen() {
     : []
   const [showRoles, setShowRoles] = useState(false)
 
+  // Health permissions
+  const actorAuth = actorMember && tribe ? getAuthority(actorMember, tribe) : (actorMember?.authorityRole ?? 'member')
+  const actorRole = actorMember?.role
+  const canSeeFullHealth = canViewFullHealth(actorAuth, actorRole)
+  // Can update health status: own profile, elder_council+, or any medical role
+  const canUpdateHealthStatus = isYou || canSeeFullHealth
+
   function startEditing() {
     if (!member) return
     setEditBio(member.bio ?? '')
     setEditAvailability(member.availability ?? '')
     setEditLimitations(member.physicalLimitations ?? '')
+    setEditBloodType(member.bloodType ?? '')
+    setEditAllergies(member.allergies ?? [])
+    setEditMedications(member.medications ?? [])
+    setEditConditions(member.medicalConditions ?? [])
     setEditing(true)
   }
 
@@ -95,9 +126,29 @@ export default function MemberProfileScreen() {
         availability: (editAvailability as TribeMember['availability']) || undefined,
         physicalLimitations: editLimitations.trim() || undefined,
       })
+      await updateMemberHealth(tribeId, identity.pub, {
+        bloodType: editBloodType || undefined,
+        allergies: editAllergies,
+        medications: editMedications,
+        medicalConditions: editConditions,
+        updatedByPub: identity.pub,
+      })
       setEditing(false)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleUpdateStatus(status: HealthStatus) {
+    if (!identity) return
+    setUpdatingStatus(true)
+    try {
+      await updateMemberHealth(tribeId, memberPub, {
+        currentHealthStatus: status,
+        updatedByPub: identity.pub,
+      })
+    } finally {
+      setUpdatingStatus(false)
     }
   }
 
@@ -166,6 +217,11 @@ export default function MemberProfileScreen() {
               {isYou && (
                 <span className="text-xs bg-forest-800 text-forest-300 px-1.5 py-0.5 rounded">you</span>
               )}
+              {member.currentHealthStatus && member.currentHealthStatus !== 'well' && (
+                <span className={`text-xs px-1.5 py-0.5 rounded bg-black/30 ${HEALTH_STATUS_META[member.currentHealthStatus].color}`}>
+                  {HEALTH_STATUS_META[member.currentHealthStatus].icon} {HEALTH_STATUS_META[member.currentHealthStatus].label}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               <span className={`text-xs px-1.5 py-0.5 rounded ${
@@ -196,6 +252,76 @@ export default function MemberProfileScreen() {
             {member.physicalLimitations && (
               <span>⚠ {member.physicalLimitations}</span>
             )}
+          </div>
+        )}
+
+        {/* Full health data (read-only, authorized viewers) */}
+        {!editing && canSeeFullHealth && (member.bloodType || (member.allergies?.length ?? 0) > 0 || (member.medications?.length ?? 0) > 0 || (member.medicalConditions?.length ?? 0) > 0) && (
+          <div className="mt-3 pt-3 border-t border-forest-800">
+            <div className="text-xs text-gray-400 mb-2 uppercase tracking-widest">Medical Info</div>
+            {member.bloodType && (
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-xs text-gray-500 w-20">Blood Type</span>
+                <span className="text-xs bg-red-900/30 text-red-300 px-1.5 py-0.5 rounded font-mono">{member.bloodType}</span>
+              </div>
+            )}
+            {(member.allergies?.length ?? 0) > 0 && (
+              <div className="mb-1.5">
+                <span className="text-xs text-gray-500 block mb-1">Allergies</span>
+                <div className="flex flex-wrap gap-1">
+                  {member.allergies!.map(a => (
+                    <span key={a} className="text-xs bg-orange-900/30 text-orange-300 px-1.5 py-0.5 rounded">{a}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(member.medications?.length ?? 0) > 0 && (
+              <div className="mb-1.5">
+                <span className="text-xs text-gray-500 block mb-1">Critical Medications</span>
+                <div className="flex flex-wrap gap-1">
+                  {member.medications!.map(m => (
+                    <span key={m} className="text-xs bg-blue-900/30 text-blue-300 px-1.5 py-0.5 rounded">{m}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(member.medicalConditions?.length ?? 0) > 0 && (
+              <div>
+                <span className="text-xs text-gray-500 block mb-1">Conditions</span>
+                <div className="flex flex-wrap gap-1">
+                  {member.medicalConditions!.map(c => (
+                    <span key={c} className="text-xs bg-purple-900/30 text-purple-300 px-1.5 py-0.5 rounded">{c}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Health status update (authorized: own, elder_council+, medical roles) */}
+        {!editing && canUpdateHealthStatus && (
+          <div className="mt-3 pt-3 border-t border-forest-800">
+            <div className="text-xs text-gray-400 mb-2 uppercase tracking-widest">Health Status</div>
+            <div className="flex flex-wrap gap-1.5">
+              {(['well', 'minor_injury', 'major_injury', 'critical', 'deceased'] as HealthStatus[]).map(s => {
+                const meta = HEALTH_STATUS_META[s]
+                const isCurrent = (member.currentHealthStatus ?? 'well') === s
+                return (
+                  <button
+                    key={s}
+                    className={`text-xs px-2.5 py-1.5 rounded border transition-colors ${
+                      isCurrent
+                        ? `border-current bg-black/20 ${meta.color}`
+                        : 'border-forest-800 text-gray-500 hover:border-forest-600'
+                    }`}
+                    onClick={() => !isCurrent && handleUpdateStatus(s)}
+                    disabled={isCurrent || updatingStatus}
+                  >
+                    {meta.icon} {meta.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
 
@@ -240,6 +366,62 @@ export default function MemberProfileScreen() {
                 onChange={e => setEditLimitations(e.target.value)}
               />
             </div>
+
+            {/* Medical Info section */}
+            <div className="pt-2 border-t border-forest-800">
+              <div className="text-xs text-gray-400 uppercase tracking-widest mb-3">Medical Info</div>
+
+              <div className="mb-3">
+                <label className="label">Blood Type</label>
+                <select
+                  className="input"
+                  value={editBloodType}
+                  onChange={e => setEditBloodType(e.target.value as TribeMember['bloodType'] | '')}
+                >
+                  <option value="">— not set —</option>
+                  {BLOOD_TYPES.map(t => (
+                    <option key={t} value={t}>{t === 'unknown' ? 'Unknown' : t}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-3">
+                <label className="label">Allergies</label>
+                <TagInput
+                  tags={editAllergies}
+                  input={allergyInput}
+                  onInputChange={setAllergyInput}
+                  onAdd={tag => { setEditAllergies(prev => [...prev, tag]); setAllergyInput('') }}
+                  onRemove={tag => setEditAllergies(prev => prev.filter(t => t !== tag))}
+                  placeholder="Type and press Enter..."
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="label">Critical Medications</label>
+                <TagInput
+                  tags={editMedications}
+                  input={medInput}
+                  onInputChange={setMedInput}
+                  onAdd={tag => { setEditMedications(prev => [...prev, tag]); setMedInput('') }}
+                  onRemove={tag => setEditMedications(prev => prev.filter(t => t !== tag))}
+                  placeholder="Type and press Enter..."
+                />
+              </div>
+
+              <div>
+                <label className="label">Medical Conditions</label>
+                <TagInput
+                  tags={editConditions}
+                  input={conditionInput}
+                  onInputChange={setConditionInput}
+                  onAdd={tag => { setEditConditions(prev => [...prev, tag]); setConditionInput('') }}
+                  onRemove={tag => setEditConditions(prev => prev.filter(t => t !== tag))}
+                  placeholder="Type and press Enter..."
+                />
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <button className="btn-primary flex-1" onClick={saveProfile} disabled={saving}>
                 {saving ? 'Saving...' : 'Save'}
@@ -450,6 +632,56 @@ export default function MemberProfileScreen() {
             </div>
             <span className="text-forest-400">→</span>
           </Link>
+
+          {/* Emergency Card */}
+          <div className="card">
+            <button
+              className="w-full flex items-center justify-between"
+              onClick={() => setShowEmergencyCard(prev => !prev)}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🩺</span>
+                <span className="text-sm font-semibold text-gray-200">Emergency Card</span>
+              </div>
+              <span className="text-xs text-forest-400">{showEmergencyCard ? '▲' : '▼'}</span>
+            </button>
+            {showEmergencyCard && (
+              <div className="mt-3 pt-3 border-t border-forest-800">
+                <div className="bg-forest-950 rounded-lg p-3 font-mono text-xs text-gray-300 space-y-1">
+                  <div className="font-bold text-gray-100">{member.displayName}</div>
+                  <div>Blood Type: {member.bloodType ?? 'Unknown'}</div>
+                  {(member.allergies?.length ?? 0) > 0 && (
+                    <div>Allergies: {member.allergies!.join(', ')}</div>
+                  )}
+                  {(member.medications?.length ?? 0) > 0 && (
+                    <div>Medications: {member.medications!.join(', ')}</div>
+                  )}
+                  {(member.medicalConditions?.length ?? 0) > 0 && (
+                    <div>Conditions: {member.medicalConditions!.join(', ')}</div>
+                  )}
+                  {member.physicalLimitations && (
+                    <div>Limitations: {member.physicalLimitations}</div>
+                  )}
+                </div>
+                <button
+                  className="btn-secondary w-full text-xs mt-2"
+                  onClick={() => {
+                    const lines = [
+                      `Name: ${member.displayName}`,
+                      `Blood Type: ${member.bloodType ?? 'Unknown'}`,
+                      member.allergies?.length ? `Allergies: ${member.allergies.join(', ')}` : null,
+                      member.medications?.length ? `Medications: ${member.medications.join(', ')}` : null,
+                      member.medicalConditions?.length ? `Conditions: ${member.medicalConditions.join(', ')}` : null,
+                      member.physicalLimitations ? `Limitations: ${member.physicalLimitations}` : null,
+                    ].filter(Boolean).join('\n')
+                    navigator.clipboard.writeText(lines)
+                  }}
+                >
+                  Copy as Text
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
       </>
@@ -708,6 +940,45 @@ function PsychTab({
           <span className="text-forest-400">→</span>
         </Link>
       )}
+    </div>
+  )
+}
+
+// ─── Tag input helper ─────────────────────────────────────────────────────────
+
+function TagInput({
+  tags, input, onInputChange, onAdd, onRemove, placeholder,
+}: {
+  tags: string[]
+  input: string
+  onInputChange: (v: string) => void
+  onAdd: (tag: string) => void
+  onRemove: (tag: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1 mb-1.5">
+        {tags.map(t => (
+          <span key={t} className="flex items-center gap-1 text-xs bg-forest-900 text-forest-300 border border-forest-700 px-1.5 py-0.5 rounded">
+            {t}
+            <button className="text-gray-500 hover:text-gray-300 leading-none" onClick={() => onRemove(t)}>×</button>
+          </span>
+        ))}
+      </div>
+      <input
+        type="text"
+        className="input"
+        placeholder={placeholder}
+        value={input}
+        onChange={e => onInputChange(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && input.trim()) {
+            e.preventDefault()
+            onAdd(input.trim())
+          }
+        }}
+      />
     </div>
   )
 }

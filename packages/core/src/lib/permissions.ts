@@ -176,6 +176,16 @@ export function canSetAuthority(
   return true
 }
 
+/** Can this member view full health data (blood type, allergies, medications, conditions)? */
+export function canViewFullHealth(authority: AuthorityRole, memberRole?: import('../types/skills.js').SkillRole): boolean {
+  if (hasAuthority(authority, 'elder_council')) return true
+  if (memberRole) {
+    const spec = ROLE_BY_KEY[memberRole as keyof typeof ROLE_BY_KEY]
+    if (spec?.domain === 'medical') return true
+  }
+  return false
+}
+
 /** Can this member initiate or participate in inter-tribe federation? */
 export function canDiplomatize(member: TribeMember, tribe: Tribe): boolean {
   const auth = getAuthority(member, tribe)

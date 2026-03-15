@@ -2,7 +2,7 @@
 export type { LatLng, TribeMapPin, PatrolRoute, TribeTerritory, PinAssetType } from './types/map.js'
 export { PINNABLE_ASSET_TYPES } from './types/map.js'
 export type { Identity } from './types/identity.js'
-export type { Tribe, TribeMember, MemberType, AuthorityRole } from './types/tribe.js'
+export type { Tribe, TribeMember, MemberType, AuthorityRole, HealthStatus } from './types/tribe.js'
 export type { SkillRole, SkillDomain, ScalingCurve, ProficiencyLevel, MemberSkill, RoleSpec, Specialization, RoleSpecializations, MemberProfile, SkillDeclaration } from './types/skills.js'
 export type { Message, QueuedMessage, MessageType } from './types/messaging.js'
 export type { AssetCategory, AssetType, AssetUnit, AssetScalingCurve, AssetSpec, TribeAsset } from './types/assets.js'
@@ -55,6 +55,7 @@ export {
   getAuthority, outranks, hasAuthority,
   getLeadDomains, canCreateEvent, canCreateAnyEvent,
   canEditEvent, canManageRoles, canSetAuthority, assignableRoles,
+  canViewFullHealth,
 } from './lib/permissions.js'
 
 // Event registry & helpers
@@ -89,6 +90,22 @@ export {
   getDepletionStatus, DEPLETION_THRESHOLDS,
 } from './lib/consumption-rate.js'
 export type { DepletionStatus } from './lib/consumption-rate.js'
+
+// Production tracking
+export type { ProductionEntry } from './types/production.js'
+export { computeProductionRate, computeNetRate, computeNetDaysRemaining } from './lib/production-rate.js'
+
+// Roll call / muster
+export type { MusterCall, MusterResponse, MusterStatus, MusterReason } from './types/rollcall.js'
+export { MUSTER_STATUS_META, MUSTER_REASON_META } from './types/rollcall.js'
+
+// External contacts
+export type { ExternalContact, ContactCategory } from './types/contacts.js'
+
+// Comms / PACE plan
+export type {
+  CommsLevel, CommsMethod, PaceMethod, CheckInSchedule, RallyPoint, TribePacePlan,
+} from './types/comms.js'
 
 // Psychological profiling
 export type { PsychDimensions, PsychArchetype, PsychProfile, PeerRating } from './types/psych.js'

@@ -10,10 +10,11 @@ import type { TileLayerOffline, ControlSaveTiles } from 'leaflet.offline'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
 import { useMapData } from '../hooks/useMapData'
+import { useContacts } from '../hooks/useContacts'
 import { saveTerritory, addPin, deletePin, addPatrolRoute, deletePatrolRoute } from '../lib/map'
 import { fetchTribeMeta } from '../lib/tribes'
 import { getAuthority, hasAuthority, PINNABLE_ASSET_TYPES } from '@plus-ultra/core'
-import type { Tribe, PinAssetType, LatLng } from '@plus-ultra/core'
+import type { Tribe, PinAssetType, LatLng, ContactCategory } from '@plus-ultra/core'
 
 // ─── Leaflet marker icon fix (known Vite issue) ───────────────────────────────
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
@@ -24,7 +25,26 @@ L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type MapMode = 'view' | 'edit-territory' | 'add-pin' | 'edit-pin' | 'add-route' | 'edit-route'
-type ActiveTab = 'pins' | 'routes'
+type ActiveTab = 'pins' | 'routes' | 'contacts'
+
+const CONTACT_CATEGORY_ICONS: Record<ContactCategory, string> = {
+  medical:    '🏥',
+  legal:      '⚖️',
+  comms:      '📻',
+  supply:     '🛒',
+  mutual_aid: '🤝',
+  authority:  '🚔',
+  other:      '👤',
+}
+
+function contactIcon(category: ContactCategory): L.DivIcon {
+  return L.divIcon({
+    html: `<div style="font-size:18px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.8))">${CONTACT_CATEGORY_ICONS[category]}</div>`,
+    className: '',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  })
+}
 
 const PIN_ASSET_LABELS: Record<PinAssetType, string> = {
   guard_post: 'Guard Post',
@@ -180,6 +200,7 @@ export default function MapScreen() {
   const { identity } = useIdentity()
   const { members } = useSurvivabilityScore(tribeId)
   const { territory, pins, routes, loading } = useMapData(tribeId)
+  const { contacts } = useContacts(tribeId)
   const [tribe, setTribe] = useState<Tribe | null>(null)
 
   const [mode, setMode] = useState<MapMode>('view')
@@ -203,6 +224,7 @@ export default function MapScreen() {
   // Selected list items (fly-to highlight)
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null)
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
 
   // Offline tile download
   const tileLayerRef = useRef<TileLayerOffline | null>(null)
@@ -443,6 +465,19 @@ export default function MapScreen() {
               />
             ))}
 
+            {/* Contact markers */}
+            {contacts
+              .filter(c => c.lat != null && c.lng != null)
+              .map(c => (
+                <Marker
+                  key={c.id}
+                  position={[c.lat!, c.lng!]}
+                  icon={contactIcon(c.category)}
+                  eventHandlers={{ click: () => setSelectedContactId(prev => prev === c.id ? null : c.id) }}
+                />
+              ))
+            }
+
             {/* Patrol routes */}
             {routes.map(route => {
               try {
@@ -596,6 +631,14 @@ export default function MapScreen() {
             >
               Routes ({routes.length})
             </button>
+            <button
+              className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                activeTab === 'contacts' ? 'text-forest-400 border-b-2 border-forest-400' : 'text-gray-500 hover:text-gray-400'
+              }`}
+              onClick={() => setActiveTab('contacts')}
+            >
+              Contacts ({contacts.filter(c => c.lat != null).length})
+            </button>
           </div>
 
           <div className="max-h-36 overflow-y-auto">
@@ -668,6 +711,40 @@ export default function MapScreen() {
                     </div>
                   )
                 })
+              )
+            )}
+
+            {activeTab === 'contacts' && (
+              contacts.length === 0 ? (
+                <p className="text-xs text-gray-500 text-center py-4">
+                  No contacts with map pins — add lat/lng in Contacts
+                </p>
+              ) : (
+                contacts.filter(c => c.lat != null && c.lng != null).length === 0 ? (
+                  <p className="text-xs text-gray-500 text-center py-4">
+                    No contacts have coordinates — edit contacts to add lat/lng
+                  </p>
+                ) : (
+                  contacts
+                    .filter(c => c.lat != null && c.lng != null)
+                    .map(c => (
+                      <div
+                        key={c.id}
+                        className={`flex items-center gap-3 px-4 py-2.5 border-b border-forest-900 last:border-0 cursor-pointer ${
+                          selectedContactId === c.id ? 'bg-forest-900/50' : 'hover:bg-forest-900/30'
+                        }`}
+                        onClick={() => setSelectedContactId(prev => prev === c.id ? null : c.id)}
+                      >
+                        <span className="text-base flex-shrink-0">{CONTACT_CATEGORY_ICONS[c.category]}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-200 font-medium truncate">{c.name}</p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {c.role ?? c.category}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                )
               )
             )}
           </div>

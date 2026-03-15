@@ -160,6 +160,15 @@ export async function submitPeerRating(
   raterPub: string,
   ratings: { stressTolerance: number; leadershipStyle: number; conflictApproach: number }
 ): Promise<void> {
+  if (ratedPub === raterPub) throw new Error('Cannot rate yourself')
+
+  const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)))
+  const validatedRatings = {
+    stressTolerance: clamp(ratings.stressTolerance),
+    leadershipStyle: clamp(ratings.leadershipStyle),
+    conflictApproach: clamp(ratings.conflictApproach),
+  }
+
   const db = await getDB()
   const wh = weekHash(raterPub, tribeId)
   const ratingKey = `${tribeId}:${ratedPub}:${wh}`
@@ -168,9 +177,9 @@ export async function submitPeerRating(
     id: `${ratedPub}:${wh}`,
     tribeId,
     ratedPub,
-    stressTolerance: ratings.stressTolerance,
-    leadershipStyle: ratings.leadershipStyle,
-    conflictApproach: ratings.conflictApproach,
+    stressTolerance: validatedRatings.stressTolerance,
+    leadershipStyle: validatedRatings.leadershipStyle,
+    conflictApproach: validatedRatings.conflictApproach,
     ratedAt: Date.now(),
   }
 

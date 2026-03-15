@@ -28,6 +28,10 @@ import FederationScreen from './screens/FederationScreen'
 import FederationChannelScreen from './screens/FederationChannelScreen'
 import PsychOverviewScreen from './screens/PsychOverviewScreen'
 import PsychAssessmentScreen from './screens/PsychAssessmentScreen'
+import RollCallScreen from './screens/RollCallScreen'
+import ProductionScreen from './screens/ProductionScreen'
+import ContactsScreen from './screens/ContactsScreen'
+import CommsScreen from './screens/CommsScreen'
 
 function RootLayout() {
   return (
@@ -203,6 +207,30 @@ const psychAssessmentRoute = createRoute({
   component: PsychAssessmentScreen,
 })
 
+const rollCallRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/rollcall',
+  component: RollCallScreen,
+})
+
+const productionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/production',
+  component: ProductionScreen,
+})
+
+const contactsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/contacts',
+  component: ContactsScreen,
+})
+
+const commsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/comms',
+  component: CommsScreen,
+})
+
 const diagnosticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/diagnostics',
@@ -236,6 +264,10 @@ const routeTree = rootRoute.addChildren([
   federationChannelRoute,
   psychOverviewRoute,
   psychAssessmentRoute,
+  rollCallRoute,
+  productionRoute,
+  contactsRoute,
+  commsRoute,
   diagnosticsRoute,
 ])
 

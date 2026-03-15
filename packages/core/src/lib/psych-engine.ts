@@ -193,9 +193,9 @@ export function mergeProfileDimensions(
     const peer = peerDims[key]
     const quiz = quizDims[key]
     if (peer !== undefined && hasQuiz) {
-      result[key] = Math.round(quiz * 0.7 + peer * 0.3)
+      result[key] = Math.max(0, Math.min(100, Math.round(quiz * 0.7 + peer * 0.3)))
     } else if (peer !== undefined && !hasQuiz) {
-      result[key] = Math.round(peer)
+      result[key] = Math.max(0, Math.min(100, Math.round(peer)))
     } else {
       result[key] = quiz
     }

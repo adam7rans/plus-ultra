@@ -4,12 +4,14 @@ import { useIdentity } from '../contexts/IdentityContext'
 import { useInventory } from '../hooks/useInventory'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
 import { useConsumption } from '../hooks/useConsumption'
+import { useProduction } from '../hooks/useProduction'
 import { updateAsset } from '../lib/inventory'
 import { logConsumption } from '../lib/consumption'
 import {
   CATEGORY_ORDER, CATEGORY_META, ASSETS_BY_CATEGORY,
   assetsNeeded, assetReadiness,
   canEditInventory,
+  computeNetRate, computeNetDaysRemaining,
 } from '@plus-ultra/core'
 import type { AssetCategory, AssetType, AssetSpec, TribeAsset } from '@plus-ultra/core'
 import type { AssetConsumptionData } from '../hooks/useConsumption'
@@ -22,6 +24,8 @@ export default function InventoryScreen() {
   const { members, skills } = useSurvivabilityScore(tribeId)
   const memberCount = members.length
   const consumption = useConsumption(tribeId, memberCount, inventory)
+
+  const { rateByAsset: productionRateByAsset } = useProduction(tribeId)
 
   const myRoles = identity ? skills.filter(s => s.memberId === identity.pub).map(s => s.role) : []
 
@@ -159,6 +163,7 @@ export default function InventoryScreen() {
                       isStores={cat === 'stores'}
                       isExpandedAsset={expandedAssets.has(spec.asset)}
                       consumptionData={consumption.get(spec.asset) ?? null}
+                      productionRate={productionRateByAsset.get(spec.asset) ?? null}
                       onToggleAsset={() => toggleAsset(spec.asset)}
                       onQuantityChange={handleQuantityChange}
                       onNotesChange={handleNotesChange}
@@ -312,6 +317,7 @@ function AssetRow({
   isStores,
   isExpandedAsset,
   consumptionData,
+  productionRate,
   onToggleAsset,
   onQuantityChange,
   onNotesChange,
@@ -324,6 +330,7 @@ function AssetRow({
   isStores: boolean
   isExpandedAsset: boolean
   consumptionData: AssetConsumptionData | null
+  productionRate: number | null
   onToggleAsset: () => void
   onQuantityChange: (asset: AssetType, delta: number) => void
   onNotesChange: (asset: AssetType, notes: string) => void
@@ -415,6 +422,32 @@ function AssetRow({
             </div>
           ) : (
             <p className="text-xs text-gray-600 mb-2">No burn rate data yet</p>
+          )}
+
+          {/* Production + Net rate */}
+          {productionRate !== null && (
+            <div className="space-y-0.5 mb-2">
+              <div className="text-xs text-forest-400">
+                prod: +{productionRate.toFixed(1)} {unitLabel}/day
+              </div>
+              {consumptionData && consumptionData.burnRate !== null && (() => {
+                const netRate = computeNetRate(productionRate, consumptionData.burnRate)
+                const stock = inventoryMap.get(spec.asset)?.quantity ?? 0
+                const netDays = computeNetDaysRemaining(stock, netRate)
+                const isPositive = netRate !== null && netRate >= 0
+                return (
+                  <div className={`text-xs font-mono ${isPositive ? 'text-forest-400' : 'text-warning-400'}`}>
+                    net: {netRate !== null ? (netRate >= 0 ? '+' : '') + netRate.toFixed(1) : '—'} {unitLabel}/day
+                    {!isPositive && netDays !== Infinity && (
+                      <span className="text-gray-500 font-sans ml-1">· {Math.round(netDays)}d left</span>
+                    )}
+                    {isPositive && (
+                      <span className="text-gray-500 font-sans ml-1">· surplus</span>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
           )}
 
           {/* Recent entries */}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from '@tanstack/react-router'
+import { useParams, Link, useNavigate } from '@tanstack/react-router'
 import { useTribe } from '../contexts/TribeContext'
 import { useIdentity } from '../contexts/IdentityContext'
 import { createInviteToken, buildInviteUrl, fetchTribeMeta } from '../lib/tribes'
@@ -18,6 +18,9 @@ import QrDisplay from '../components/QrDisplay'
 import NotificationsPanel from '../components/NotificationsPanel'
 import SendAlertModal from '../components/SendAlertModal'
 import AlertOverlay from '../components/AlertOverlay'
+import MusterOverlay from '../components/MusterOverlay'
+import InitiateMusterModal from '../components/InitiateMusterModal'
+import { useRollCall } from '../hooks/useRollCall'
 import { subscribeToAlerts } from '../lib/notifications'
 import type { TribeAlert } from '../lib/notifications'
 import { pushSupported, subscribeToPush, unsubscribeFromPush, isPushSubscribed } from '../lib/push'
@@ -31,6 +34,7 @@ import { useTribePsychProfiles } from '../hooks/useTribePsychProfiles'
 
 export default function TribeDashboard() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId' })
+  const navigate = useNavigate()
   const { identity } = useIdentity()
   const { setActiveTribeId, myTribes } = useTribe()
   const localRef = myTribes.find(t => t.tribeId === tribeId)
@@ -60,6 +64,8 @@ export default function TribeDashboard() {
   const [showBuckets, setShowBuckets] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showSendAlert, setShowSendAlert] = useState(false)
+  const [showInitiateMuster, setShowInitiateMuster] = useState(false)
+  const [musterOverlayDismissed, setMusterOverlayDismissed] = useState(false)
   const [activeAlert, setActiveAlert] = useState<TribeAlert | null>(null)
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushLoading, setPushLoading] = useState(false)
@@ -90,6 +96,16 @@ export default function TribeDashboard() {
   const myMember = identity ? members.find(m => m.pubkey === identity.pub) : undefined
   const myAuth = myMember && tribe ? getAuthority(myMember, tribe) : 'member'
   const canSendAlerts = hasAuthority(myAuth, 'elder_council')
+  const canInitiateMuster = hasAuthority(myAuth, 'lead')
+
+  const memberName = myMember?.displayName ?? identity?.pub?.slice(0, 8) ?? 'Unknown'
+  const { activeMuster, myResponse, initiateMuster } = useRollCall(tribeId, memberName)
+  const showMusterOverlay =
+    activeMuster !== null &&
+    !myResponse &&
+    !musterOverlayDismissed &&
+    activeMuster.initiatedBy !== identity?.pub &&
+    Date.now() - activeMuster.initiatedAt < 30 * 60 * 1000
 
   const [tribePub, setTribePub] = useState<string>('')
 
@@ -174,6 +190,15 @@ export default function TribeDashboard() {
               <p className="text-gray-400 text-sm mt-0.5">{tribe?.location ?? localRef?.location} · {members.length} member{members.length !== 1 ? 's' : ''}</p>
             </div>
             <div className="flex items-center gap-2 mt-1">
+              {canInitiateMuster && (
+                <button
+                  className="text-lg hover:scale-110 transition-transform"
+                  onClick={() => setShowInitiateMuster(true)}
+                  title="Call Muster"
+                >
+                  📣
+                </button>
+              )}
               {canSendAlerts && (
                 <button
                   className="text-lg hover:scale-110 transition-transform"
@@ -235,6 +260,20 @@ export default function TribeDashboard() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Active muster banner */}
+          {activeMuster && (
+            <button
+              className="w-full card border-warning-500/40 bg-warning-900/20 mb-4 text-left"
+              onClick={() => navigate({ to: '/tribe/$tribeId/rollcall', params: { tribeId } })}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-warning-400 animate-pulse flex-shrink-0" />
+                <span className="text-sm font-bold text-warning-300">MUSTER ACTIVE</span>
+                <span className="text-xs text-warning-400 ml-auto">View →</span>
+              </div>
+            </button>
           )}
 
           {/* Survivability score */}
@@ -337,6 +376,18 @@ export default function TribeDashboard() {
               <span className="text-forest-400 text-lg">→</span>
             </Link>
             <Link
+              to="/tribe/$tribeId/production"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">🌱</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Production</div>
+                <div className="text-xs text-gray-400">Track food, water, and energy output</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
               to="/tribe/$tribeId/proposals"
               params={{ tribeId }}
               className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
@@ -430,6 +481,47 @@ export default function TribeDashboard() {
                 </Link>
               )
             })()}
+            <Link
+              to="/tribe/$tribeId/rollcall"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">👥</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Roll Call</div>
+                <div className="text-xs text-gray-400">
+                  {activeMuster ? 'Muster active — respond now' : 'Accountability and muster history'}
+                </div>
+              </div>
+              {activeMuster && (
+                <span className="w-2 h-2 rounded-full bg-warning-400 animate-pulse flex-shrink-0" />
+              )}
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/contacts"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">👤</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Contacts</div>
+                <div className="text-xs text-gray-400">Doctors, HAM ops, vendors, and allies</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/comms"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">📻</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Comms Plan</div>
+                <div className="text-xs text-gray-400">PACE, check-in schedules, rally points</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
           </div>
 
           {/* Declare skills CTA if user has none */}
@@ -583,11 +675,30 @@ export default function TribeDashboard() {
         />
       )}
 
+      {/* Initiate Muster modal */}
+      {showInitiateMuster && (
+        <InitiateMusterModal
+          onInitiate={async (reason, message) => {
+            await initiateMuster(reason, message)
+          }}
+          onClose={() => setShowInitiateMuster(false)}
+        />
+      )}
+
       {/* Full-screen alert overlay */}
       {activeAlert && (
         <AlertOverlay
           alert={activeAlert}
           onDismiss={() => setActiveAlert(null)}
+        />
+      )}
+
+      {/* Full-screen muster overlay */}
+      {showMusterOverlay && activeMuster && (
+        <MusterOverlay
+          muster={activeMuster}
+          tribeId={tribeId}
+          onLater={() => setMusterOverlayDismissed(true)}
         />
       )}
     </div>

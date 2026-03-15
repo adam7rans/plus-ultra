@@ -4,6 +4,7 @@ const TYPE_ICONS: Record<string, string> = {
   event_starting: '⏰',
   event_assigned: '📋',
   alert_broadcast: '🚨',
+  muster_called: '📣',
   role_change: '⚙️',
   new_member: '👋',
   vouch_received: '👍',

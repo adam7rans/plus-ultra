@@ -141,6 +141,26 @@ export interface AppDB {
     key: string   // `${tribeId}:${ratedPub}:${weekHash}`
     value: unknown
   }
+  'muster-calls': {
+    key: string   // `${tribeId}:${musterId}`
+    value: unknown
+  }
+  'muster-responses': {
+    key: string   // `${musterId}:${memberPub}`
+    value: unknown
+  }
+  'production-log': {
+    key: string   // `${tribeId}:${entryId}`
+    value: unknown
+  }
+  'external-contacts': {
+    key: string   // `${tribeId}:${id}`
+    value: unknown
+  }
+  'pace-plan': {
+    key: string   // tribeId
+    value: unknown
+  }
 }
 
 let _db: IDBPDatabase<AppDB> | null = null
@@ -152,7 +172,7 @@ export function closeDB(): void {
 
 export async function getDB(): Promise<IDBPDatabase<AppDB>> {
   if (_db) return _db
-  _db = await openDB<AppDB>('plus-ultra', 15, {
+  _db = await openDB<AppDB>('plus-ultra', 19, {
     blocked() {
       // Another tab has the DB open at an older version — force it to close
       // so our upgrade can proceed (stale tab will reload automatically)
@@ -247,6 +267,19 @@ export async function getDB(): Promise<IDBPDatabase<AppDB>> {
       if (oldVersion < 15) {
         db.createObjectStore('psych-profiles')
         db.createObjectStore('peer-ratings')
+      }
+      if (oldVersion < 16) {
+        db.createObjectStore('muster-calls')
+        db.createObjectStore('muster-responses')
+      }
+      if (oldVersion < 17) {
+        db.createObjectStore('production-log')
+      }
+      if (oldVersion < 18) {
+        db.createObjectStore('external-contacts')
+      }
+      if (oldVersion < 19) {
+        db.createObjectStore('pace-plan')
       }
     },
   })

@@ -2,6 +2,8 @@ import type { SkillRole } from './skills.js'
 
 export type MemberType = 'adult' | 'dependent' | 'child' | 'elder'
 
+export type HealthStatus = 'well' | 'minor_injury' | 'major_injury' | 'critical' | 'deceased'
+
 // Organizational authority — separate from skill roles (capabilities)
 export type AuthorityRole = 'founder' | 'elder_council' | 'lead' | 'member' | 'restricted'
 
@@ -39,4 +41,12 @@ export interface TribeMember {
   photo?: string               // base64 data URL — stored in IDB only, not synced via Gun
   availability?: 'full_time' | 'part_time' | 'on_call'
   physicalLimitations?: string
+  // Health / medical fields
+  bloodType?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-' | 'unknown'
+  allergies?: string[]
+  medications?: string[]        // critical ongoing medications
+  medicalConditions?: string[]  // relevant to emergency response
+  currentHealthStatus?: HealthStatus
+  healthStatusUpdatedAt?: number
+  healthStatusUpdatedBy?: string  // memberPub (self, medic, or elder_council)
 }
