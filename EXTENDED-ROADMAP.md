@@ -15,10 +15,10 @@ This document covers what a tribe needs to be a **functioning, organized operati
 | 9.1 | Production Tracking | ✅ Complete | Yes | Inventory (done), Consumption (done) |
 | 9.2 | Roll Call / Accountability | ✅ Complete | Yes | Notifications (done), Member Profiles (done) |
 | 9.3 | External Contacts | ✅ Complete | Partial | — |
-| 10.1 | Member Health / Medical Status | 🔲 TODO | Yes | Member Profiles (done), Roll Call (9.2) |
-| 10.2 | PACE Comms Plan | 🔲 TODO | Yes | Map (done), Certifications (done) |
-| 11.1 | Goals + Tasks (Tribe OKRs + Kanban) | 🔲 TODO | Yes | Proposals (done), Member Profiles (done) |
-| 11.2 | Bug-Out / Evacuation Planning | 🔲 TODO | Yes | Map (done), Inventory (done), Health (10.1) |
+| 10.1 | Member Health / Medical Status | ✅ Complete | Yes | Member Profiles (done), Roll Call (9.2) |
+| 10.2 | PACE Comms Plan | ✅ Complete | Yes | Map (done), Certifications (done) |
+| 11.1 | Goals + Tasks (Tribe OKRs + Kanban) | ✅ Complete | Yes | Proposals (done), Member Profiles (done) |
+| 11.2 | Bug-Out / Evacuation Planning | ✅ Complete | Yes | Map (done), Inventory (done), Health (10.1) |
 | 12.1 | SOPs / Knowledge Base / Playbooks | 🔲 TODO | Yes | Permissions (done), Bug-Out (11.2), PACE (10.2) |
 | 12.2 | Financial / Shared Expense Tracking | 🔲 TODO | Grid-up | Inventory (done) |
 | 13.1 | Composite Readiness Score | 🔲 TODO | No — synthesizes all | Production (9.1), Health (10.1), all prior phases |
@@ -230,13 +230,13 @@ export interface ExternalContact {
 
 ---
 
-## Phase 10 — Member Wellbeing + Comms `🔲 TODO`
+## Phase 10 — Member Wellbeing + Comms `✅ Complete`
 
 _These two features are companions: health status informs who can respond to a comms check-in, and PACE plans reference medical assets and injured members._
 
 ---
 
-### 10.1 Member Health / Medical Status `🔲`
+### 10.1 Member Health / Medical Status `✅`
 
 **Problem:** The medical skills domain tracks *who knows medicine*. But there's no record of *who needs medicine* — and in a grid-down emergency, triage requires both. Blood type, allergies, current injury status, and critical medications are life-or-death data.
 
@@ -285,7 +285,7 @@ export type HealthStatus =
 
 ---
 
-### 10.2 PACE Comms Plan `🔲`
+### 10.2 PACE Comms Plan `✅`
 
 **Problem:** The app assumes connectivity. It has no plan for when the relay goes down, the internet dies, or the devices go dark. PACE (Primary / Alternate / Contingency / Emergency) is the military standard for communications resilience. Without it, when the app stops working, the tribe loses coordination entirely.
 
@@ -360,13 +360,13 @@ export interface TribePacePlan {
 
 ---
 
-## Phase 11 — Operational Planning `🔲 TODO`
+## Phase 11 — Operational Planning `✅ Complete`
 
 _The two features that transform Plus Ultra from a status dashboard into an actual operating system. Goals give tribes direction; bug-out planning gives them an exit._
 
 ---
 
-### 11.1 Goals + Tasks (Tribe OKRs + Kanban) `🔲`
+### 11.1 Goals + Tasks (Tribe OKRs + Kanban) `✅`
 
 **Problem:** Proposals handle *decisions*. Events handle *scheduled time*. Training handles *skill development*. But there's no system for *ongoing work* — what the tribe is actively trying to accomplish. Without goals, tribes drift. Without tasks, nothing gets done.
 
@@ -475,7 +475,7 @@ export interface TribeTask {
 
 ---
 
-### 11.2 Bug-Out / Evacuation Planning `🔲`
+### 11.2 Bug-Out / Evacuation Planning `✅`
 
 **Problem:** Maps, routes, and inventory exist, but there's no structured evacuation plan. When the order comes to leave, critical decisions — who rides with whom, what gets loaded, where to meet if separated — should already be made. Under stress is the wrong time to figure these out.
 
