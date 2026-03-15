@@ -34,6 +34,9 @@ import ContactsScreen from './screens/ContactsScreen'
 import CommsScreen from './screens/CommsScreen'
 import GoalsScreen from './screens/GoalsScreen'
 import BugOutScreen from './screens/BugOutScreen'
+import KnowledgeBaseScreen from './screens/KnowledgeBaseScreen'
+import FinanceScreen from './screens/FinanceScreen'
+import ReadinessScreen from './screens/ReadinessScreen'
 
 function RootLayout() {
   return (
@@ -245,6 +248,24 @@ const bugoutRoute = createRoute({
   component: BugOutScreen,
 })
 
+const kbRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/kb',
+  component: KnowledgeBaseScreen,
+})
+
+const financeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/finance',
+  component: FinanceScreen,
+})
+
+const readinessRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tribe/$tribeId/readiness',
+  component: ReadinessScreen,
+})
+
 const diagnosticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/diagnostics',
@@ -284,6 +305,9 @@ const routeTree = rootRoute.addChildren([
   commsRoute,
   goalsRoute,
   bugoutRoute,
+  kbRoute,
+  financeRoute,
+  readinessRoute,
   diagnosticsRoute,
 ])
 

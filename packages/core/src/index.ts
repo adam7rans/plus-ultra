@@ -124,3 +124,13 @@ export { TASK_STATUS_META, TASK_PRIORITY_META, GOAL_STATUS_META } from './types/
 
 // Bug-Out Planning
 export type { BugOutStatus, BugOutVehicle, LoadPriority, BugOutPlan } from './types/bugout.js'
+
+// Knowledge Base / Docs
+export type { DocCategory, DocStatus, TribeDoc } from './types/docs.js'
+
+// Finance
+export type { ExpenseCategory, TribeExpense, FundContribution } from './types/finance.js'
+
+// Readiness
+export type { ReadinessFactor, ReadinessDimensionResult, CompositeReadinessReport, ReadinessInput } from './types/readiness.js'
+export { computeCompositeReadiness } from './lib/readiness.js'

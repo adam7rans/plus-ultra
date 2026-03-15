@@ -281,6 +281,17 @@ export default function TribeDashboard() {
             <SurvivabilityScore score={score} hasCriticalGap={criticalGaps.length > 0} />
           </div>
 
+          {/* Readiness Report nav card */}
+          <Link to="/tribe/$tribeId/readiness" params={{ tribeId }}
+            className="card hover:border-forest-600 transition-colors mb-4 flex items-center gap-3">
+            <span className="text-2xl">🛡️</span>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-gray-100 text-sm">Readiness Report</div>
+              <div className="text-xs text-gray-400">Full 6-dimension operational readiness</div>
+            </div>
+            <span className="text-forest-400 text-lg">→</span>
+          </Link>
+
           <div className="mb-4 flex items-center gap-3">
             <div className="card flex-1 flex items-center gap-2 py-2">
               <span className="text-sm">📦</span>
@@ -428,6 +439,42 @@ export default function TribeDashboard() {
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-gray-100 text-sm">Bug-Out Plan</div>
                 <div className="text-xs text-gray-400">Evacuation plans, vehicles, and load priorities</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/kb"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">📚</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Knowledge Base</div>
+                <div className="text-xs text-gray-400">SOPs, playbooks, and protocols</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/finance"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">💰</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Finances</div>
+                <div className="text-xs text-gray-400">Shared expenses and fund tracking</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/readiness"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">🛡️</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Readiness Report</div>
+                <div className="text-xs text-gray-400">6-dimension operational readiness check</div>
               </div>
               <span className="text-forest-400 text-lg">→</span>
             </Link>

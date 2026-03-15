@@ -1,6 +1,7 @@
 # Plus Ultra — Extended Roadmap
 
 > Created: 2026-03-14
+> Last updated: 2026-03-15
 > Continues from ROADMAP.md (Phases 1–8, all complete).
 > Covers ten new systems identified in the Phase 8 gap analysis.
 
@@ -19,9 +20,9 @@ This document covers what a tribe needs to be a **functioning, organized operati
 | 10.2 | PACE Comms Plan | ✅ Complete | Yes | Map (done), Certifications (done) |
 | 11.1 | Goals + Tasks (Tribe OKRs + Kanban) | ✅ Complete | Yes | Proposals (done), Member Profiles (done) |
 | 11.2 | Bug-Out / Evacuation Planning | ✅ Complete | Yes | Map (done), Inventory (done), Health (10.1) |
-| 12.1 | SOPs / Knowledge Base / Playbooks | 🔲 TODO | Yes | Permissions (done), Bug-Out (11.2), PACE (10.2) |
-| 12.2 | Financial / Shared Expense Tracking | 🔲 TODO | Grid-up | Inventory (done) |
-| 13.1 | Composite Readiness Score | 🔲 TODO | No — synthesizes all | Production (9.1), Health (10.1), all prior phases |
+| 12.1 | SOPs / Knowledge Base / Playbooks | ✅ Complete | Yes | Permissions (done), Bug-Out (11.2), PACE (10.2) |
+| 12.2 | Financial / Shared Expense Tracking | ✅ Complete | Grid-up | Inventory (done) |
+| 13.1 | Composite Readiness Score | ✅ Complete | No — synthesizes all | Production (9.1), Health (10.1), all prior phases |
 
 ---
 
@@ -546,11 +547,11 @@ export interface LoadPriority {
 
 ---
 
-## Phase 12 — Knowledge + Finance `🔲 TODO`
+## Phase 12 — Knowledge + Finance `✅ Complete`
 
 ---
 
-### 12.1 SOPs / Knowledge Base / Playbooks `🔲`
+### 12.1 SOPs / Knowledge Base / Playbooks `✅`
 
 **Problem:** The app has roles, skills, certs, and training — but no place to store *how to do things*. When the grid goes down and the trained person is injured, someone else needs to follow their protocols. Pre-written SOPs accessible offline are critical for operational continuity.
 
@@ -625,7 +626,7 @@ export interface TribeDoc {
 
 ---
 
-### 12.2 Financial / Shared Expense Tracking `🔲`
+### 12.2 Financial / Shared Expense Tracking `✅`
 
 **Problem:** Grid-up tribes have real shared costs — bulk food purchases, ammunition, fuel, equipment, land fees. Without a ledger, contributions become informal and resentment builds. This is a grid-up feature only; deprioritize for grid-down focus.
 
