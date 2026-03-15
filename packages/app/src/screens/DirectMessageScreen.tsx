@@ -7,6 +7,7 @@ import { useOfflineStage } from '../hooks/useOfflineStage'
 import { useTribe } from '../contexts/TribeContext'
 import MessageBubble from '../components/MessageBubble'
 import MessageInput from '../components/MessageInput'
+import { usePendingMessageIds } from '../hooks/usePendingMessageIds'
 import type { Message, TribeMember } from '@plus-ultra/core'
 
 export default function DirectMessageScreen() {
@@ -15,6 +16,7 @@ export default function DirectMessageScreen() {
   const { members } = useTribe()
   const { offlineStage } = useOfflineStage()
   const { messages, loading, inject, channelId } = useDMChannel(identity?.pub ?? '', memberPub)
+  const pendingMessageIds = usePendingMessageIds()
   const [decrypted, setDecrypted] = useState<Map<string, string>>(new Map())
   const sentPlaintexts = useRef<Map<string, string>>(new Map())
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -184,6 +186,7 @@ export default function DirectMessageScreen() {
                   replyToSenderName={replyToSenderName}
                   onReact={(emoji) => handleReact(msg, emoji)}
                   onReply={() => setReplyingTo(msg)}
+                  syncStatus={pendingMessageIds.has(msg.id) ? 'pending' : undefined}
                 />
               )
             })}

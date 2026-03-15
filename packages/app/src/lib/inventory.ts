@@ -1,5 +1,7 @@
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { TribeAsset, AssetType } from '@plus-ultra/core'
 
 export async function updateAsset(
@@ -29,6 +31,15 @@ export async function updateAsset(
     .get('inventory')
     .get(asset)
     .put(entry as unknown as Record<string, unknown>)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `inventory:${tribeId}:${asset}`,
+      gunStore: 'inventory', tribeId, recordKey: asset,
+      payload: entry as unknown as Record<string, unknown>,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export function subscribeToInventory(

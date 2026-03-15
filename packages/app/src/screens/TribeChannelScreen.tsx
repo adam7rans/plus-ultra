@@ -8,6 +8,7 @@ import { useTribe } from '../contexts/TribeContext'
 import { fetchTribeMeta } from '../lib/tribes'
 import MessageBubble from '../components/MessageBubble'
 import MessageInput from '../components/MessageInput'
+import { usePendingMessageIds } from '../hooks/usePendingMessageIds'
 import type { Message, Tribe } from '@plus-ultra/core'
 import { nanoid } from 'nanoid'
 
@@ -17,6 +18,7 @@ export default function TribeChannelScreen() {
   const { members } = useTribe()
   const { offlineStage } = useOfflineStage()
   const { messages, loading } = useTribeChannel(tribeId)
+  const pendingMessageIds = usePendingMessageIds()
   const [tribe, setTribe] = useState<Tribe | null>(null)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -135,6 +137,7 @@ export default function TribeChannelScreen() {
                   replyToSenderName={replySource ? getMemberName(replySource.senderId) : undefined}
                   onReact={(emoji) => handleReact(msg, emoji)}
                   onReply={() => setReplyingTo(msg)}
+                  syncStatus={pendingMessageIds.has(msg.id) ? 'pending' : undefined}
                 />
               )
             })}

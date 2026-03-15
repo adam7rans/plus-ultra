@@ -8,6 +8,7 @@ import {
   computeOfflineStage,
 } from '../lib/offline-tracker'
 import { flushQueue } from '../lib/messaging'
+import { flushPendingSyncs } from '../lib/sync-queue'
 
 const PING_INTERVAL_MS = 60 * 1000 // 60s
 
@@ -33,6 +34,7 @@ export function useOfflineStage(): {
         setOfflineStage(0)
         if (wasOffline) {
           void flushQueue()
+          void flushPendingSyncs()
         }
       } else {
         const current = getOfflineSince()

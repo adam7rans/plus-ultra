@@ -3,6 +3,7 @@ import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useEvents } from '../hooks/useEvents'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
+import { usePendingSyncIds } from '../hooks/usePendingSyncIds'
 import { createEvent, updateEvent, deleteEvent, cancelEvent } from '../lib/events'
 import { fetchTribeMeta } from '../lib/tribes'
 import {
@@ -21,6 +22,7 @@ export default function ScheduleScreen() {
   const { identity } = useIdentity()
   const events = useEvents(tribeId)
   const { members, skills } = useSurvivabilityScore(tribeId)
+  const pendingSyncIds = usePendingSyncIds(tribeId)
   const [tribe, setTribe] = useState<Tribe | null>(null)
 
   // Load tribe metadata for permission checks
@@ -416,6 +418,9 @@ export default function ScheduleScreen() {
                     </span>
                     {isActive && (
                       <span className="w-2 h-2 rounded-full bg-forest-400 animate-pulse flex-shrink-0" />
+                    )}
+                    {pendingSyncIds.has(`events:${tribeId}:${occ.event.id}`) && (
+                      <span className="text-gray-400 text-xs flex-shrink-0" title="Pending relay sync">⏱</span>
                     )}
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
-import { declareSkill, getMySkills } from '../lib/skills'
+import { declareSkill, getMySkills, skillKey } from '../lib/skills'
 import { getRolesByDomainByTier } from '../lib/roles'
+import { usePendingSyncIds } from '../hooks/usePendingSyncIds'
 import type { SkillRole, ProficiencyLevel } from '@plus-ultra/core'
 
 const PROFICIENCY_OPTIONS: { value: ProficiencyLevel; label: string; description: string }[] = [
@@ -21,6 +22,7 @@ export default function SkillsDeclarationScreen() {
   const { identity } = useIdentity()
   const navigate = useNavigate()
 
+  const pendingSyncIds = usePendingSyncIds(tribeId)
   const [selected, setSelected] = useState<Map<SkillRole, ProficiencyLevel>>(new Map())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -138,6 +140,9 @@ export default function SkillsDeclarationScreen() {
                                 <span className="text-xs bg-forest-800 text-forest-300 px-2 py-0.5 rounded-full capitalize">
                                   {currentProficiency.replace('_', ' ')}
                                 </span>
+                              )}
+                              {isSelected && identity && pendingSyncIds.has(`skills:${tribeId}:${skillKey(identity.pub, roleSpec.role)}`) && (
+                                <span className="text-gray-400 text-xs" title="Pending relay sync">⏱</span>
                               )}
                               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                                 isSelected ? 'border-forest-400 bg-forest-400' : 'border-gray-600'

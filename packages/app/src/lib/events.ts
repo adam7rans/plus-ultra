@@ -1,6 +1,8 @@
 import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { ScheduledEvent, EventType, RecurrenceRule } from '@plus-ultra/core'
 
 export async function createEvent(
@@ -53,6 +55,15 @@ export async function createEvent(
     .get(event.id)
     .put(gunData as unknown as Record<string, unknown>)
 
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `events:${tribeId}:${event.id}`,
+      gunStore: 'events', tribeId, recordKey: event.id,
+      payload: gunData,
+      queuedAt: Date.now(),
+    })
+  }
+
   return event
 }
 
@@ -82,6 +93,15 @@ export async function updateEvent(
     .get('events')
     .get(eventId)
     .put(gunData as unknown as Record<string, unknown>)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `events:${tribeId}:${eventId}`,
+      gunStore: 'events', tribeId, recordKey: eventId,
+      payload: gunData,
+      queuedAt: Date.now(),
+    })
+  }
 
   return updated
 }
@@ -119,6 +139,15 @@ export async function cancelEvent(
     .get('events')
     .get(eventId)
     .put({ cancelled: true } as unknown as Record<string, unknown>)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `events:${tribeId}:${eventId}`,
+      gunStore: 'events', tribeId, recordKey: eventId,
+      payload: { cancelled: true },
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export function subscribeToEvents(

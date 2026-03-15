@@ -1,9 +1,11 @@
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { MemberSkill, SkillRole, ProficiencyLevel } from '@plus-ultra/core'
 
 // Composite key: memberId__role
-function skillKey(memberId: string, role: SkillRole): string {
+export function skillKey(memberId: string, role: SkillRole): string {
   return `${memberId}__${role}`
 }
 
@@ -43,7 +45,7 @@ export async function declareSkill(
     specializations: skill.specializations ? JSON.stringify(skill.specializations) : undefined,
   }
 
-  return new Promise((resolve) => {
+  await new Promise<void>((resolve) => {
     gun
       .get('tribes')
       .get(tribeId)
@@ -51,6 +53,15 @@ export async function declareSkill(
       .get(skillKey(memberId, role))
       .put(gunPayload as Record<string, unknown>, () => resolve())
   })
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `skills:${tribeId}:${skillKey(memberId, role)}`,
+      gunStore: 'skills', tribeId, recordKey: skillKey(memberId, role),
+      payload: gunPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function vouchForSkill(
@@ -82,6 +93,15 @@ export async function vouchForSkill(
     .get('skills')
     .get(skillKey(memberId, role))
     .put({ vouchedBy: JSON.stringify(updated.vouchedBy) } as unknown as Record<string, unknown>)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `skills:${tribeId}:${skillKey(memberId, role)}`,
+      gunStore: 'skills', tribeId, recordKey: skillKey(memberId, role),
+      payload: { vouchedBy: JSON.stringify(updated.vouchedBy) },
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function removeSkill(

@@ -15,6 +15,7 @@ interface Props {
   // Interaction callbacks
   onReact?: (emoji: string) => void
   onReply?: () => void
+  syncStatus?: 'pending'
 }
 
 function formatTime(ts: number): string {
@@ -84,7 +85,7 @@ function PhotoMessage({ base64 }: { base64: string }) {
 export default function MessageBubble({
   message, isMe, senderName, decryptedContent,
   replyToContent, replyToSenderName,
-  onReact, onReply,
+  onReact, onReply, syncStatus,
 }: Props) {
   const content = decryptedContent ?? message.content
   const [showPicker, setShowPicker] = useState(false)
@@ -225,8 +226,11 @@ export default function MessageBubble({
         </div>
       )}
 
-      <span className={`text-xs text-gray-600 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
+      <span className={`flex items-center gap-1 text-xs text-gray-600 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
         {formatTime(message.sentAt)}
+        {syncStatus === 'pending' && (
+          <span className="text-gray-400" title="Pending relay sync">⏱</span>
+        )}
       </span>
     </div>
   )

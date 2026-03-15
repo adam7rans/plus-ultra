@@ -197,6 +197,17 @@ export interface AppDB {
     key: string   // `${tribeId}:${memberPub}`
     value: unknown
   }
+  'pending-syncs': {
+    key: string   // `${gunStore}:${tribeId}:${recordKey}`
+    value: {
+      id: string
+      gunStore: 'inventory' | 'events' | 'skills'
+      tribeId: string
+      recordKey: string
+      payload: Record<string, unknown>
+      queuedAt: number
+    }
+  }
 }
 
 let _db: IDBPDatabase<AppDB> | null = null
@@ -208,7 +219,7 @@ export function closeDB(): void {
 
 export async function getDB(): Promise<IDBPDatabase<AppDB>> {
   if (_db) return _db
-  _db = await openDB<AppDB>('plus-ultra', 25, {
+  _db = await openDB<AppDB>('plus-ultra', 26, {
     blocked() {
       // Another tab has the DB open at an older version — force it to close
       // so our upgrade can proceed (stale tab will reload automatically)
@@ -337,6 +348,9 @@ export async function getDB(): Promise<IDBPDatabase<AppDB>> {
       }
       if (oldVersion < 25) {
         db.createObjectStore('member-infra-status')
+      }
+      if (oldVersion < 26) {
+        db.createObjectStore('pending-syncs')
       }
     },
   })

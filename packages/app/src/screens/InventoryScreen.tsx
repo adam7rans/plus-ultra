@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
+import { usePendingSyncIds } from '../hooks/usePendingSyncIds'
 import { useInventory } from '../hooks/useInventory'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
 import { useConsumption } from '../hooks/useConsumption'
@@ -26,6 +27,7 @@ export default function InventoryScreen() {
   const consumption = useConsumption(tribeId, memberCount, inventory)
 
   const { rateByAsset: productionRateByAsset } = useProduction(tribeId)
+  const pendingSyncIds = usePendingSyncIds(tribeId)
 
   const myRoles = identity ? skills.filter(s => s.memberId === identity.pub).map(s => s.role) : []
 
@@ -164,6 +166,7 @@ export default function InventoryScreen() {
                       isExpandedAsset={expandedAssets.has(spec.asset)}
                       consumptionData={consumption.get(spec.asset) ?? null}
                       productionRate={productionRateByAsset.get(spec.asset) ?? null}
+                      isSyncing={pendingSyncIds.has(`inventory:${tribeId}:${spec.asset}`)}
                       onToggleAsset={() => toggleAsset(spec.asset)}
                       onQuantityChange={handleQuantityChange}
                       onNotesChange={handleNotesChange}
@@ -318,6 +321,7 @@ function AssetRow({
   isExpandedAsset,
   consumptionData,
   productionRate,
+  isSyncing,
   onToggleAsset,
   onQuantityChange,
   onNotesChange,
@@ -331,6 +335,7 @@ function AssetRow({
   isExpandedAsset: boolean
   consumptionData: AssetConsumptionData | null
   productionRate: number | null
+  isSyncing?: boolean
   onToggleAsset: () => void
   onQuantityChange: (asset: AssetType, delta: number) => void
   onNotesChange: (asset: AssetType, notes: string) => void
@@ -363,6 +368,7 @@ function AssetRow({
             <span className="text-xs text-gray-200 truncate">{spec.label}</span>
             {spec.critical && <span className="text-warning-400 text-xs">★</span>}
             {consumptionData && <DaysBadge data={consumptionData} />}
+            {isSyncing && <span className="text-gray-400 text-xs" title="Pending relay sync">⏱</span>}
           </div>
           <div className="text-xs text-gray-600">
             Need ×{needed} {unitLabel}
