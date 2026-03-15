@@ -201,7 +201,8 @@ export interface AppDB {
     key: string   // `${gunStore}:${tribeId}:${recordKey}`
     value: {
       id: string
-      gunStore: 'inventory' | 'events' | 'skills'
+      gunPath?: string[]  // explicit Gun traversal path — overrides gunStore/tribeId/recordKey
+      gunStore: string    // used for id format and legacy path construction
       tribeId: string
       recordKey: string
       payload: Record<string, unknown>

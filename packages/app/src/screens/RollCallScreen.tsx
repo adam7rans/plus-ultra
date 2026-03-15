@@ -6,6 +6,8 @@ import { subscribeToMembers, updateMemberHealth } from '../lib/tribes'
 import { hasAuthority, getAuthority, MUSTER_STATUS_META, MUSTER_REASON_META } from '@plus-ultra/core'
 import type { TribeMember, MusterStatus, HealthStatus } from '@plus-ultra/core'
 import MusterResponseForm from '../components/MusterResponseForm'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 
 const HEALTH_BADGE: Record<HealthStatus, { icon: string; color: string }> = {
   well:         { icon: '✓', color: 'text-forest-400' },
@@ -42,6 +44,13 @@ export default function RollCallScreen() {
   const [proxyTarget, setProxyTarget] = useState<TribeMember | null>(null)
   const [healthPromptPub, setHealthPromptPub] = useState<string | null>(null)
   const [updatingHealth, setUpdatingHealth] = useState(false)
+  const { offlineStage, offlineSince } = useOfflineStage()
+  // Tick every 30s so relative timestamps ("5m ago") stay fresh during a live muster
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 30_000)
+    return () => clearInterval(interval)
+  }, [])
 
   const myMember = identity ? members.find(m => m.pubkey === identity.pub) : undefined
   const myAuth = myMember ? getAuthority(myMember, null as never) : 'member'
@@ -81,6 +90,8 @@ export default function RollCallScreen() {
       >
         ← Dashboard
       </Link>
+
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
 
       <h2 className="text-2xl font-bold text-gray-100 mb-1">Roll Call</h2>
 

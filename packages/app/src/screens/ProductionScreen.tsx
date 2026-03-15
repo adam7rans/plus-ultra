@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 import { useProduction } from '../hooks/useProduction'
 import { useConsumption } from '../hooks/useConsumption'
 import { useInventory } from '../hooks/useInventory'
@@ -20,6 +22,7 @@ export default function ProductionScreen() {
   const inventory = useInventory(tribeId)
   const consumption = useConsumption(tribeId, members.length, inventory)
   const { entries, rateByAsset } = useProduction(tribeId)
+  const { offlineStage, offlineSince } = useOfflineStage()
 
   // Group entries by asset for history display
   const byAsset = new Map<AssetType, ProductionEntry[]>()
@@ -51,6 +54,8 @@ export default function ProductionScreen() {
       >
         ← Dashboard
       </Link>
+
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
 
       <h2 className="text-xl font-bold text-gray-100 mb-1">Production</h2>
       <p className="text-gray-500 text-sm mb-6">

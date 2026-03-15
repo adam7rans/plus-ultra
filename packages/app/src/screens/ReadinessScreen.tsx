@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate } from '@tanstack/react-router'
 import { useReadiness } from '../hooks/useReadiness'
 import RadarChart from '../components/RadarChart'
 import type { ReadinessDimensionResult } from '@plus-ultra/core'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 
 const DIMENSION_CONFIG: {
   key: 'personnel' | 'supply' | 'infrastructure' | 'comms' | 'coordination' | 'cohesion'
@@ -120,6 +122,7 @@ export default function ReadinessScreen() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId/readiness' })
   const navigate = useNavigate()
   const { report, loading } = useReadiness(tribeId)
+  const { offlineStage, offlineSince } = useOfflineStage()
 
   if (loading) {
     return (
@@ -176,6 +179,8 @@ export default function ReadinessScreen() {
       >
         ← Dashboard
       </Link>
+
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
 
       <h2 className="text-xl font-bold text-gray-100 mb-4">Readiness Report</h2>
 

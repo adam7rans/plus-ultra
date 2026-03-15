@@ -9,6 +9,8 @@ import { fetchTribeMeta } from '../lib/tribes'
 import { getAuthority, hasAuthority } from '@plus-ultra/core'
 import type { Tribe, BugOutPlan, BugOutVehicle, LoadPriority } from '@plus-ultra/core'
 import { nanoid } from 'nanoid'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 
 export default function BugOutScreen() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId/bugout' })
@@ -17,6 +19,7 @@ export default function BugOutScreen() {
   const { plans, activePlan } = useBugOut(tribeId)
   const { routes } = useMapData(tribeId)
   const [tribe, setTribe] = useState<Tribe | null>(null)
+  const { offlineStage, offlineSince } = useOfflineStage()
 
   const [editingPlan, setEditingPlan] = useState<BugOutPlan | null>(null)
   const [showNewForm, setShowNewForm] = useState(false)
@@ -146,6 +149,7 @@ export default function BugOutScreen() {
       <Link to="/tribe/$tribeId" params={{ tribeId }} className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300">
         ← Dashboard
       </Link>
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
       <h2 className="text-xl font-bold text-gray-100 mb-4">Bug-Out Planning</h2>
 
       {/* Active plan banner */}

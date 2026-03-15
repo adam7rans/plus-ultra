@@ -11,6 +11,8 @@ import type {
   PaceMethod, CheckInSchedule, RallyPoint,
   CommsLevel, CommsMethod,
 } from '@plus-ultra/core'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -49,6 +51,7 @@ export default function CommsScreen() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId/comms' })
   const { identity } = useIdentity()
   const { plan } = usePacePlan(tribeId)
+  const { offlineStage, offlineSince } = useOfflineStage()
   const [members, setMembers] = useState<TribeMember[]>([])
   const [tribe, setTribe] = useState<Tribe | null>(null)
   const [tab, setTab] = useState<Tab>('pace')
@@ -65,11 +68,14 @@ export default function CommsScreen() {
   const myAuth = myMember && tribe ? getAuthority(myMember, tribe) : (myMember?.authorityRole ?? 'member')
   const canEdit = hasAuthority(myAuth, 'elder_council')
 
-  // Parse plan data
-  const methods: PaceMethod[] = plan ? JSON.parse(plan.methodsJson || '[]') : []
-  const checkIns: CheckInSchedule[] = plan ? JSON.parse(plan.checkInSchedulesJson || '[]') : []
-  const rallyPoints: RallyPoint[] = plan ? JSON.parse(plan.rallyPointsJson || '[]') : []
-  const codeWords: Record<string, string> = plan?.codeWordsJson ? JSON.parse(plan.codeWordsJson) : {}
+  // Parse plan data — guard against corrupted JSON from Gun partial writes
+  function safeParse<T>(json: string | undefined, fallback: T): T {
+    try { return JSON.parse(json ?? '') as T } catch { return fallback }
+  }
+  const methods: PaceMethod[] = plan ? safeParse<PaceMethod[]>(plan.methodsJson, []) : []
+  const checkIns: CheckInSchedule[] = plan ? safeParse<CheckInSchedule[]>(plan.checkInSchedulesJson, []) : []
+  const rallyPoints: RallyPoint[] = plan ? safeParse<RallyPoint[]>(plan.rallyPointsJson, []) : []
+  const codeWords: Record<string, string> = plan ? safeParse<Record<string, string>>(plan.codeWordsJson, {}) : {}
 
   // HAM cert members and comms contacts suggestion
   const hamMembers = members.filter(m => m.role && ['ham_operator', 'comms_specialist'].includes(m.role as string))
@@ -106,6 +112,8 @@ export default function CommsScreen() {
       >
         ← Dashboard
       </Link>
+
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-100">Comms Plan</h2>

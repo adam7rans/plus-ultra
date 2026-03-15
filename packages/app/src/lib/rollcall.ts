@@ -1,6 +1,8 @@
 import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
+import { addPendingSync } from './sync-queue'
+import { getOfflineSince } from './offline-tracker'
 import { notify } from './notifications'
 import { triggerPush } from './push'
 import type { MusterCall, MusterResponse, MusterStatus, MusterReason } from '@plus-ultra/core'
@@ -55,8 +57,18 @@ export async function initiateMuster(
   const db = await getDB()
   await db.put('muster-calls', muster, `${tribeId}:${muster.id}`)
 
+  const musterPayload = gunEscape(muster as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('muster').get(muster.id)
-    .put(gunEscape(muster as unknown as Record<string, unknown>) as unknown as Record<string, unknown>)
+    .put(musterPayload as unknown as Record<string, unknown>)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `muster-calls:${tribeId}:${muster.id}`,
+      gunStore: 'muster', tribeId, recordKey: muster.id,
+      payload: musterPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   await notify(tribeId, {
     tribeId,
@@ -108,8 +120,18 @@ export async function respondToMuster(
   // Sync to Gun without voiceNote (base64 audio is too large for Gun nodes)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { voiceNote: _vn, ...responseForGun } = response
+  const responsePayload = gunEscape(responseForGun as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('muster-responses').get(`${musterId}:${memberPub}`)
-    .put(gunEscape(responseForGun as unknown as Record<string, unknown>) as unknown as Record<string, unknown>)
+    .put(responsePayload as unknown as Record<string, unknown>)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `muster-responses:${tribeId}:${musterId}:${memberPub}`,
+      gunStore: 'muster-responses', tribeId, recordKey: `${musterId}:${memberPub}`,
+      payload: responsePayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Close a muster ───────────────────────────────────────────────────────────
@@ -123,8 +145,18 @@ export async function closeMuster(tribeId: string, musterId: string): Promise<vo
   const updated: MusterCall = { ...existing, closedAt: Date.now(), status: 'closed' }
   await db.put('muster-calls', updated, key)
 
+  const closedPayload = gunEscape(updated as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('muster').get(musterId)
-    .put(gunEscape(updated as unknown as Record<string, unknown>) as unknown as Record<string, unknown>)
+    .put(closedPayload as unknown as Record<string, unknown>)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `muster-calls:${tribeId}:${musterId}`,
+      gunStore: 'muster', tribeId, recordKey: musterId,
+      payload: closedPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Read helpers ─────────────────────────────────────────────────────────────

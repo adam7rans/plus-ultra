@@ -160,7 +160,7 @@ export function subscribeToAllSkills(
       }
     }
     if (skillsMap.size > 0) callback(Array.from(skillsMap.values()))
-  })
+  }).catch(err => console.warn('[skills] IDB seed failed:', err))
 
   const ref = gun.get('tribes').get(tribeId).get('skills')
 

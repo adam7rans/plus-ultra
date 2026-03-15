@@ -118,9 +118,19 @@ export default function OnboardingScreen() {
   }
 
   // -- Photo handling --
+  // Cap photos at ~200KB to prevent filling IDB quota and overwhelming Gun sync.
+  const MAX_PHOTO_BYTES = 200 * 1024
+  const [photoError, setPhotoError] = useState<string | null>(null)
+
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    setPhotoError(null)
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError(`Photo too large (${Math.round(file.size / 1024)}KB). Please use an image under 200KB.`)
+      e.target.value = ''
+      return
+    }
     setPhotoFile(file)
     const reader = new FileReader()
     reader.onload = () => setPhotoPreview(reader.result as string)
@@ -284,6 +294,7 @@ export default function OnboardingScreen() {
               className="text-sm text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-forest-800 file:text-forest-300 file:font-semibold file:cursor-pointer hover:file:bg-forest-700"
             />
           </div>
+          {photoError && <p className="text-xs text-danger-400 mt-1">{photoError}</p>}
         </div>
 
         <div>

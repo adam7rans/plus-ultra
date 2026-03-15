@@ -1,6 +1,8 @@
 import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
+import { addPendingSync } from './sync-queue'
+import { getOfflineSince } from './offline-tracker'
 import type { Tribe } from '@plus-ultra/core'
 import type { Proposal, Vote, ProposalComment, ProposalScope, VoteChoice, ProposalOutcome } from '@plus-ultra/core'
 import { proposalDuration } from '@plus-ultra/core'
@@ -59,10 +61,20 @@ export async function createProposal(
   const db = await getDB()
   await db.put('proposals', proposal, `${tribeId}:${proposal.id}`)
 
+  const proposalPayload = gunEscape(proposal as unknown as Record<string, unknown>)
   gun
     .get('tribes').get(tribeId)
     .get('proposals').get(proposal.id)
-    .put(gunEscape(proposal as unknown as Record<string, unknown>))
+    .put(proposalPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `proposals:${tribeId}:${proposal.id}`,
+      gunStore: 'proposals', tribeId, recordKey: proposal.id,
+      payload: proposalPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   return proposal
 }
@@ -84,11 +96,22 @@ export async function castVote(
   const db = await getDB()
   await db.put('proposal-votes', vote, `${proposalId}:${memberPub}`)
 
+  const votePayload = gunEscape(vote as unknown as Record<string, unknown>)
   gun
     .get('tribes').get(tribeId)
     .get('proposal-votes').get(proposalId)
     .get(memberPub)
-    .put(gunEscape(vote as unknown as Record<string, unknown>))
+    .put(votePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `proposal-votes:${tribeId}:${proposalId}:${memberPub}`,
+      gunPath: ['tribes', tribeId, 'proposal-votes', proposalId, memberPub],
+      gunStore: 'proposal-votes', tribeId, recordKey: `${proposalId}:${memberPub}`,
+      payload: votePayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function addComment(
@@ -109,10 +132,20 @@ export async function addComment(
   const db = await getDB()
   await db.put('proposal-comments', comment, `${proposalId}:${comment.id}`)
 
+  const commentPayload = gunEscape(comment as unknown as Record<string, unknown>)
   gun
     .get('tribes').get(tribeId)
     .get('proposal-comments').get(comment.id)
-    .put(gunEscape(comment as unknown as Record<string, unknown>))
+    .put(commentPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `proposal-comments:${tribeId}:${comment.id}`,
+      gunStore: 'proposal-comments', tribeId, recordKey: comment.id,
+      payload: commentPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   return comment
 }
@@ -137,10 +170,20 @@ export async function withdrawProposal(
   }
   await db.put('proposals', updated, `${tribeId}:${proposalId}`)
 
+  const withdrawPayload = gunEscape({ status: 'withdrawn', outcome: 'withdrawn', closedAt: updated.closedAt, closedBy: requesterPub } as Record<string, unknown>)
   gun
     .get('tribes').get(tribeId)
     .get('proposals').get(proposalId)
-    .put(gunEscape({ status: 'withdrawn', outcome: 'withdrawn', closedAt: updated.closedAt, closedBy: requesterPub } as Record<string, unknown>))
+    .put(withdrawPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `proposals:${tribeId}:${proposalId}`,
+      gunStore: 'proposals', tribeId, recordKey: proposalId,
+      payload: withdrawPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function closeProposal(
@@ -164,10 +207,20 @@ export async function closeProposal(
   }
   await db.put('proposals', updated, `${tribeId}:${proposalId}`)
 
+  const closePayload = gunEscape({ status: 'closed', outcome, closedAt: updated.closedAt, closedBy } as Record<string, unknown>)
   gun
     .get('tribes').get(tribeId)
     .get('proposals').get(proposalId)
-    .put(gunEscape({ status: 'closed', outcome, closedAt: updated.closedAt, closedBy } as Record<string, unknown>))
+    .put(closePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `proposals:${tribeId}:${proposalId}`,
+      gunStore: 'proposals', tribeId, recordKey: proposalId,
+      payload: closePayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────────
@@ -203,7 +256,7 @@ export function subscribeToProposals(
       if (p.tribeId === tribeId && p.id) proposalsMap.set(p.id, p)
     }
     if (proposalsMap.size > 0) callback(Array.from(proposalsMap.values()))
-  })
+  }).catch(err => console.warn('[proposals] IDB seed failed:', err))
 
   const ref = gun.get('tribes').get(tribeId).get('proposals')
 

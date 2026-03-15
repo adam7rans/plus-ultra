@@ -1,6 +1,8 @@
 import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
+import { addPendingSync } from './sync-queue'
+import { getOfflineSince } from './offline-tracker'
 import type { ExternalContact, ContactCategory } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -47,10 +49,20 @@ export async function addContact(
   const db = await getDB()
   await db.put('external-contacts', contact, `${tribeId}:${contact.id}`)
 
+  const contactPayload = gunEscape(contact as unknown as Record<string, unknown>)
   gun
     .get('tribes').get(tribeId)
     .get('external-contacts').get(contact.id)
-    .put(gunEscape(contact as unknown as Record<string, unknown>))
+    .put(contactPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `external-contacts:${tribeId}:${contact.id}`,
+      gunStore: 'external-contacts', tribeId, recordKey: contact.id,
+      payload: contactPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   return contact
 }
@@ -67,10 +79,20 @@ export async function updateContact(
   const updated = { ...(existing as ExternalContact), ...patch }
   await db.put('external-contacts', updated, `${tribeId}:${contactId}`)
 
+  const updatePayload = gunEscape(updated as unknown as Record<string, unknown>)
   gun
     .get('tribes').get(tribeId)
     .get('external-contacts').get(contactId)
-    .put(gunEscape(updated as unknown as Record<string, unknown>))
+    .put(updatePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `external-contacts:${tribeId}:${contactId}`,
+      gunStore: 'external-contacts', tribeId, recordKey: contactId,
+      payload: updatePayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function deleteContact(tribeId: string, contactId: string): Promise<void> {

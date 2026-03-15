@@ -14,6 +14,8 @@ import {
 import { fetchTribeMeta } from '../lib/tribes'
 import { getAuthority, hasAuthority, ROLE_BY_KEY, ALL_ROLES } from '@plus-ultra/core'
 import type { SkillRole, Tribe, MemberCertification, TrainingSession } from '@plus-ultra/core'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 
 type Tab = 'sessions' | 'certifications' | 'levelup'
 
@@ -47,6 +49,7 @@ export default function TrainingScreen() {
   const levelUpQueue = useLevelUpQueue(skills, sessions, members)
 
   const [tribe, setTribe] = useState<Tribe | null>(null)
+  const { offlineStage, offlineSince } = useOfflineStage()
   useEffect(() => { fetchTribeMeta(tribeId).then(t => { if (t) setTribe(t) }) }, [tribeId])
 
   const myMember = identity ? members.find(m => m.pubkey === identity.pub) : undefined
@@ -203,6 +206,8 @@ export default function TrainingScreen() {
       >
         ← Back to Dashboard
       </Link>
+
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
 
       <h2 className="text-xl font-bold text-gray-100 mb-1">Training & Skills</h2>
       <p className="text-gray-500 text-sm mb-4">Track sessions, certifications, and progression.</p>

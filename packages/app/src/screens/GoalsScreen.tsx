@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
 import { useGoals } from '../hooks/useGoals'
 import { createGoal, createTask, updateTask } from '../lib/tasks'
@@ -26,6 +28,7 @@ export default function GoalsScreen() {
   const { goals, tasks, loading, getGoalTasks, getMyTasks, goalProgress } = useGoals(tribeId)
   const [tribe, setTribe] = useState<Tribe | null>(null)
   const [activeTab, setActiveTab] = useState<ActiveTab>('goals')
+  const { offlineStage, offlineSince } = useOfflineStage()
 
   // Goal form
   const [showGoalForm, setShowGoalForm] = useState(false)
@@ -136,6 +139,7 @@ export default function GoalsScreen() {
       <Link to="/tribe/$tribeId" params={{ tribeId }} className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300">
         ← Dashboard
       </Link>
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
       <h2 className="text-xl font-bold text-gray-100 mb-4">Goals &amp; Tasks</h2>
 
       {/* Tabs */}

@@ -74,13 +74,13 @@ export function subscribeToTribeInfraStatus(
 
   const ref = gun.get('tribes').get(tribeId).get('member-infra-status')
 
-  ref.map().on((data: unknown, memberPub: string) => {
+  function handle(data: unknown, memberPub: string) {
     if (!data || typeof data !== 'object') return
     const raw = gunUnescape(data as Record<string, unknown>)
     if (!raw.memberPub || !raw.tribeId) return
     let failingItems: InfraItem[] = []
     try {
-      failingItems = JSON.parse(raw.failingItemsJson as string ?? '[]')
+      failingItems = JSON.parse((raw.failingItemsJson as string) ?? '[]')
     } catch {
       failingItems = []
     }
@@ -94,9 +94,14 @@ export function subscribeToTribeInfraStatus(
     getDB().then(db => db.put('member-infra-status', status, `${tribeId}:${memberPub}`))
     statuses.set(memberPub, status)
     emit()
-  })
+  }
+
+  ref.map().once(handle)
+  ref.map().on(handle)
+  const poll = setInterval(() => ref.map().once(handle), 2000)
 
   return () => {
-    ref.off()
+    clearInterval(poll)
+    ref.map().off()
   }
 }

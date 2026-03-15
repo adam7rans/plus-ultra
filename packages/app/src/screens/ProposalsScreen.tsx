@@ -11,6 +11,8 @@ import {
 } from '@plus-ultra/core'
 import type { Tribe, TribeMember, Proposal, Vote } from '@plus-ultra/core'
 import { subscribeToMembers } from '../lib/tribes'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 
 type FilterTab = 'open' | 'closed' | 'all'
 
@@ -40,6 +42,7 @@ export default function ProposalsScreen() {
   const [tribe, setTribe] = useState<Tribe | null>(null)
   const [members, setMembers] = useState<TribeMember[]>([])
   const [filter, setFilter] = useState<FilterTab>('open')
+  const { offlineStage, offlineSince } = useOfflineStage()
 
   const { proposals, loading } = useProposals(tribeId)
 
@@ -91,6 +94,8 @@ export default function ProposalsScreen() {
       >
         ← {tribeName || 'Dashboard'}
       </Link>
+
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-100">Proposals</h2>

@@ -5,6 +5,8 @@ import { declareSkill, getMySkills, skillKey } from '../lib/skills'
 import { getRolesByDomainByTier } from '../lib/roles'
 import { usePendingSyncIds } from '../hooks/usePendingSyncIds'
 import type { SkillRole, ProficiencyLevel } from '@plus-ultra/core'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 
 const PROFICIENCY_OPTIONS: { value: ProficiencyLevel; label: string; description: string }[] = [
   { value: 'basic', label: 'Basic', description: 'Some knowledge, learning' },
@@ -23,6 +25,7 @@ export default function SkillsDeclarationScreen() {
   const navigate = useNavigate()
 
   const pendingSyncIds = usePendingSyncIds(tribeId)
+  const { offlineStage, offlineSince } = useOfflineStage()
   const [selected, setSelected] = useState<Map<SkillRole, ProficiencyLevel>>(new Map())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -92,6 +95,8 @@ export default function SkillsDeclarationScreen() {
       >
         ← Back to Tribe
       </Link>
+
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
 
       <h2 className="text-xl font-bold text-gray-100 mb-1">Declare Your Skills</h2>
       <p className="text-gray-500 text-sm mb-6">

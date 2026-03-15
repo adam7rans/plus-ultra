@@ -14,13 +14,16 @@ export function useGridState(tribeId: string, memberName?: string) {
 
   useEffect(() => {
     if (!tribeId) return
+    let cancelled = false
     const unsub = subscribeToGridState(tribeId, (state) => {
+      if (cancelled) return
       setGridState(state)
       setLoading(false)
     })
     // If no state arrives within 500ms, mark done loading
-    const timeout = setTimeout(() => setLoading(false), 500)
+    const timeout = setTimeout(() => { if (!cancelled) setLoading(false) }, 500)
     return () => {
+      cancelled = true
       unsub()
       clearTimeout(timeout)
     }

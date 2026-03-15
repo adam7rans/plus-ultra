@@ -17,6 +17,8 @@ import {
 import { canDiplomatize, ASSET_BY_KEY, ASSETS_BY_CATEGORY } from '@plus-ultra/core'
 import type { FederatedMessage, FederatedTradeProposal, TradeItem } from '@plus-ultra/core'
 import type { AssetType } from '@plus-ultra/core'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 
 type Tab = 'messages' | 'trade' | 'intel'
 
@@ -28,6 +30,7 @@ export default function FederationChannelScreen() {
 
   const { relationships } = useFederation(tribeId)
   const rel = relationships.find(r => r.channelId === channelId)
+  const { offlineStage, offlineSince } = useOfflineStage()
 
   const [myTribeEpub, setMyTribeEpub] = useState<string | null>(null)
   const [myTribeEpriv, setMyTribeEpriv] = useState<string | null>(null)
@@ -64,6 +67,8 @@ export default function FederationChannelScreen() {
       >
         ← Federation
       </Link>
+
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
 
       <div className="mb-4">
         <h2 className="text-xl font-bold text-gray-100">

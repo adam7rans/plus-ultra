@@ -7,6 +7,8 @@ import { logExpense, deleteExpense, logContribution, deleteContribution } from '
 import { fetchTribeMeta } from '../lib/tribes'
 import { getAuthority, hasAuthority } from '@plus-ultra/core'
 import type { Tribe, TribeMember, ExpenseCategory } from '@plus-ultra/core'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import OfflineStageBanner from '../components/OfflineStageBanner'
 
 type Tab = 'summary' | 'expenses' | 'contributions'
 
@@ -47,6 +49,7 @@ export default function FinanceScreen() {
   const { members } = useSurvivabilityScore(tribeId)
   const { expenses, contributions, loading, getMemberBalance, fundBalance } = useFinance(tribeId)
   const [tribe, setTribe] = useState<Tribe | null>(null)
+  const { offlineStage, offlineSince } = useOfflineStage()
 
   useEffect(() => {
     fetchTribeMeta(tribeId).then(t => { if (t) setTribe(t) })
@@ -151,6 +154,8 @@ export default function FinanceScreen() {
       >
         ← Dashboard
       </Link>
+
+      <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-100">Finances</h2>

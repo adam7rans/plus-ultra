@@ -22,7 +22,13 @@ export async function generateIdentity(): Promise<Identity> {
   }
 
   const db = await getDB()
-  await db.put('identity', identity, IDENTITY_KEY)
+  try {
+    await db.put('identity', identity, IDENTITY_KEY)
+  } catch (err) {
+    // IDB write failed — keys were never persisted. Throw so IdentityContext surfaces
+    // an error instead of silently continuing with an unsaved keypair that will be lost on reload.
+    throw new Error(`Failed to save identity to local storage: ${err instanceof Error ? err.message : String(err)}`)
+  }
 
   return identity
 }

@@ -201,7 +201,7 @@ export function subscribeTribeChannel(
       if (m.tribeId === tribeId) msgMap.set(m.id, m)
     }
     if (msgMap.size > 0) callback(sortedMessages(msgMap))
-  })
+  }).catch(err => console.warn('[messaging] IDB tribe seed failed:', err))
 
   const ref = tribeChannelRef(tribeId)
 
@@ -235,7 +235,7 @@ export function subscribeDMChannel(
   loadCachedMessages(channelId).then(cached => {
     for (const m of cached) msgMap.set(m.id, m)
     if (msgMap.size > 0) callback(sortedMessages(msgMap))
-  })
+  }).catch(err => console.warn('[messaging] IDB DM seed failed:', err))
 
   const ref = dmChannelRef(channelId)
 
@@ -324,6 +324,7 @@ export async function queueMessage(message: Message): Promise<void> {
 }
 
 const MAX_QUEUE_ATTEMPTS = 5
+const FLUSH_ACK_TIMEOUT_MS = 8000
 
 export async function flushQueue(): Promise<{ sent: number; dropped: number; remaining: number }> {
   const db = await getDB()
@@ -333,19 +334,28 @@ export async function flushQueue(): Promise<{ sent: number; dropped: number; rem
 
   for (const item of queued) {
     const { message } = item
-    try {
-      if (message.channelId === 'tribe-wide') {
-        await writeMessage(message.tribeId, message.channelId, message)
-      } else {
-        await writeDM(message.channelId, message)
-      }
+    // Use ACK-gated write: Gun confirms delivery before we remove from queue.
+    // fire-and-forget (no callback) silently drops writes when relay is down,
+    // so we inline the put with an ack callback and a timeout fallback.
+    const succeeded = await new Promise<boolean>(resolve => {
+      const timer = setTimeout(() => resolve(false), FLUSH_ACK_TIMEOUT_MS)
+      const escaped = gunEscape(message as unknown as Record<string, unknown>)
+      const ref = message.channelId === 'tribe-wide'
+        ? tribeChannelRef(message.tribeId).get(message.id)
+        : dmChannelRef(message.channelId).get(message.id)
+      ref.put(escaped as unknown as Record<string, unknown>, (ack: unknown) => {
+        clearTimeout(timer)
+        resolve(!(ack as { err?: string }).err)
+      })
+    })
+
+    if (succeeded) {
       await cacheMessage(message)
       await db.delete('queued-messages', message.id)
       sent++
-    } catch {
+    } else {
       const newAttempts = item.attempts + 1
       if (newAttempts >= MAX_QUEUE_ATTEMPTS) {
-        // Give up after max attempts
         await db.delete('queued-messages', message.id)
         dropped++
       } else {

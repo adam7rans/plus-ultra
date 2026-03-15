@@ -2,6 +2,8 @@ import { nanoid } from 'nanoid'
 import SEA from 'gun/sea'
 import { gun } from './gun'
 import { getDB } from './db'
+import { addPendingSync } from './sync-queue'
+import { getOfflineSince } from './offline-tracker'
 import { shortId } from './identity'
 import type { Tribe, TribeMember, HealthStatus } from '@plus-ultra/core'
 
@@ -184,7 +186,21 @@ export async function joinTribe(
     throw new Error('Tribe not found — invite link may be missing tribe info')
   }
 
-  // Write member record
+  // Write local membership first so a crash between steps leaves the user
+  // in a recoverable state (missing peer-visible member record is easier to
+  // fix than a member who exists in Gun but can't see their own tribe).
+  const db = await getDB()
+  await db.put('my-tribes', {
+    tribeId,
+    joinedAt: Date.now(),
+    tribePub: tribe.pub,
+    name: tribe.name,
+    location: tribe.location,
+  }, tribeId)
+  // Cache full tribe metadata for offline dashboard load
+  await db.put('tribe-cache', tribe, tribeId)
+
+  // Write member record (IDB + Gun) after local membership is recorded
   const member: TribeMember = {
     pubkey: memberPub,
     tribeId,
@@ -197,18 +213,6 @@ export async function joinTribe(
     epub: memberEpub,
   }
   await writeMember(tribeId, member)
-
-  // Store tribe membership locally (no priv key for non-founders)
-  const db = await getDB()
-  await db.put('my-tribes', {
-    tribeId,
-    joinedAt: Date.now(),
-    tribePub: tribe.pub,
-    name: tribe.name,
-    location: tribe.location,
-  }, tribeId)
-  // Cache full tribe metadata for offline dashboard load
-  await db.put('tribe-cache', tribe, tribeId)
 
   return tribe
 }
@@ -266,9 +270,17 @@ async function writeMember(tribeId: string, member: TribeMember): Promise<void> 
   const db = await getDB()
   await db.put('members', member, `${tribeId}:${member.pubkey}`)
   // Gun write for live P2P sync (fire and forget)
-  gun.get('tribes').get(tribeId).get('members').get(member.pubkey).put(
-    member as unknown as Record<string, unknown>
-  )
+  const memberPayload = member as unknown as Record<string, unknown>
+  gun.get('tribes').get(tribeId).get('members').get(member.pubkey).put(memberPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `members:${tribeId}:${member.pubkey}`,
+      gunStore: 'members', tribeId, recordKey: member.pubkey,
+      payload: memberPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export function subscribeToMembers(
@@ -287,7 +299,7 @@ export function subscribeToMembers(
       }
     }
     if (members.size > 0) callback(Array.from(members.values()))
-  })
+  }).catch(err => console.warn('[tribes] IDB seed failed:', err))
 
   // Subscribe to Gun for live updates from peers
   const ref = gun.get('tribes').get(tribeId).get('members')
@@ -387,9 +399,17 @@ export async function updateMemberProfile(
   // Sync to Gun — exclude photo (too large for P2P mesh)
   const { photo: _photo, ...gunFields } = updated
   void _photo // suppress unused variable warning
-  gun.get('tribes').get(tribeId).get('members').get(pubkey).put(
-    gunFields as unknown as Record<string, unknown>
-  )
+  const profilePayload = gunFields as unknown as Record<string, unknown>
+  gun.get('tribes').get(tribeId).get('members').get(pubkey).put(profilePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `members:${tribeId}:${pubkey}`,
+      gunStore: 'members', tribeId, recordKey: pubkey,
+      payload: profilePayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function setDiplomatStatus(
@@ -404,9 +424,17 @@ export async function setDiplomatStatus(
     const updated = { ...(existing as TribeMember), isDiplomat: isDiplomat || undefined }
     await db.put('members', updated, key)
   }
-  gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(
-    { isDiplomat: isDiplomat || null } as unknown as Record<string, unknown>
-  )
+  const diplomatPayload = { isDiplomat: isDiplomat || null } as unknown as Record<string, unknown>
+  gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(diplomatPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `members:${tribeId}:${targetPubkey}`,
+      gunStore: 'members', tribeId, recordKey: targetPubkey,
+      payload: diplomatPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function setAuthorityRole(
@@ -421,9 +449,17 @@ export async function setAuthorityRole(
     const updated = { ...(existing as TribeMember), authorityRole }
     await db.put('members', updated, key)
   }
-  gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(
-    { authorityRole } as unknown as Record<string, unknown>
-  )
+  const rolePayload = { authorityRole } as unknown as Record<string, unknown>
+  gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(rolePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `members:${tribeId}:${targetPubkey}`,
+      gunStore: 'members', tribeId, recordKey: targetPubkey,
+      payload: rolePayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Tribe metadata update ────────────────────────────────────────────────────
@@ -467,6 +503,16 @@ export async function updateTribeMeta(
   if (updates.lat !== undefined) gunPayload.lat = updates.lat
   if (updates.lng !== undefined) gunPayload.lng = updates.lng
   gun.get('tribes').get(tribeId).put(gunPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `tribe-meta:${tribeId}`,
+      gunPath: ['tribes', tribeId],
+      gunStore: 'tribe-meta', tribeId, recordKey: tribeId,
+      payload: gunPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Leave tribe ──────────────────────────────────────────────────────────────
@@ -546,9 +592,17 @@ export async function updateMemberHealth(
   if (updated.medications !== undefined) gunFields.medications = JSON.stringify(updated.medications)
   if (updated.medicalConditions !== undefined) gunFields.medicalConditions = JSON.stringify(updated.medicalConditions)
 
-  gun.get('tribes').get(tribeId).get('members').get(targetPub).put(
-    gunFields as unknown as Record<string, unknown>
-  )
+  const healthPayload = gunFields as unknown as Record<string, unknown>
+  gun.get('tribes').get(tribeId).get('members').get(targetPub).put(healthPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `members:${tribeId}:${targetPub}`,
+      gunStore: 'members', tribeId, recordKey: targetPub,
+      payload: healthPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Delete tribe (founder only) ─────────────────────────────────────────────

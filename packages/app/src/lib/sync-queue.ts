@@ -3,7 +3,8 @@ import { getDB } from './db'
 
 export interface PendingSync {
   id: string
-  gunStore: 'inventory' | 'events' | 'skills'
+  gunPath?: string[]  // explicit Gun traversal path — overrides gunStore/tribeId/recordKey
+  gunStore: string    // used for id format and legacy path construction
   tribeId: string
   recordKey: string
   payload: Record<string, unknown>
@@ -33,10 +34,13 @@ export async function flushPendingSyncs(): Promise<void> {
   for (const entry of all) {
     await new Promise<void>(resolve => {
       const timer = setTimeout(() => resolve(), ACK_TIMEOUT_MS)
-      gun.get('tribes').get(entry.tribeId).get(entry.gunStore).get(entry.recordKey)
-        .put(entry.payload as unknown as Record<string, unknown>, async (ack: { err?: string }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let node: any = gun
+      const path = entry.gunPath ?? ['tribes', entry.tribeId, entry.gunStore, entry.recordKey]
+      for (const segment of path) { node = node.get(segment) }
+      node.put(entry.payload as unknown as Record<string, unknown>, async (ack: unknown) => {
           clearTimeout(timer)
-          if (!ack.err) {
+          if (!(ack as { err?: string }).err) {
             await db.delete('pending-syncs', entry.id)
           }
           resolve()
