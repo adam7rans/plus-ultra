@@ -17,7 +17,7 @@ export default function TribeChannelScreen() {
   const { identity } = useIdentity()
   const { members } = useTribe()
   const { offlineStage } = useOfflineStage()
-  const { messages, loading } = useTribeChannel(tribeId)
+  const { messages, loading, inject } = useTribeChannel(tribeId)
   const pendingMessageIds = usePendingMessageIds()
   const [tribe, setTribe] = useState<Tribe | null>(null)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
@@ -49,12 +49,14 @@ export default function TribeChannelScreen() {
     if (offlineStage === 0) {
       await sendTribeMessage(tribeId, identity.pub, pair, 'text', text, undefined, replyingTo?.id)
     } else {
-      await queueMessage({
+      const msg: Message = {
         id: nanoid(), tribeId, channelId: 'tribe-wide',
         senderId: identity.pub, type: 'text', content: text,
         sentAt: Date.now(), sig: '',
         ...(replyingTo ? { replyTo: replyingTo.id } : {}),
-      })
+      }
+      await queueMessage(msg)
+      inject(msg)
     }
     setReplyingTo(null)
   }
@@ -65,11 +67,13 @@ export default function TribeChannelScreen() {
     if (offlineStage === 0) {
       await sendTribeMessage(tribeId, identity.pub, pair, 'voice', base64, mimeType)
     } else {
-      await queueMessage({
+      const msg: Message = {
         id: nanoid(), tribeId, channelId: 'tribe-wide',
         senderId: identity.pub, type: 'voice', content: base64,
         mimeType, sentAt: Date.now(), sig: '',
-      })
+      }
+      await queueMessage(msg)
+      inject(msg)
     }
     setReplyingTo(null)
   }
@@ -80,11 +84,13 @@ export default function TribeChannelScreen() {
     if (offlineStage === 0) {
       await sendTribeMessage(tribeId, identity.pub, pair, 'photo', base64, mimeType)
     } else {
-      await queueMessage({
+      const msg: Message = {
         id: nanoid(), tribeId, channelId: 'tribe-wide',
         senderId: identity.pub, type: 'photo', content: base64,
         mimeType, sentAt: Date.now(), sig: '',
-      })
+      }
+      await queueMessage(msg)
+      inject(msg)
     }
     setReplyingTo(null)
   }

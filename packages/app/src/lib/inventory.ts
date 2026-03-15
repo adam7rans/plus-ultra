@@ -69,10 +69,12 @@ export function subscribeToInventory(
     } else {
       const d = data as Record<string, unknown>
       if (d.asset && d.tribeId === tribeId) {
-        const entry = d as unknown as TribeAsset
-        invMap.set(assetKey as AssetType, entry)
-        // Persist to IDB
-        getDB().then(db => db.put('inventory', entry, `${tribeId}:${assetKey}`))
+        const incoming = d as unknown as TribeAsset
+        const local = invMap.get(assetKey as AssetType)
+        if (!local || (incoming.updatedAt ?? 0) >= (local.updatedAt ?? 0)) {
+          invMap.set(assetKey as AssetType, incoming)
+          getDB().then(db => db.put('inventory', incoming, `${tribeId}:${assetKey}`))
+        }
       }
     }
     callback(Array.from(invMap.values()))

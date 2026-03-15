@@ -192,9 +192,12 @@ export function subscribeToAllSkills(
           specializations: parsedSpecs,
           vouchedBy: parsedVouches,
         }
-        skillsMap.set(key, skill)
-        // persist Gun-received skills to IDB
-        getDB().then(db => db.put('skills', skill, `${tribeId}:${key}`))
+        const local = skillsMap.get(key)
+        if (!local || (skill.declaredAt ?? 0) >= (local.declaredAt ?? 0)) {
+          skillsMap.set(key, skill)
+          // persist Gun-received skills to IDB
+          getDB().then(db => db.put('skills', skill, `${tribeId}:${key}`))
+        }
       }
     }
     callback(Array.from(skillsMap.values()))

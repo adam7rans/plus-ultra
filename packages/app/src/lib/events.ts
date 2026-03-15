@@ -201,9 +201,12 @@ export function subscribeToEvents(
           location: (d.location as string) ?? '',
           cancelled: (d.cancelled as boolean) ?? false,
         }
-        eventsMap.set(key, event)
-        // Persist Gun-received events to IDB
-        getDB().then(db => db.put('events', event, `${tribeId}:${key}`))
+        const local = eventsMap.get(key)
+        if (!local || (event.createdAt ?? 0) >= (local.createdAt ?? 0)) {
+          eventsMap.set(key, event)
+          // Persist Gun-received events to IDB
+          getDB().then(db => db.put('events', event, `${tribeId}:${key}`))
+        }
       }
     }
     callback(Array.from(eventsMap.values()))

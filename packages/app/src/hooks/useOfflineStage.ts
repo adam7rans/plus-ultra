@@ -10,7 +10,7 @@ import {
 import { flushQueue } from '../lib/messaging'
 import { flushPendingSyncs } from '../lib/sync-queue'
 
-const PING_INTERVAL_MS = 60 * 1000 // 60s
+const PING_INTERVAL_MS = 15 * 1000 // 15s
 
 export function useOfflineStage(): {
   offlineStage: OfflineStage
@@ -55,7 +55,17 @@ export function useOfflineStage(): {
   useEffect(() => {
     void doPing()
     const interval = setInterval(() => { void doPing() }, PING_INTERVAL_MS)
-    return () => clearInterval(interval)
+
+    const handleOnline = () => { void doPing() }
+    const handleOffline = () => { void doPing() }
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

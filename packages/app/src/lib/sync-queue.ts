@@ -25,12 +25,22 @@ export async function getPendingSyncIds(tribeId: string): Promise<string[]> {
   })
 }
 
+const ACK_TIMEOUT_MS = 8000
+
 export async function flushPendingSyncs(): Promise<void> {
   const db = await getDB()
   const all = await db.getAll('pending-syncs') as PendingSync[]
   for (const entry of all) {
-    gun.get('tribes').get(entry.tribeId).get(entry.gunStore).get(entry.recordKey)
-      .put(entry.payload as unknown as Record<string, unknown>)
-    await db.delete('pending-syncs', entry.id)  // optimistic clear
+    await new Promise<void>(resolve => {
+      const timer = setTimeout(() => resolve(), ACK_TIMEOUT_MS)
+      gun.get('tribes').get(entry.tribeId).get(entry.gunStore).get(entry.recordKey)
+        .put(entry.payload as unknown as Record<string, unknown>, async (ack: { err?: string }) => {
+          clearTimeout(timer)
+          if (!ack.err) {
+            await db.delete('pending-syncs', entry.id)
+          }
+          resolve()
+        })
+    })
   }
 }

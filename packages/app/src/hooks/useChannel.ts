@@ -39,7 +39,14 @@ export function useTribeChannel(tribeId: string) {
     }
   }, [tribeId])
 
-  return { messages, loading }
+  function inject(msg: Message) {
+    setMessages(prev => {
+      if (prev.some(m => m.id === msg.id)) return prev
+      return [...prev, msg].sort((a, b) => a.sentAt - b.sentAt)
+    })
+  }
+
+  return { messages, loading, inject }
 }
 
 export function useDMChannel(myPub: string, theirPub: string) {
