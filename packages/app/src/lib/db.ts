@@ -161,6 +161,22 @@ export interface AppDB {
     key: string   // tribeId
     value: unknown
   }
+  'tribe-goals': {
+    key: string   // `${tribeId}:${goalId}`
+    value: unknown
+  }
+  'goal-milestones': {
+    key: string   // `${tribeId}:${milestoneId}`
+    value: unknown
+  }
+  'tribe-tasks': {
+    key: string   // `${tribeId}:${taskId}`
+    value: unknown
+  }
+  'bugout-plans': {
+    key: string   // `${tribeId}:${planId}`
+    value: unknown
+  }
 }
 
 let _db: IDBPDatabase<AppDB> | null = null
@@ -172,7 +188,7 @@ export function closeDB(): void {
 
 export async function getDB(): Promise<IDBPDatabase<AppDB>> {
   if (_db) return _db
-  _db = await openDB<AppDB>('plus-ultra', 19, {
+  _db = await openDB<AppDB>('plus-ultra', 21, {
     blocked() {
       // Another tab has the DB open at an older version — force it to close
       // so our upgrade can proceed (stale tab will reload automatically)
@@ -280,6 +296,14 @@ export async function getDB(): Promise<IDBPDatabase<AppDB>> {
       }
       if (oldVersion < 19) {
         db.createObjectStore('pace-plan')
+      }
+      if (oldVersion < 20) {
+        db.createObjectStore('tribe-goals')
+        db.createObjectStore('goal-milestones')
+        db.createObjectStore('tribe-tasks')
+      }
+      if (oldVersion < 21) {
+        db.createObjectStore('bugout-plans')
       }
     },
   })

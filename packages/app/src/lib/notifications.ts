@@ -20,6 +20,9 @@ export type NotificationType =
   | 'trade_fulfilled'
   | 'federation_contact'
   | 'muster_called'
+  | 'task_assigned'
+  | 'goal_created'
+  | 'bugout_activated'
 
 export interface Notification {
   id: string
@@ -39,7 +42,7 @@ export interface Notification {
 
 // ── Alert types ─────────────────────────────────────────────────────
 
-export type AlertType = 'emergency' | 'perimeter_breach' | 'medical' | 'rally_point' | 'all_clear'
+export type AlertType = 'emergency' | 'perimeter_breach' | 'medical' | 'rally_point' | 'all_clear' | 'bug_out'
 
 export const ALERT_META: Record<AlertType, { label: string; icon: string; color: string }> = {
   emergency:       { label: 'Emergency',       icon: '🚨', color: 'bg-red-700' },
@@ -47,6 +50,7 @@ export const ALERT_META: Record<AlertType, { label: string; icon: string; color:
   medical:         { label: 'Medical',          icon: '🏥', color: 'bg-red-600' },
   rally_point:     { label: 'Rally Point',      icon: '📍', color: 'bg-orange-700' },
   all_clear:       { label: 'All Clear',        icon: '✅', color: 'bg-green-700' },
+  bug_out:         { label: 'Bug Out',           icon: '🚗', color: 'bg-orange-800' },
 }
 
 export interface TribeAlert {

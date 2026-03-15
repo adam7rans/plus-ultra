@@ -5,8 +5,9 @@ import { useIdentity } from '../contexts/IdentityContext'
 import { fetchTribeMeta } from '../lib/tribes'
 import { useProposalDetail } from '../hooks/useProposals'
 import { castVote, addComment, withdrawProposal, closeProposal } from '../lib/proposals'
+import { createGoal } from '../lib/tasks'
 import {
-  getAuthority, canVote, eligibleVoters, quorumRequired, computeOutcome,
+  getAuthority, hasAuthority, canVote, eligibleVoters, quorumRequired, computeOutcome,
 } from '@plus-ultra/core'
 import type { Tribe, TribeMember, VoteChoice, PsychArchetype } from '@plus-ultra/core'
 import { subscribeToMembers } from '../lib/tribes'
@@ -44,6 +45,7 @@ export default function ProposalDetailScreen() {
   const [commentBody, setCommentBody] = useState('')
   const [posting, setPosting] = useState(false)
   const [voting, setVoting] = useState(false)
+  const [goalCreated, setGoalCreated] = useState(false)
 
   const { proposal, votes, comments, loading } = useProposalDetail(tribeId, proposalId)
   const psychProfiles = useTribePsychProfiles(tribeId)
@@ -88,6 +90,7 @@ export default function ProposalDetailScreen() {
   const isOpen = proposal.status === 'open'
   const isHybrid = tribe?.constitutionTemplate === 'hybrid'
   const isCreator = proposal.createdBy === identity?.pub
+  const canCreateGoal = hasAuthority(myAuth, 'elder_council')
 
   const eligible = tribe ? eligibleVoters(members, tribe, proposal) : []
   const quorum = quorumRequired(eligible.length)
@@ -112,6 +115,17 @@ export default function ProposalDetailScreen() {
   async function handleWithdraw() {
     if (!identity || !isOpen) return
     await withdrawProposal(tribeId, proposal!.id, identity.pub)
+  }
+
+  async function handleCreateGoalFromProposal() {
+    if (!identity) return
+    await createGoal(tribeId, {
+      title: proposal!.title,
+      linkedProposalId: proposal!.id,
+      creatorPub: identity.pub,
+      horizon: 'short_term',
+    })
+    setGoalCreated(true)
   }
 
   async function handleComment(e: React.FormEvent) {
@@ -174,6 +188,24 @@ export default function ProposalDetailScreen() {
           {proposal.outcome === 'passed' && 'Passed'}
           {proposal.outcome === 'failed' && 'Failed — quorum not reached'}
           {proposal.outcome === 'withdrawn' && 'Withdrawn'}
+        </div>
+      )}
+
+      {/* Proposal → Goal bridge */}
+      {proposal.outcome === 'passed' && canCreateGoal && !goalCreated && (
+        <div className="card border-forest-700/40 bg-forest-950/40 mb-4">
+          <p className="text-xs text-gray-400 mb-2">This proposal passed — create a goal to track execution.</p>
+          <button
+            className="text-sm text-forest-400 hover:text-forest-300 font-semibold"
+            onClick={handleCreateGoalFromProposal}
+          >
+            + Create Goal from this Proposal
+          </button>
+        </div>
+      )}
+      {goalCreated && (
+        <div className="card border-forest-600/40 mb-4">
+          <p className="text-xs text-forest-400">Goal created</p>
         </div>
       )}
 

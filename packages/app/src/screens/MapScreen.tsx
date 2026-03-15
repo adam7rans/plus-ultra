@@ -11,6 +11,7 @@ import { useIdentity } from '../contexts/IdentityContext'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
 import { useMapData } from '../hooks/useMapData'
 import { useContacts } from '../hooks/useContacts'
+import { useBugOut } from '../hooks/useBugOut'
 import { saveTerritory, addPin, deletePin, addPatrolRoute, deletePatrolRoute } from '../lib/map'
 import { fetchTribeMeta } from '../lib/tribes'
 import { getAuthority, hasAuthority, PINNABLE_ASSET_TYPES } from '@plus-ultra/core'
@@ -202,6 +203,8 @@ export default function MapScreen() {
   const { territory, pins, routes, loading } = useMapData(tribeId)
   const { contacts } = useContacts(tribeId)
   const [tribe, setTribe] = useState<Tribe | null>(null)
+  const { activePlan } = useBugOut(tribeId)
+  const bugOutRouteIds = new Set(activePlan?.routeId ? [activePlan.routeId] : [])
 
   const [mode, setMode] = useState<MapMode>('view')
   const [activeTab, setActiveTab] = useState<ActiveTab>('pins')
@@ -487,8 +490,9 @@ export default function MapScreen() {
                     key={route.id}
                     positions={wps.map(w => [w.lat, w.lng] as [number, number])}
                     pathOptions={{
-                      color: selectedRouteId === route.id ? '#f59e0b' : '#78716c',
-                      weight: selectedRouteId === route.id ? 4 : 2.5,
+                      color: bugOutRouteIds.has(route.id) ? '#dc2626' : (selectedRouteId === route.id ? '#f59e0b' : '#78716c'),
+                      weight: bugOutRouteIds.has(route.id) ? 3 : (selectedRouteId === route.id ? 4 : 2.5),
+                      dashArray: bugOutRouteIds.has(route.id) ? '8 4' : undefined,
                     }}
                     eventHandlers={{ click: () => setSelectedRouteId(prev => prev === route.id ? null : route.id) }}
                   />
@@ -506,6 +510,11 @@ export default function MapScreen() {
             />
             <ClickHandler mode={mode} onMapClick={handleMapClick} />
           </MapContainer>
+        )}
+        {activePlan && bugOutRouteIds.size > 0 && (
+          <div className="absolute top-16 left-2 z-[1000] bg-black/70 text-red-400 text-xs px-2 py-1 rounded">
+            Bug-Out Route Active
+          </div>
         )}
       </div>
 

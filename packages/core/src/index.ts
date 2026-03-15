@@ -114,3 +114,13 @@ export {
   toBigFive, roleFitScore, compatibilityScore,
 } from './lib/psych-engine.js'
 export type { BigFiveScores } from './lib/psych-engine.js'
+
+// Goals & Tasks
+export type {
+  GoalHorizon, GoalStatus, TaskStatus, TaskPriority,
+  TribeGoal, GoalMilestone, TribeTask,
+} from './types/goals.js'
+export { TASK_STATUS_META, TASK_PRIORITY_META, GOAL_STATUS_META } from './types/goals.js'
+
+// Bug-Out Planning
+export type { BugOutStatus, BugOutVehicle, LoadPriority, BugOutPlan } from './types/bugout.js'

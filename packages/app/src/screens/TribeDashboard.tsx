@@ -420,6 +420,18 @@ export default function TribeDashboard() {
               <span className="text-forest-400 text-lg">→</span>
             </Link>
             <Link
+              to="/tribe/$tribeId/bugout"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">🚗</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Bug-Out Plan</div>
+                <div className="text-xs text-gray-400">Evacuation plans, vehicles, and load priorities</div>
+              </div>
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
               to="/tribe/$tribeId/training"
               params={{ tribeId }}
               className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
@@ -496,6 +508,18 @@ export default function TribeDashboard() {
               {activeMuster && (
                 <span className="w-2 h-2 rounded-full bg-warning-400 animate-pulse flex-shrink-0" />
               )}
+              <span className="text-forest-400 text-lg">→</span>
+            </Link>
+            <Link
+              to="/tribe/$tribeId/goals"
+              params={{ tribeId }}
+              className="flex items-center gap-3 card hover:border-forest-600 transition-colors"
+            >
+              <span className="text-2xl">🎯</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-100 text-sm">Goals &amp; Tasks</div>
+                <div className="text-xs text-gray-400">Track tribe objectives and action items</div>
+              </div>
               <span className="text-forest-400 text-lg">→</span>
             </Link>
             <Link

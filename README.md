@@ -28,6 +28,8 @@ Plus Ultra gives tribes the tools to function as self-reliant units:
 - **Resource Consumption Tracking** — log daily consumption rates for food, water, fuel, and ammo. Auto-calculate days until depletion. Depletion status (healthy/warning/critical) surfaced on the dashboard.
 - **Inter-tribe Federation** — encrypted inter-tribe messaging channels, trade/barter proposals, and alliance system. Diplomat role enables inter-tribe diplomacy. Federated threat alerts from allied tribes.
 - **Psychological Profiling** — 18-question self-assessment (10 scenario-based, 8 forced-rank pairs) mapping members across 6 psychological dimensions. Ongoing anonymous peer ratings. Three views: Archetype card, Radar chart, Big Five bars. Surfaces on member profiles, proposals, role assignment, and the tribe dashboard.
+- **Goals & Tasks** — Shared tribe goal layer with horizon classification (immediate / short-term / long-term), milestone tracking, and task assignment. Elder council creates goals; leads create and assign tasks to any member. Progress bars computed from task completion. Proposal-to-goal bridge on passed proposals. My Tasks tab for individual accountability. Full tribe task list filterable by status and priority.
+- **Bug-Out Planning** — Formal evacuation plans tied to patrol routes, vehicles, load priorities, and rally points. Plans progress from draft → ready → active. Activating a plan broadcasts a `bug_out` alert to all tribe members and highlights the designated route in red/dashed on the map with a legend overlay. Elder council manages plans; deactivation returns map to normal.
 
 ---
 
@@ -63,7 +65,7 @@ User action
 
 Gun writes are always fire-and-forget. The app never blocks on Gun acks — no relay = no problem, data is in IDB.
 
-### IDB Schema (v15)
+### IDB Schema (v21)
 
 | Store | Key Format | Purpose |
 |-------|------------|---------|
@@ -95,6 +97,15 @@ Gun writes are always fire-and-forget. The app never blocks on Gun acks — no r
 | `federation-trades` | `channelId:proposalId` | Inter-tribe trade proposals |
 | `psych-profiles` | `tribeId:memberPub` | Psychological profiles |
 | `peer-ratings` | `tribeId:ratedPub:weekHash` | Anonymous peer ratings (local dedup) |
+| `muster-calls` | `tribeId:musterId` | Roll call / muster events |
+| `muster-responses` | `musterId:memberPub` | Member responses to musters |
+| `production-log` | `tribeId:entryId` | Production tracking entries |
+| `external-contacts` | `tribeId:id` | External contacts (doctors, HAM ops, etc.) |
+| `pace-plan` | `tribeId` | PACE comms plan |
+| `tribe-goals` | `tribeId:goalId` | Tribe goals |
+| `goal-milestones` | `tribeId:milestoneId` | Goal milestones |
+| `tribe-tasks` | `tribeId:taskId` | Tasks linked to goals |
+| `bugout-plans` | `tribeId:planId` | Bug-out evacuation plans |
 
 ### Cryptography
 
@@ -332,6 +343,8 @@ Local 2-user sync fully validated on macOS (Tauri + Chrome against local Gun rel
 | Resource consumption tracking (burn rate, depletion) | ✅ |
 | Inter-tribe federation (messaging, trade, alliances) | ✅ |
 | Psychological profiling (quiz, peer ratings, archetypes) | ✅ |
+| Goals & tasks (tribe objectives, task assignment, progress) | ✅ |
+| Bug-out planning (vehicles, load priorities, route activation) | ✅ |
 | Real-time cross-context sync (Tauri ↔ Chrome) | ✅ Validated |
 | Data persistence across restarts (IDB) | ✅ |
 | PWA (offline-capable, installable) | ✅ |
