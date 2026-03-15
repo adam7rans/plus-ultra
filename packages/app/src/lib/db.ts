@@ -193,6 +193,10 @@ export interface AppDB {
     key: string   // tribeId
     value: unknown
   }
+  'member-infra-status': {
+    key: string   // `${tribeId}:${memberPub}`
+    value: unknown
+  }
 }
 
 let _db: IDBPDatabase<AppDB> | null = null
@@ -204,7 +208,7 @@ export function closeDB(): void {
 
 export async function getDB(): Promise<IDBPDatabase<AppDB>> {
   if (_db) return _db
-  _db = await openDB<AppDB>('plus-ultra', 24, {
+  _db = await openDB<AppDB>('plus-ultra', 25, {
     blocked() {
       // Another tab has the DB open at an older version — force it to close
       // so our upgrade can proceed (stale tab will reload automatically)
@@ -330,6 +334,9 @@ export async function getDB(): Promise<IDBPDatabase<AppDB>> {
       }
       if (oldVersion < 24) {
         db.createObjectStore('grid-state')
+      }
+      if (oldVersion < 25) {
+        db.createObjectStore('member-infra-status')
       }
     },
   })

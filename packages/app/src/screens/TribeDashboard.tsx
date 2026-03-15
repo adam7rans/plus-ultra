@@ -35,6 +35,13 @@ import { useGridState } from '../hooks/useGridState'
 import GridDownBanner from '../components/GridDownBanner'
 import DrillChecklistCard from '../components/DrillChecklistCard'
 import DeclareGridDownModal from '../components/DeclareGridDownModal'
+import { useOfflineStage } from '../hooks/useOfflineStage'
+import { useInfraStatus } from '../hooks/useInfraStatus'
+import { useBugOut } from '../hooks/useBugOut'
+import OfflineStageBanner from '../components/OfflineStageBanner'
+import InfraChecklistCard from '../components/InfraChecklistCard'
+import BugOutCTA from '../components/BugOutCTA'
+import { INFRA_ITEMS } from '@plus-ultra/core'
 
 export default function TribeDashboard() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId' })
@@ -106,6 +113,29 @@ export default function TribeDashboard() {
   const memberName = myMember?.displayName ?? identity?.pub?.slice(0, 8) ?? 'Unknown'
   const { activeMuster, myResponse, initiateMuster } = useRollCall(tribeId, memberName)
   const { gridState, isGridDown, setGridDown, clearGridDown } = useGridState(tribeId, memberName)
+
+  // Offline detection + infra status
+  const { offlineStage, offlineSince } = useOfflineStage()
+  const { myFailingItems, tribeStatuses, toggleItem } = useInfraStatus(
+    tribeId,
+    identity?.pub ?? '',
+    memberName,
+  )
+  const { activePlan: activeBugOutPlan } = useBugOut(tribeId)
+
+  // Stage 5: auto-declare grid-down for leaders (only if not already grid-down)
+  useEffect(() => {
+    if (offlineStage === 5 && canInitiateMuster && !isGridDown) {
+      void setGridDown({ days: 0, message: 'Auto-declared: 24hr relay outage' })
+    }
+  }, [offlineStage, canInitiateMuster, isGridDown, setGridDown])
+
+  // Stage 4: surface PACE plan — handled via banner text; no additional effect needed
+
+  // Bug-out CTA: stage 5 + all 11 infra items failing
+  const allInfraFailing = INFRA_ITEMS.every(item => myFailingItems.includes(item))
+  const showBugOutCTA = offlineStage === 5 && allInfraFailing
+
   const showMusterOverlay =
     activeMuster !== null &&
     !myResponse &&
@@ -304,6 +334,24 @@ export default function TribeDashboard() {
           {/* Grid-down drill checklist */}
           {activeMuster?.reason === 'grid_down_drill' && (
             <DrillChecklistCard tribeId={tribeId} />
+          )}
+
+          {/* Offline stage banner (stages 1–5) */}
+          <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
+
+          {/* Infrastructure failure checklist (stage 3+) */}
+          {offlineStage >= 3 && identity && (
+            <InfraChecklistCard
+              myFailingItems={myFailingItems}
+              tribeStatuses={tribeStatuses}
+              myPub={identity.pub}
+              onToggle={toggleItem}
+            />
+          )}
+
+          {/* Bug-out CTA (stage 5 + all infra failing) */}
+          {showBugOutCTA && (
+            <BugOutCTA tribeId={tribeId} activePlan={activeBugOutPlan} />
           )}
 
           {/* Survivability score */}

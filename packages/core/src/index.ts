@@ -137,3 +137,11 @@ export { computeCompositeReadiness } from './lib/readiness.js'
 
 // Grid-Down operational mode
 export type { GridMode, GridState } from './types/grid-state.js'
+
+// Offline stage detection
+export type { OfflineStage } from './types/offline.js'
+export { OFFLINE_STAGE_THRESHOLDS_MS } from './types/offline.js'
+
+// Infrastructure failure status
+export type { InfraItem, MemberInfraStatus } from './types/infra-status.js'
+export { INFRA_ITEMS, INFRA_ITEM_LABELS } from './types/infra-status.js'

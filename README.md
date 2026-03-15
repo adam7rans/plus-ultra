@@ -39,6 +39,9 @@ Plus Ultra gives tribes the tools to function as self-reliant units:
 - **Financial Tracking** — Shared expense ledger with category icons, paid-by, and split-among tracking. Fund contributions. Member balance view (who owes whom). Grid-up feature; de-emphasized in grid-down mode.
 - **Composite Readiness Score** — Six-dimension operational readiness report (personnel, supply, infrastructure, comms, coordination, cohesion) weighted to a 0–100 composite score with letter grade. Critical gaps listed with suggested actions. Replaces the simpler survivability score widget on the dashboard.
 - **Grid-Down Operational Mode** — Declare tribe-wide grid-down status (real or simulation/drill). Persistent red/amber banner on the dashboard. Nav cards reorder automatically to surface crisis-critical screens (Roll Call, PACE, Inventory, Map, Bug-Out first). Dimmed cards for grid-up-only features (Proposals, Finances, Federation). Drill mode triggered via muster system (`grid_down_drill` reason) with a 4-item checklist card. Auto-expires after 3/5/7 days or manual clear. Gun-synced tribe-wide.
+- **Automatic Offline Detection** — Relay ping every 60s (not `navigator.onLine`). Five escalating stages based on how long the relay has been unreachable: silent offline dot (5 min), yellow warning banner (3 hr), orange banner + infrastructure checklist (6 hr), red banner + PACE surfaced (12 hr), full grid-down auto-declared (24 hr). `offlineSince` timestamp persisted in `localStorage` so stage survives page reloads. On relay restore, queued messages flush automatically.
+- **Infrastructure Failure Checklist** — Appears at stage 3+ (6 hr offline). Members independently tap which of 11 infrastructure items are failing around them: Water, Power, Stores, TV/Broadcast, Radio, Cell Service, Gas/Fuel, Banks/ATMs, Hospitals, Police/Fire, Roads. Reports stored per-member in IDB + Gun under `tribes/{tribeId}/member-infra-status`. Collapsible "Tribe Reports" section shows every other member's checked items in real time.
+- **Bug-Out CTA** — When all 11 infrastructure items are failing AND the device has been offline 24+ hours, a prominent "BUG OUT NOW" card appears on the dashboard linking directly to the active bug-out plan.
 
 ---
 
@@ -74,7 +77,7 @@ User action
 
 Gun writes are always fire-and-forget. The app never blocks on Gun acks — no relay = no problem, data is in IDB.
 
-### IDB Schema (v24)
+### IDB Schema (v25)
 
 | Store | Key Format | Purpose |
 |-------|------------|---------|
@@ -119,6 +122,7 @@ Gun writes are always fire-and-forget. The app never blocks on Gun acks — no r
 | `tribe-expenses` | `tribeId:expenseId` | Shared expense ledger |
 | `tribe-contributions` | `tribeId:contributionId` | Fund contributions |
 | `grid-state` | tribeId | Grid-down operational state (mode, expiry, simulation flag) |
+| `member-infra-status` | `tribeId:memberPub` | Per-member infrastructure failure reports (11 items) |
 
 ### Cryptography
 
@@ -367,6 +371,9 @@ Local 2-user sync fully validated on macOS (Tauri + Chrome against local Gun rel
 | Financial tracking (shared expenses, fund, balances) | ✅ |
 | Composite readiness score (6-dimension, 0–100) | ✅ |
 | Grid-down operational mode (declare, banner, reorder, drill) | ✅ |
+| Automatic offline detection (5-stage relay ping, localStorage) | ✅ |
+| Infrastructure failure checklist (11 items, tribe reports) | ✅ |
+| Bug-out CTA (full-infra + 24hr offline trigger) | ✅ |
 | Real-time cross-context sync (Tauri ↔ Chrome) | ✅ Validated |
 | Data persistence across restarts (IDB) | ✅ |
 | PWA (offline-capable, installable) | ✅ |
