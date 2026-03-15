@@ -59,7 +59,8 @@ export async function sendTribeMessage(
   await cacheMessage(message)
 }
 
-export async function sendDM(
+/** Encrypt and sign a DM message without writing to Gun or IDB. Safe to queue offline. */
+export async function prepareDM(
   tribeId: string,
   senderId: string,
   senderPair: { pub: string; priv: string; epub: string; epriv: string },
@@ -74,7 +75,6 @@ export async function sendDM(
   const sentAt = Date.now()
   const channelId = dmChannelId(senderId, recipientPub)
 
-  // Encrypt content for DM
   const sharedSecret = await (SEA as unknown as {
     secret: (epub: string, pair: unknown) => Promise<string>
   }).secret(recipientEpub, senderPair)
@@ -87,7 +87,7 @@ export async function sendDM(
     sign: (data: string, pair: unknown) => Promise<string>
   }).sign(content.slice(0, 512), senderPair) ?? ''
 
-  const message: Message = {
+  return {
     id,
     tribeId,
     channelId,
@@ -99,15 +99,29 @@ export async function sendDM(
     sig,
     ...(replyTo ? { replyTo } : {}),
   }
+}
 
-  await writeDM(channelId, message)
+export async function sendDM(
+  tribeId: string,
+  senderId: string,
+  senderPair: { pub: string; priv: string; epub: string; epriv: string },
+  recipientPub: string,
+  recipientEpub: string,
+  type: Message['type'],
+  content: string,
+  mimeType?: string,
+  replyTo?: string
+): Promise<Message> {
+  const message = await prepareDM(tribeId, senderId, senderPair, recipientPub, recipientEpub, type, content, mimeType, replyTo)
+
+  await writeDM(message.channelId, message)
   await cacheMessage(message)
 
   // Fire push notification for the recipient (grid-up only, fire and forget)
   void triggerPush(
     tribeId, recipientPub, '💬 New Message',
     `${content.slice(0, 100)}`,
-    { url: `/tribe/${tribeId}/dm/${senderId}`, tag: `dm-${channelId}` }
+    { url: `/tribe/${tribeId}/dm/${senderId}`, tag: `dm-${message.channelId}` }
   )
 
   return message

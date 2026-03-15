@@ -167,8 +167,9 @@ export function subscribeToNotifications(
 
   ref.map().once(handleNotif)
   ref.map().on(handleNotif)
+  const poll = setInterval(() => ref.map().once(handleNotif), 2000)
 
-  return () => { ref.map().off() }
+  return () => { clearInterval(poll); ref.map().off() }
 }
 
 function sorted(map: Map<string, Notification>): Notification[] {

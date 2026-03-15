@@ -69,8 +69,10 @@ export function subscribeToInventory(
 
   ref.map().once(handleItem)
   ref.map().on(handleItem)
+  const poll = setInterval(() => ref.map().once(handleItem), 2000)
 
   return () => {
+    clearInterval(poll)
     ref.map().off()
   }
 }

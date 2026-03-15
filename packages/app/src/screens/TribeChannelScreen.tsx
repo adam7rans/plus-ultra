@@ -3,7 +3,7 @@ import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useTribeChannel } from '../hooks/useChannel'
 import { sendTribeMessage, queueMessage, flushQueue, addTribeReaction, markChannelRead } from '../lib/messaging'
-import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { useOfflineStage } from '../hooks/useOfflineStage'
 import { useTribe } from '../contexts/TribeContext'
 import { fetchTribeMeta } from '../lib/tribes'
 import MessageBubble from '../components/MessageBubble'
@@ -15,7 +15,7 @@ export default function TribeChannelScreen() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId/channel' })
   const { identity } = useIdentity()
   const { members } = useTribe()
-  const online = useOnlineStatus()
+  const { offlineStage } = useOfflineStage()
   const { messages, loading } = useTribeChannel(tribeId)
   const [tribe, setTribe] = useState<Tribe | null>(null)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
@@ -25,16 +25,10 @@ export default function TribeChannelScreen() {
     fetchTribeMeta(tribeId).then(setTribe)
   }, [tribeId])
 
-  // Drain queued messages on mount (if online) and whenever we come back online
+  // Drain queued messages when relay becomes reachable
   useEffect(() => {
-    if (online) void flushQueue()
-  }, [online])
-
-  useEffect(() => {
-    function handleOnline() { void flushQueue() }
-    window.addEventListener('online', handleOnline)
-    return () => window.removeEventListener('online', handleOnline)
-  }, [])
+    if (offlineStage === 0) void flushQueue()
+  }, [offlineStage])
 
   // Auto-scroll to bottom on new messages + mark as read
   useEffect(() => {
@@ -50,7 +44,7 @@ export default function TribeChannelScreen() {
   async function handleSendText(text: string) {
     if (!identity) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
-    if (online) {
+    if (offlineStage === 0) {
       await sendTribeMessage(tribeId, identity.pub, pair, 'text', text, undefined, replyingTo?.id)
     } else {
       await queueMessage({
@@ -66,14 +60,30 @@ export default function TribeChannelScreen() {
   async function handleSendVoice(base64: string, mimeType: string) {
     if (!identity) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
-    await sendTribeMessage(tribeId, identity.pub, pair, 'voice', base64, mimeType)
+    if (offlineStage === 0) {
+      await sendTribeMessage(tribeId, identity.pub, pair, 'voice', base64, mimeType)
+    } else {
+      await queueMessage({
+        id: nanoid(), tribeId, channelId: 'tribe-wide',
+        senderId: identity.pub, type: 'voice', content: base64,
+        mimeType, sentAt: Date.now(), sig: '',
+      })
+    }
     setReplyingTo(null)
   }
 
   async function handleSendPhoto(base64: string, mimeType: string) {
     if (!identity) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
-    await sendTribeMessage(tribeId, identity.pub, pair, 'photo', base64, mimeType)
+    if (offlineStage === 0) {
+      await sendTribeMessage(tribeId, identity.pub, pair, 'photo', base64, mimeType)
+    } else {
+      await queueMessage({
+        id: nanoid(), tribeId, channelId: 'tribe-wide',
+        senderId: identity.pub, type: 'photo', content: base64,
+        mimeType, sentAt: Date.now(), sig: '',
+      })
+    }
     setReplyingTo(null)
   }
 
@@ -94,7 +104,7 @@ export default function TribeChannelScreen() {
             {tribe?.name ?? 'Tribe Channel'}
           </div>
           <div className="text-xs text-gray-500">
-            {online ? `${members.length} members` : '⚡ Offline — messages queued'}
+            {offlineStage === 0 ? `${members.length} members` : '⚡ Offline — messages queued'}
           </div>
         </div>
       </div>

@@ -182,8 +182,10 @@ export function subscribeToEvents(
 
   ref.map().once(handleEvent)
   ref.map().on(handleEvent)
+  const poll = setInterval(() => ref.map().once(handleEvent), 2000)
 
   return () => {
+    clearInterval(poll)
     ref.map().off()
   }
 }

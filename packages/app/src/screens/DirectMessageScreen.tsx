@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useDMChannel } from '../hooks/useChannel'
-import { sendDM, decryptDMContent, addDMReaction, markChannelRead } from '../lib/messaging'
-import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { sendDM, prepareDM, queueMessage, flushQueue, decryptDMContent, addDMReaction, markChannelRead } from '../lib/messaging'
+import { useOfflineStage } from '../hooks/useOfflineStage'
 import { useTribe } from '../contexts/TribeContext'
 import MessageBubble from '../components/MessageBubble'
 import MessageInput from '../components/MessageInput'
@@ -13,7 +13,7 @@ export default function DirectMessageScreen() {
   const { tribeId, memberPub } = useParams({ from: '/tribe/$tribeId/dm/$memberPub' })
   const { identity } = useIdentity()
   const { members } = useTribe()
-  const online = useOnlineStatus()
+  const { offlineStage } = useOfflineStage()
   const { messages, loading, inject, channelId } = useDMChannel(identity?.pub ?? '', memberPub)
   const [decrypted, setDecrypted] = useState<Map<string, string>>(new Map())
   const sentPlaintexts = useRef<Map<string, string>>(new Map())
@@ -54,6 +54,11 @@ export default function DirectMessageScreen() {
     void decryptAll()
   }, [messages, identity, recipient])
 
+  // Drain queued DMs when relay becomes reachable
+  useEffect(() => {
+    if (offlineStage === 0) void flushQueue()
+  }, [offlineStage])
+
   // Auto-scroll to bottom + mark as read
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -64,10 +69,18 @@ export default function DirectMessageScreen() {
     if (!identity || !recipient?.epub) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
     const recipientEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
-    const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'text', text, undefined, replyingTo?.id)
-    sentPlaintexts.current.set(msg.id, text)
-    inject(msg)
-    setDecrypted(prev => new Map(prev).set(msg.id, text))
+    if (offlineStage === 0) {
+      const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'text', text, undefined, replyingTo?.id)
+      sentPlaintexts.current.set(msg.id, text)
+      inject(msg)
+      setDecrypted(prev => new Map(prev).set(msg.id, text))
+    } else {
+      const msg = await prepareDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'text', text, undefined, replyingTo?.id)
+      await queueMessage(msg)
+      sentPlaintexts.current.set(msg.id, text)
+      inject(msg)
+      setDecrypted(prev => new Map(prev).set(msg.id, text))
+    }
     setReplyingTo(null)
   }
 
@@ -75,10 +88,18 @@ export default function DirectMessageScreen() {
     if (!identity || !recipient?.epub) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
     const recipientEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
-    const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'voice', base64, mimeType)
-    sentPlaintexts.current.set(msg.id, base64)
-    inject(msg)
-    setDecrypted(prev => new Map(prev).set(msg.id, base64))
+    if (offlineStage === 0) {
+      const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'voice', base64, mimeType)
+      sentPlaintexts.current.set(msg.id, base64)
+      inject(msg)
+      setDecrypted(prev => new Map(prev).set(msg.id, base64))
+    } else {
+      const msg = await prepareDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'voice', base64, mimeType)
+      await queueMessage(msg)
+      sentPlaintexts.current.set(msg.id, base64)
+      inject(msg)
+      setDecrypted(prev => new Map(prev).set(msg.id, base64))
+    }
     setReplyingTo(null)
   }
 
@@ -86,10 +107,18 @@ export default function DirectMessageScreen() {
     if (!identity || !recipient?.epub) return
     const pair = identity as { pub: string; priv: string; epub: string; epriv: string }
     const recipientEpub = (recipient as TribeMember & { epub?: string }).epub ?? ''
-    const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'photo', base64, mimeType)
-    sentPlaintexts.current.set(msg.id, base64)
-    inject(msg)
-    setDecrypted(prev => new Map(prev).set(msg.id, base64))
+    if (offlineStage === 0) {
+      const msg = await sendDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'photo', base64, mimeType)
+      sentPlaintexts.current.set(msg.id, base64)
+      inject(msg)
+      setDecrypted(prev => new Map(prev).set(msg.id, base64))
+    } else {
+      const msg = await prepareDM(tribeId, identity.pub, pair, memberPub, recipientEpub, 'photo', base64, mimeType)
+      await queueMessage(msg)
+      sentPlaintexts.current.set(msg.id, base64)
+      inject(msg)
+      setDecrypted(prev => new Map(prev).set(msg.id, base64))
+    }
     setReplyingTo(null)
   }
 
@@ -110,7 +139,7 @@ export default function DirectMessageScreen() {
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-gray-100">{recipientName}</div>
           <div className="text-xs text-gray-500">
-            🔒 End-to-end encrypted {!online && '· ⚡ Offline'}
+            🔒 End-to-end encrypted {offlineStage > 0 && '· ⚡ Offline'}
           </div>
         </div>
       </div>

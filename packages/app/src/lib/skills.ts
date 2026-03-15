@@ -180,12 +180,12 @@ export function subscribeToAllSkills(
     callback(Array.from(skillsMap.values()))
   }
 
-  // once() requests current state from relay
   ref.map().once(handleSkill)
-  // on() for live updates
   ref.map().on(handleSkill)
+  const poll = setInterval(() => ref.map().once(handleSkill), 2000)
 
   return () => {
+    clearInterval(poll)
     ref.map().off()
   }
 }
