@@ -69,7 +69,7 @@ export async function createProposal(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `proposals:${tribeId}:${proposal.id}`,
+      id: `proposals:${tribeId}:${proposal.id}:${Date.now()}`,
       gunStore: 'proposals', tribeId, recordKey: proposal.id,
       payload: proposalPayload,
       queuedAt: Date.now(),
@@ -105,7 +105,7 @@ export async function castVote(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `proposal-votes:${tribeId}:${proposalId}:${memberPub}`,
+      id: `proposal-votes:${tribeId}:${proposalId}:${memberPub}:${Date.now()}`,
       gunPath: ['tribes', tribeId, 'proposal-votes', proposalId, memberPub],
       gunStore: 'proposal-votes', tribeId, recordKey: `${proposalId}:${memberPub}`,
       payload: votePayload,
@@ -140,7 +140,7 @@ export async function addComment(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `proposal-comments:${tribeId}:${comment.id}`,
+      id: `proposal-comments:${tribeId}:${comment.id}:${Date.now()}`,
       gunStore: 'proposal-comments', tribeId, recordKey: comment.id,
       payload: commentPayload,
       queuedAt: Date.now(),
@@ -178,7 +178,7 @@ export async function withdrawProposal(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `proposals:${tribeId}:${proposalId}`,
+      id: `proposals:${tribeId}:${proposalId}:${Date.now()}`,
       gunStore: 'proposals', tribeId, recordKey: proposalId,
       payload: withdrawPayload,
       queuedAt: Date.now(),
@@ -215,7 +215,7 @@ export async function closeProposal(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `proposals:${tribeId}:${proposalId}`,
+      id: `proposals:${tribeId}:${proposalId}:${Date.now()}`,
       gunStore: 'proposals', tribeId, recordKey: proposalId,
       payload: closePayload,
       queuedAt: Date.now(),

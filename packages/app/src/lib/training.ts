@@ -1,6 +1,8 @@
 import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { TrainingSession, MemberSkill, SkillRole, ProficiencyLevel } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ───────────────────
@@ -71,6 +73,15 @@ export async function logTrainingSession(
 
   gun.get('tribes').get(tribeId).get('training-sessions').get(session.id).put(gunPayload)
 
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `training-sessions:${tribeId}:${session.id}:${Date.now()}`,
+      gunStore: 'training-sessions', tribeId, recordKey: session.id,
+      payload: gunPayload,
+      queuedAt: Date.now(),
+    })
+  }
+
   return session
 }
 
@@ -102,6 +113,15 @@ export async function updateTrainingSession(
   } as unknown as Record<string, unknown>)
 
   gun.get('tribes').get(tribeId).get('training-sessions').get(sessionId).put(gunPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `training-sessions:${tribeId}:${sessionId}:${Date.now()}`,
+      gunStore: 'training-sessions', tribeId, recordKey: sessionId,
+      payload: gunPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function deleteTrainingSession(
@@ -148,6 +168,15 @@ export async function approveLevelUp(
     .get('skills')
     .get(`${memberId}__${role}`)
     .put(gunPayload as Record<string, unknown>)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `skills:${tribeId}:${memberId}__${role}:${Date.now()}`,
+      gunStore: 'skills', tribeId, recordKey: `${memberId}__${role}`,
+      payload: gunPayload as Record<string, unknown>,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Subscription ─────────────────────────────────────────────────────────────

@@ -57,7 +57,7 @@ export async function addContact(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `external-contacts:${tribeId}:${contact.id}`,
+      id: `external-contacts:${tribeId}:${contact.id}:${Date.now()}`,
       gunStore: 'external-contacts', tribeId, recordKey: contact.id,
       payload: contactPayload,
       queuedAt: Date.now(),
@@ -87,7 +87,7 @@ export async function updateContact(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `external-contacts:${tribeId}:${contactId}`,
+      id: `external-contacts:${tribeId}:${contactId}:${Date.now()}`,
       gunStore: 'external-contacts', tribeId, recordKey: contactId,
       payload: updatePayload,
       queuedAt: Date.now(),

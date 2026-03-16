@@ -34,7 +34,7 @@ export async function updateAsset(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `inventory:${tribeId}:${asset}`,
+      id: `inventory:${tribeId}:${asset}:${Date.now()}`,
       gunStore: 'inventory', tribeId, recordKey: asset,
       payload: entry as unknown as Record<string, unknown>,
       queuedAt: Date.now(),

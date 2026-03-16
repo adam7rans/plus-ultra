@@ -275,7 +275,7 @@ async function writeMember(tribeId: string, member: TribeMember): Promise<void> 
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `members:${tribeId}:${member.pubkey}`,
+      id: `members:${tribeId}:${member.pubkey}:${Date.now()}`,
       gunStore: 'members', tribeId, recordKey: member.pubkey,
       payload: memberPayload,
       queuedAt: Date.now(),
@@ -404,7 +404,7 @@ export async function updateMemberProfile(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `members:${tribeId}:${pubkey}`,
+      id: `members:${tribeId}:${pubkey}:${Date.now()}`,
       gunStore: 'members', tribeId, recordKey: pubkey,
       payload: profilePayload,
       queuedAt: Date.now(),
@@ -429,7 +429,7 @@ export async function setDiplomatStatus(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `members:${tribeId}:${targetPubkey}`,
+      id: `members:${tribeId}:${targetPubkey}:${Date.now()}`,
       gunStore: 'members', tribeId, recordKey: targetPubkey,
       payload: diplomatPayload,
       queuedAt: Date.now(),
@@ -454,7 +454,7 @@ export async function setAuthorityRole(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `members:${tribeId}:${targetPubkey}`,
+      id: `members:${tribeId}:${targetPubkey}:${Date.now()}`,
       gunStore: 'members', tribeId, recordKey: targetPubkey,
       payload: rolePayload,
       queuedAt: Date.now(),
@@ -506,7 +506,7 @@ export async function updateTribeMeta(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `tribe-meta:${tribeId}`,
+      id: `tribe-meta:${tribeId}:${Date.now()}`,
       gunPath: ['tribes', tribeId],
       gunStore: 'tribe-meta', tribeId, recordKey: tribeId,
       payload: gunPayload,
@@ -597,7 +597,7 @@ export async function updateMemberHealth(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `members:${tribeId}:${targetPub}`,
+      id: `members:${tribeId}:${targetPub}:${Date.now()}`,
       gunStore: 'members', tribeId, recordKey: targetPub,
       payload: healthPayload,
       queuedAt: Date.now(),

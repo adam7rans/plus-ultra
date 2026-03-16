@@ -1,6 +1,8 @@
 import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { MemberCertification, SkillRole } from '@plus-ultra/core'
 import { approveLevelUp } from './training'
 
@@ -74,6 +76,15 @@ export async function addCertification(
 
   gun.get('tribes').get(tribeId).get('certifications').get(cert.id).put(gunPayload)
 
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `certifications:${tribeId}:${cert.id}:${Date.now()}`,
+      gunStore: 'certifications', tribeId, recordKey: cert.id,
+      payload: gunPayload,
+      queuedAt: Date.now(),
+    })
+  }
+
   return cert
 }
 
@@ -96,6 +107,15 @@ export async function updateCertification(
   } as unknown as Record<string, unknown>)
 
   gun.get('tribes').get(tribeId).get('certifications').get(certId).put(gunPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `certifications:${tribeId}:${certId}:${Date.now()}`,
+      gunStore: 'certifications', tribeId, recordKey: certId,
+      payload: gunPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function verifyCertification(
@@ -122,6 +142,15 @@ export async function verifyCertification(
   } as unknown as Record<string, unknown>)
 
   gun.get('tribes').get(tribeId).get('certifications').get(certId).put(gunPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `certifications:${tribeId}:${certId}:${Date.now()}`,
+      gunStore: 'certifications', tribeId, recordKey: certId,
+      payload: gunPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   // Auto-elevate to verified_expert if cert links to a role
   if (existing.linkedRole !== null) {

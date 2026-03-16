@@ -1,6 +1,8 @@
 import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { ProductionEntry, AssetType } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -55,10 +57,20 @@ export async function logProductionEntry(
   const db = await getDB()
   await db.put('production-log', entry, `${tribeId}:${entry.id}`)
 
+  const productionPayload = gunEscape(entry as unknown as Record<string, unknown>)
   gun
     .get('tribes').get(tribeId)
     .get('production').get(entry.id)
-    .put(gunEscape(entry as unknown as Record<string, unknown>))
+    .put(productionPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `production:${tribeId}:${entry.id}:${Date.now()}`,
+      gunStore: 'production', tribeId, recordKey: entry.id,
+      payload: productionPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   return entry
 }

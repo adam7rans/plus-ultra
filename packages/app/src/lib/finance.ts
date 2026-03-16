@@ -1,6 +1,8 @@
 import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { TribeExpense, FundContribution, ExpenseCategory } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -107,8 +109,18 @@ export async function logExpense(
 
   const db = await getDB()
   await db.put('tribe-expenses', expense, `${tribeId}:${id}`)
+  const expensePayload = gunEscape(expenseToGunRecord(expense))
   gun.get('tribes').get(tribeId).get('expenses').get(id)
-    .put(gunEscape(expenseToGunRecord(expense)))
+    .put(expensePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `expenses:${tribeId}:${id}:${Date.now()}`,
+      gunStore: 'expenses', tribeId, recordKey: id,
+      payload: expensePayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   return id
 }
@@ -143,8 +155,18 @@ export async function logContribution(
 
   const db = await getDB()
   await db.put('tribe-contributions', contribution, `${tribeId}:${id}`)
+  const contributionPayload = gunEscape(contribution as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('contributions').get(id)
-    .put(gunEscape(contribution as unknown as Record<string, unknown>))
+    .put(contributionPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `contributions:${tribeId}:${id}:${Date.now()}`,
+      gunStore: 'contributions', tribeId, recordKey: id,
+      payload: contributionPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   return id
 }

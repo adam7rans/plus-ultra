@@ -2,6 +2,8 @@ import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
 import { sendAlert, notify } from './notifications'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { BugOutPlan } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -43,8 +45,18 @@ export async function saveBugOutPlan(
   const db = await getDB()
   await db.put('bugout-plans', full, `${tribeId}:${id}`)
 
+  const bugoutPayload = gunEscape(full as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('bugout-plans').get(id)
-    .put(gunEscape(full as unknown as Record<string, unknown>))
+    .put(bugoutPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `bugout-plans:${tribeId}:${id}:${Date.now()}`,
+      gunStore: 'bugout-plans', tribeId, recordKey: id,
+      payload: bugoutPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   return id
 }
@@ -75,8 +87,18 @@ export async function activateBugOutPlan(
   }
 
   await db.put('bugout-plans', updated, `${tribeId}:${planId}`)
+  const activatePayload = gunEscape(updated as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('bugout-plans').get(planId)
-    .put(gunEscape(updated as unknown as Record<string, unknown>))
+    .put(activatePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `bugout-plans:${tribeId}:${planId}:${Date.now()}`,
+      gunStore: 'bugout-plans', tribeId, recordKey: planId,
+      payload: activatePayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   await sendAlert(tribeId, 'bug_out', `Bug-Out plan activated: ${plan.name}`, activatorPub, '')
   await notify(tribeId, {

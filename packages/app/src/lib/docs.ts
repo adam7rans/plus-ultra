@@ -1,6 +1,8 @@
 import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { TribeDoc, DocCategory, DocStatus } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -97,8 +99,18 @@ export async function createDoc(
 
   const db = await getDB()
   await db.put('tribe-docs', doc, `${tribeId}:${id}`)
+  const docPayload = gunEscape(toGunRecord(doc))
   gun.get('tribes').get(tribeId).get('docs').get(id)
-    .put(gunEscape(toGunRecord(doc)))
+    .put(docPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `docs:${tribeId}:${id}:${Date.now()}`,
+      gunStore: 'docs', tribeId, recordKey: id,
+      payload: docPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   return id
 }
@@ -123,8 +135,18 @@ export async function updateDoc(
   }
 
   await db.put('tribe-docs', updated, `${tribeId}:${docId}`)
+  const updateDocPayload = gunEscape(toGunRecord(updated))
   gun.get('tribes').get(tribeId).get('docs').get(docId)
-    .put(gunEscape(toGunRecord(updated)))
+    .put(updateDocPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `docs:${tribeId}:${docId}:${Date.now()}`,
+      gunStore: 'docs', tribeId, recordKey: docId,
+      payload: updateDocPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function approveDoc(
@@ -146,8 +168,18 @@ export async function approveDoc(
   }
 
   await db.put('tribe-docs', updated, `${tribeId}:${docId}`)
+  const approveDocPayload = gunEscape(toGunRecord(updated))
   gun.get('tribes').get(tribeId).get('docs').get(docId)
-    .put(gunEscape(toGunRecord(updated)))
+    .put(approveDocPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `docs:${tribeId}:${docId}:${Date.now()}`,
+      gunStore: 'docs', tribeId, recordKey: docId,
+      payload: approveDocPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function archiveDoc(tribeId: string, docId: string): Promise<void> {
@@ -163,8 +195,18 @@ export async function archiveDoc(tribeId: string, docId: string): Promise<void> 
   }
 
   await db.put('tribe-docs', updated, `${tribeId}:${docId}`)
+  const archiveDocPayload = gunEscape(toGunRecord(updated))
   gun.get('tribes').get(tribeId).get('docs').get(docId)
-    .put(gunEscape(toGunRecord(updated)))
+    .put(archiveDocPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `docs:${tribeId}:${docId}:${Date.now()}`,
+      gunStore: 'docs', tribeId, recordKey: docId,
+      payload: archiveDocPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Subscription ─────────────────────────────────────────────────────────────

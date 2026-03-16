@@ -1,5 +1,7 @@
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { TribePacePlan, PaceMethod, CheckInSchedule, RallyPoint } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -53,9 +55,18 @@ export async function savePacePlan(
   await db.put('pace-plan', plan, tribeId)
 
   // Single-node Gun put (not a map — plan is one record per tribe)
-  gun.get('tribes').get(tribeId).get('pace-plan').put(
-    gunEscape(plan as unknown as Record<string, unknown>) as unknown as Record<string, unknown>
-  )
+  const pacePlanPayload = gunEscape(plan as unknown as Record<string, unknown>) as unknown as Record<string, unknown>
+  gun.get('tribes').get(tribeId).get('pace-plan').put(pacePlanPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `pace-plan:${tribeId}:${Date.now()}`,
+      gunPath: ['tribes', tribeId, 'pace-plan'],
+      gunStore: 'pace-plan', tribeId, recordKey: tribeId,
+      payload: pacePlanPayload as Record<string, unknown>,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Subscription ─────────────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import { scoreQuiz, computeArchetype, mergeProfileDimensions } from '@plus-ultra/core'
 import type { PsychProfile, PsychDimensions, PeerRating } from '@plus-ultra/core'
 
@@ -134,8 +136,18 @@ export async function saveQuizResult(
   }
 
   await db.put('psych-profiles', profile, key)
+  const quizPayload = serializeProfile(profile)
   gun.get('tribes').get(tribeId).get('psych-profiles').get(memberPub)
-    .put(serializeProfile(profile))
+    .put(quizPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `psych-profiles:${tribeId}:${memberPub}:${Date.now()}`,
+      gunStore: 'psych-profiles', tribeId, recordKey: memberPub,
+      payload: quizPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   return profile
 }
@@ -196,8 +208,18 @@ export async function submitPeerRating(
   if (existing) {
     const profile = deserializeProfile(existing as Record<string, unknown>)
     if (profile) {
+      const peerRatingPayload = serializeProfile(profile)
       gun.get('tribes').get(tribeId).get('psych-profiles').get(ratedPub)
-        .put(serializeProfile(profile))
+        .put(peerRatingPayload)
+
+      if (getOfflineSince() !== null) {
+        void addPendingSync({
+          id: `psych-profiles:${tribeId}:${ratedPub}:${Date.now()}`,
+          gunStore: 'psych-profiles', tribeId, recordKey: ratedPub,
+          payload: peerRatingPayload,
+          queuedAt: Date.now(),
+        })
+      }
     }
   }
 }
@@ -292,8 +314,18 @@ export async function recordVoteSignal(
   }
 
   await db.put('psych-profiles', updatedProfile, key)
+  const voteSignalPayload = serializeProfile(updatedProfile)
   gun.get('tribes').get(tribeId).get('psych-profiles').get(memberPub)
-    .put(serializeProfile(updatedProfile))
+    .put(voteSignalPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `psych-profiles:${tribeId}:${memberPub}:${Date.now()}`,
+      gunStore: 'psych-profiles', tribeId, recordKey: memberPub,
+      payload: voteSignalPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────────

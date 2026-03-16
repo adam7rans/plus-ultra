@@ -3,6 +3,8 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { updateAsset } from './inventory'
 import { notify } from './notifications'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import { computeBurnRate, getDepletionStatus, DEPLETION_THRESHOLDS } from '@plus-ultra/core'
 import { assetsNeeded, ASSET_BY_KEY } from '@plus-ultra/core'
 import type { ConsumptionEntry, AssetType } from '@plus-ultra/core'
@@ -64,10 +66,20 @@ export async function logConsumption(
   const db = await getDB()
   await db.put('consumption-log', entry, `${tribeId}:${entry.id}`)
 
+  const consumptionPayload = gunEscape(entry as unknown as Record<string, unknown>)
   gun
     .get('tribes').get(tribeId)
     .get('consumption-log').get(entry.id)
-    .put(gunEscape(entry as unknown as Record<string, unknown>))
+    .put(consumptionPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `consumption-log:${tribeId}:${entry.id}:${Date.now()}`,
+      gunStore: 'consumption-log', tribeId, recordKey: entry.id,
+      payload: consumptionPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   // 2. Read current inventory for this asset and auto-decrement
   const invKey = `${tribeId}:${asset}`

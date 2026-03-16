@@ -2,6 +2,8 @@ import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
 import { notify } from './notifications'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { TribeGoal, GoalMilestone, TribeTask, GoalHorizon, TaskStatus, TaskPriority } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -61,8 +63,18 @@ export async function createGoal(
   const db = await getDB()
   await db.put('tribe-goals', goal, `${tribeId}:${id}`)
 
+  const goalPayload = gunEscape(goal as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('goals').get(id)
-    .put(gunEscape(goal as unknown as Record<string, unknown>))
+    .put(goalPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `goals:${tribeId}:${id}:${Date.now()}`,
+      gunStore: 'goals', tribeId, recordKey: id,
+      payload: goalPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   await notify(tribeId, {
     tribeId,
@@ -89,8 +101,18 @@ export async function updateGoal(
   const updated = { ...(existing as TribeGoal), ...patch, updatedAt: Date.now() }
   await db.put('tribe-goals', updated, `${tribeId}:${goalId}`)
 
+  const updatedGoalPayload = gunEscape(updated as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('goals').get(goalId)
-    .put(gunEscape(updated as unknown as Record<string, unknown>))
+    .put(updatedGoalPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `goals:${tribeId}:${goalId}:${Date.now()}`,
+      gunStore: 'goals', tribeId, recordKey: goalId,
+      payload: updatedGoalPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Milestones ───────────────────────────────────────────────────────────────
@@ -113,8 +135,18 @@ export async function createMilestone(
   const db = await getDB()
   await db.put('goal-milestones', milestone, `${tribeId}:${id}`)
 
+  const milestonePayload = gunEscape(milestone as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('milestones').get(id)
-    .put(gunEscape(milestone as unknown as Record<string, unknown>))
+    .put(milestonePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `milestones:${tribeId}:${id}:${Date.now()}`,
+      gunStore: 'milestones', tribeId, recordKey: id,
+      payload: milestonePayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   return id
 }
@@ -161,8 +193,18 @@ export async function createTask(
   const db = await getDB()
   await db.put('tribe-tasks', task, `${tribeId}:${id}`)
 
+  const taskPayload = gunEscape(flatTask)
   gun.get('tribes').get(tribeId).get('tasks').get(id)
-    .put(gunEscape(flatTask))
+    .put(taskPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `tasks:${tribeId}:${id}:${Date.now()}`,
+      gunStore: 'tasks', tribeId, recordKey: id,
+      payload: taskPayload,
+      queuedAt: Date.now(),
+    })
+  }
 
   // Notify each assignee
   for (const pub of fields.assignedTo) {
@@ -198,8 +240,18 @@ export async function updateTask(
   } as unknown as Record<string, unknown>
   delete (flatTask as Record<string, unknown>).assignedTo
 
+  const updatedTaskPayload = gunEscape(flatTask)
   gun.get('tribes').get(tribeId).get('tasks').get(taskId)
-    .put(gunEscape(flatTask))
+    .put(updatedTaskPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `tasks:${tribeId}:${taskId}:${Date.now()}`,
+      gunStore: 'tasks', tribeId, recordKey: taskId,
+      payload: updatedTaskPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────────
@@ -283,13 +335,14 @@ export function subscribeToGoals(
     if (key === '_') return
     if (!data || typeof data !== 'object') {
       map.delete(key)
-    } else {
-      const raw = gunUnescape(data as Record<string, unknown>)
-      const g = parseGoal(raw, tribeId)
-      if (g) {
-        map.set(key, g)
-        getDB().then(db => db.put('tribe-goals', g, `${tribeId}:${key}`))
-      }
+      callback(Array.from(map.values()))
+      return
+    }
+    const raw = gunUnescape(data as Record<string, unknown>)
+    const g = parseGoal(raw, tribeId)
+    if (g) {
+      map.set(key, g)
+      getDB().then(db => db.put('tribe-goals', g, `${tribeId}:${key}`))
     }
     callback(Array.from(map.values()))
   }
@@ -377,13 +430,14 @@ export function subscribeToTasks(
     if (key === '_') return
     if (!data || typeof data !== 'object') {
       map.delete(key)
-    } else {
-      const raw = gunUnescape(data as Record<string, unknown>)
-      const t = parseTask(raw, tribeId)
-      if (t) {
-        map.set(key, t)
-        getDB().then(db => db.put('tribe-tasks', t, `${tribeId}:${key}`))
-      }
+      callback(Array.from(map.values()))
+      return
+    }
+    const raw = gunUnescape(data as Record<string, unknown>)
+    const t = parseTask(raw, tribeId)
+    if (t) {
+      map.set(key, t)
+      getDB().then(db => db.put('tribe-tasks', t, `${tribeId}:${key}`))
     }
     callback(Array.from(map.values()))
   }

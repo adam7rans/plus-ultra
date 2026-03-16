@@ -63,7 +63,7 @@ export async function initiateMuster(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `muster-calls:${tribeId}:${muster.id}`,
+      id: `muster-calls:${tribeId}:${muster.id}:${Date.now()}`,
       gunStore: 'muster', tribeId, recordKey: muster.id,
       payload: musterPayload,
       queuedAt: Date.now(),
@@ -126,7 +126,7 @@ export async function respondToMuster(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `muster-responses:${tribeId}:${musterId}:${memberPub}`,
+      id: `muster-responses:${tribeId}:${musterId}:${memberPub}:${Date.now()}`,
       gunStore: 'muster-responses', tribeId, recordKey: `${musterId}:${memberPub}`,
       payload: responsePayload,
       queuedAt: Date.now(),
@@ -151,7 +151,7 @@ export async function closeMuster(tribeId: string, musterId: string): Promise<vo
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `muster-calls:${tribeId}:${musterId}`,
+      id: `muster-calls:${tribeId}:${musterId}:${Date.now()}`,
       gunStore: 'muster', tribeId, recordKey: musterId,
       payload: closedPayload,
       queuedAt: Date.now(),

@@ -1,6 +1,8 @@
 import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
+import { getOfflineSince } from './offline-tracker'
+import { addPendingSync } from './sync-queue'
 import type { LatLng, TribeMapPin, PatrolRoute, TribeTerritory, PinAssetType } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ───────────────────
@@ -45,9 +47,18 @@ export async function saveTerritory(
   }
   const db = await getDB()
   await db.put('map-territory', territory, tribeId)
-  gun.get('tribes').get(tribeId).get('map-territory').put(
-    gunEscape(territory as unknown as Record<string, unknown>)
-  )
+  const territoryPayload = gunEscape(territory as unknown as Record<string, unknown>)
+  gun.get('tribes').get(tribeId).get('map-territory').put(territoryPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `map-territory:${tribeId}:${Date.now()}`,
+      gunPath: ['tribes', tribeId, 'map-territory'],
+      gunStore: 'map-territory', tribeId, recordKey: tribeId,
+      payload: territoryPayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 // ─── Pins ─────────────────────────────────────────────────────────────────────
@@ -70,9 +81,17 @@ export async function addPin(
   }
   const db = await getDB()
   await db.put('map-pins', pin, `${tribeId}:${pin.id}`)
-  gun.get('tribes').get(tribeId).get('map-pins').get(pin.id).put(
-    gunEscape(pin as unknown as Record<string, unknown>)
-  )
+  const pinPayload = gunEscape(pin as unknown as Record<string, unknown>)
+  gun.get('tribes').get(tribeId).get('map-pins').get(pin.id).put(pinPayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `map-pins:${tribeId}:${pin.id}:${Date.now()}`,
+      gunStore: 'map-pins', tribeId, recordKey: pin.id,
+      payload: pinPayload,
+      queuedAt: Date.now(),
+    })
+  }
   return pin
 }
 
@@ -87,9 +106,17 @@ export async function updatePin(
   if (!existing) return
   const updated: TribeMapPin = { ...existing, ...updates }
   await db.put('map-pins', updated, key)
-  gun.get('tribes').get(tribeId).get('map-pins').get(pinId).put(
-    gunEscape(updates as unknown as Record<string, unknown>)
-  )
+  const pinUpdatePayload = gunEscape(updates as unknown as Record<string, unknown>)
+  gun.get('tribes').get(tribeId).get('map-pins').get(pinId).put(pinUpdatePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `map-pins:${tribeId}:${pinId}:${Date.now()}`,
+      gunStore: 'map-pins', tribeId, recordKey: pinId,
+      payload: pinUpdatePayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function deletePin(tribeId: string, pinId: string): Promise<void> {
@@ -124,9 +151,17 @@ export async function addPatrolRoute(
   }
   const db = await getDB()
   await db.put('patrol-routes', route, `${tribeId}:${route.id}`)
-  gun.get('tribes').get(tribeId).get('patrol-routes').get(route.id).put(
-    gunEscape(route as unknown as Record<string, unknown>)
-  )
+  const routePayload = gunEscape(route as unknown as Record<string, unknown>)
+  gun.get('tribes').get(tribeId).get('patrol-routes').get(route.id).put(routePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `patrol-routes:${tribeId}:${route.id}:${Date.now()}`,
+      gunStore: 'patrol-routes', tribeId, recordKey: route.id,
+      payload: routePayload,
+      queuedAt: Date.now(),
+    })
+  }
   return route
 }
 
@@ -141,9 +176,17 @@ export async function updatePatrolRoute(
   if (!existing) return
   const updated: PatrolRoute = { ...existing, ...updates }
   await db.put('patrol-routes', updated, key)
-  gun.get('tribes').get(tribeId).get('patrol-routes').get(routeId).put(
-    gunEscape(updates as unknown as Record<string, unknown>)
-  )
+  const routeUpdatePayload = gunEscape(updates as unknown as Record<string, unknown>)
+  gun.get('tribes').get(tribeId).get('patrol-routes').get(routeId).put(routeUpdatePayload)
+
+  if (getOfflineSince() !== null) {
+    void addPendingSync({
+      id: `patrol-routes:${tribeId}:${routeId}:${Date.now()}`,
+      gunStore: 'patrol-routes', tribeId, recordKey: routeId,
+      payload: routeUpdatePayload,
+      queuedAt: Date.now(),
+    })
+  }
 }
 
 export async function deletePatrolRoute(tribeId: string, routeId: string): Promise<void> {

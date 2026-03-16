@@ -57,7 +57,7 @@ export async function createEvent(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `events:${tribeId}:${event.id}`,
+      id: `events:${tribeId}:${event.id}:${Date.now()}`,
       gunStore: 'events', tribeId, recordKey: event.id,
       payload: gunData,
       queuedAt: Date.now(),
@@ -96,7 +96,7 @@ export async function updateEvent(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `events:${tribeId}:${eventId}`,
+      id: `events:${tribeId}:${eventId}:${Date.now()}`,
       gunStore: 'events', tribeId, recordKey: eventId,
       payload: gunData,
       queuedAt: Date.now(),
@@ -142,7 +142,7 @@ export async function cancelEvent(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `events:${tribeId}:${eventId}`,
+      id: `events:${tribeId}:${eventId}:${Date.now()}`,
       gunStore: 'events', tribeId, recordKey: eventId,
       payload: { cancelled: true },
       queuedAt: Date.now(),

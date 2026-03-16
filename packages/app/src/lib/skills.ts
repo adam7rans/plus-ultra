@@ -56,7 +56,7 @@ export async function declareSkill(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `skills:${tribeId}:${skillKey(memberId, role)}`,
+      id: `skills:${tribeId}:${skillKey(memberId, role)}:${Date.now()}`,
       gunStore: 'skills', tribeId, recordKey: skillKey(memberId, role),
       payload: gunPayload,
       queuedAt: Date.now(),
@@ -96,7 +96,7 @@ export async function vouchForSkill(
 
   if (getOfflineSince() !== null) {
     void addPendingSync({
-      id: `skills:${tribeId}:${skillKey(memberId, role)}`,
+      id: `skills:${tribeId}:${skillKey(memberId, role)}:${Date.now()}`,
       gunStore: 'skills', tribeId, recordKey: skillKey(memberId, role),
       payload: { vouchedBy: JSON.stringify(updated.vouchedBy) },
       queuedAt: Date.now(),
@@ -109,6 +109,9 @@ export async function removeSkill(
   memberId: string,
   role: SkillRole
 ): Promise<void> {
+  const db = await getDB()
+  await db.delete('skills', `${tribeId}:${skillKey(memberId, role)}`)
+
   return new Promise((resolve) => {
     gun
       .get('tribes')
