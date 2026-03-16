@@ -223,7 +223,7 @@ export function buildContactCardUrl(tribe: {
 }): string {
   const base = typeof window !== 'undefined'
     ? window.location.origin
-    : 'https://app.plusultra.network'
+    : 'https://app.plus-ultra.world'
   const params = new URLSearchParams({
     tribe: tribe.id,
     name: tribe.name,

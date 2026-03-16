@@ -119,7 +119,7 @@ export async function createInviteToken(tribeId: string): Promise<string> {
 export function buildInviteUrl(tribeId: string, token: string, tribe?: { name: string; location: string; pub?: string }): string {
   const base = typeof window !== 'undefined'
     ? window.location.origin
-    : 'https://app.plusultra.network'
+    : 'https://app.plus-ultra.world'
   const params = new URLSearchParams({ tribe: tribeId, token })
   if (tribe) {
     params.set('name', tribe.name)
