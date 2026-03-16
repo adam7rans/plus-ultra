@@ -39,7 +39,7 @@ export async function convexWrite(
 
   try {
     // Dynamic import to avoid circular dependency with generated API
-    const { api } = await import('../../convex/_generated/api')
+    const { api } = await import('../../../../convex/_generated/api')
     const parts = mutationName.split('.')
     // e.g. "tribes.upsert" → api.tribes.upsert
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
