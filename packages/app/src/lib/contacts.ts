@@ -3,6 +3,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { addPendingSync } from './sync-queue'
 import { getOfflineSince } from './offline-tracker'
+import { convexWrite } from './sync-adapter'
 import type { ExternalContact, ContactCategory } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -48,6 +49,7 @@ export async function addContact(
 
   const db = await getDB()
   await db.put('external-contacts', contact, `${tribeId}:${contact.id}`)
+  void convexWrite('contacts.upsert', { contactId: contact.id, tribeId, name: contact.name, category: contact.category, role: contact.role, phone: contact.phone, radioFreq: contact.radioFreq, lat: contact.lat, lng: contact.lng, location: contact.location, notes: contact.notes, addedBy: contact.addedBy ?? '', addedAt: contact.addedAt, lastVerified: contact.lastVerified })
 
   const contactPayload = gunEscape(contact as unknown as Record<string, unknown>)
   gun
@@ -60,6 +62,8 @@ export async function addContact(
       id: `external-contacts:${tribeId}:${contact.id}:${Date.now()}`,
       gunStore: 'external-contacts', tribeId, recordKey: contact.id,
       payload: contactPayload,
+      convexMutation: 'contacts.upsert',
+      convexArgs: { contactId: contact.id, tribeId, name: contact.name, category: contact.category, role: contact.role, phone: contact.phone, radioFreq: contact.radioFreq, lat: contact.lat, lng: contact.lng, location: contact.location, notes: contact.notes, addedBy: contact.addedBy ?? '', addedAt: contact.addedAt, lastVerified: contact.lastVerified },
       queuedAt: Date.now(),
     })
   }
@@ -78,6 +82,7 @@ export async function updateContact(
 
   const updated = { ...(existing as ExternalContact), ...patch }
   await db.put('external-contacts', updated, `${tribeId}:${contactId}`)
+  void convexWrite('contacts.upsert', { contactId, tribeId, name: updated.name, category: updated.category, role: updated.role, phone: updated.phone, radioFreq: updated.radioFreq, lat: updated.lat, lng: updated.lng, location: updated.location, notes: updated.notes, addedBy: updated.addedBy ?? '', addedAt: updated.addedAt, lastVerified: updated.lastVerified })
 
   const updatePayload = gunEscape(updated as unknown as Record<string, unknown>)
   gun
@@ -90,6 +95,8 @@ export async function updateContact(
       id: `external-contacts:${tribeId}:${contactId}:${Date.now()}`,
       gunStore: 'external-contacts', tribeId, recordKey: contactId,
       payload: updatePayload,
+      convexMutation: 'contacts.upsert',
+      convexArgs: { contactId, tribeId, name: updated.name, category: updated.category, role: updated.role, phone: updated.phone, radioFreq: updated.radioFreq, lat: updated.lat, lng: updated.lng, location: updated.location, notes: updated.notes, addedBy: updated.addedBy ?? '', addedAt: updated.addedAt, lastVerified: updated.lastVerified },
       queuedAt: Date.now(),
     })
   }

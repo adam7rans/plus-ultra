@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid'
 import { gun } from './gun'
 import { getDB } from './db'
 import { triggerPush } from './push'
+import { convexWrite } from './sync-adapter'
 
 // ── Notification types ──────────────────────────────────────────────
 
@@ -79,6 +80,7 @@ export async function notify(
 
   const db = await getDB()
   await db.put('notifications', entry, `${tribeId}:${entry.id}`)
+  void convexWrite('notifications.create', { notifId: entry.id, tribeId, type: entry.type, title: entry.title, body: entry.body, createdAt: entry.createdAt, targetPub: entry.targetPub, actorPub: entry.actorPub, linkTo: entry.linkTo })
 
   gun
     .get('tribes')
@@ -98,6 +100,7 @@ export async function markRead(tribeId: string, notificationId: string): Promise
 
   const updated = { ...existing, read: true }
   await db.put('notifications', updated, key)
+  void convexWrite('notifications.markRead', { notifId: notificationId, tribeId })
 }
 
 export async function markAllRead(tribeId: string, memberPub: string): Promise<void> {
@@ -109,6 +112,7 @@ export async function markAllRead(tribeId: string, memberPub: string): Promise<v
       await db.put('notifications', { ...n, read: true }, `${tribeId}:${n.id}`)
     }
   }
+  void convexWrite('notifications.markAllRead', { tribeId, memberPub })
 }
 
 // ── Subscribe ───────────────────────────────────────────────────────
@@ -197,6 +201,7 @@ export async function sendAlert(
 
   const db = await getDB()
   await db.put('alerts', alert, `${tribeId}:${alert.id}`)
+  void convexWrite('alerts.create', { alertId: alert.id, tribeId, alertType, message, senderPub, senderName, createdAt: alert.createdAt })
 
   gun
     .get('tribes')

@@ -3,6 +3,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { TribeExpense, FundContribution, ExpenseCategory } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -109,6 +110,7 @@ export async function logExpense(
 
   const db = await getDB()
   await db.put('tribe-expenses', expense, `${tribeId}:${id}`)
+  void convexWrite('finance.addExpense', { expenseId: id, tribeId, category: fields.category, description: fields.description, amountCents: expense.amountCents, currency: expense.currency, paidBy: fields.paidBy, splitAmong: fields.splitAmong, linkedAssetType: fields.linkedAssetType, receiptNote: fields.receiptNote, loggedAt: expense.loggedAt, loggedBy })
   const expensePayload = gunEscape(expenseToGunRecord(expense))
   gun.get('tribes').get(tribeId).get('expenses').get(id)
     .put(expensePayload)
@@ -118,6 +120,8 @@ export async function logExpense(
       id: `expenses:${tribeId}:${id}:${Date.now()}`,
       gunStore: 'expenses', tribeId, recordKey: id,
       payload: expensePayload,
+      convexMutation: 'finance.addExpense',
+      convexArgs: { expenseId: id, tribeId, category: fields.category, description: fields.description, amountCents: expense.amountCents, currency: expense.currency, paidBy: fields.paidBy, splitAmong: fields.splitAmong, linkedAssetType: fields.linkedAssetType, receiptNote: fields.receiptNote, loggedAt: expense.loggedAt, loggedBy },
       queuedAt: Date.now(),
     })
   }
@@ -155,6 +159,7 @@ export async function logContribution(
 
   const db = await getDB()
   await db.put('tribe-contributions', contribution, `${tribeId}:${id}`)
+  void convexWrite('finance.addContribution', { contributionId: id, tribeId, memberPub: fields.memberPub, amountCents: contribution.amountCents, currency: contribution.currency, note: fields.note, contributedAt: contribution.contributedAt })
   const contributionPayload = gunEscape(contribution as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('contributions').get(id)
     .put(contributionPayload)
@@ -164,6 +169,8 @@ export async function logContribution(
       id: `contributions:${tribeId}:${id}:${Date.now()}`,
       gunStore: 'contributions', tribeId, recordKey: id,
       payload: contributionPayload,
+      convexMutation: 'finance.addContribution',
+      convexArgs: { contributionId: id, tribeId, memberPub: fields.memberPub, amountCents: contribution.amountCents, currency: contribution.currency, note: fields.note, contributedAt: contribution.contributedAt },
       queuedAt: Date.now(),
     })
   }

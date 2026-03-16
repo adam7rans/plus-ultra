@@ -3,6 +3,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { addPendingSync } from './sync-queue'
 import { getOfflineSince } from './offline-tracker'
+import { convexWrite } from './sync-adapter'
 import { notify } from './notifications'
 import { triggerPush } from './push'
 import type { MusterCall, MusterResponse, MusterStatus, MusterReason } from '@plus-ultra/core'
@@ -56,6 +57,7 @@ export async function initiateMuster(
 
   const db = await getDB()
   await db.put('muster-calls', muster, `${tribeId}:${muster.id}`)
+  void convexWrite('rollcall.createMuster', { musterId: muster.id, tribeId, initiatedBy: initiatorPub, initiatedByName: initiatorName, initiatedAt: muster.initiatedAt, reason, message })
 
   const musterPayload = gunEscape(muster as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('muster').get(muster.id)
@@ -66,6 +68,8 @@ export async function initiateMuster(
       id: `muster-calls:${tribeId}:${muster.id}:${Date.now()}`,
       gunStore: 'muster', tribeId, recordKey: muster.id,
       payload: musterPayload,
+      convexMutation: 'rollcall.createMuster',
+      convexArgs: { musterId: muster.id, tribeId, initiatedBy: initiatorPub, initiatedByName: initiatorName, initiatedAt: muster.initiatedAt, reason, message },
       queuedAt: Date.now(),
     })
   }
@@ -116,6 +120,7 @@ export async function respondToMuster(
 
   const db = await getDB()
   await db.put('muster-responses', response, `${musterId}:${memberPub}`)
+  void convexWrite('rollcall.respond', { musterId, memberPub, memberName, status, respondedAt: response.respondedAt, respondedByPub: response.respondedByPub, location: response.location, note: response.note })
 
   // Sync to Gun without voiceNote (base64 audio is too large for Gun nodes)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -129,6 +134,8 @@ export async function respondToMuster(
       id: `muster-responses:${tribeId}:${musterId}:${memberPub}:${Date.now()}`,
       gunStore: 'muster-responses', tribeId, recordKey: `${musterId}:${memberPub}`,
       payload: responsePayload,
+      convexMutation: 'rollcall.respond',
+      convexArgs: { musterId, memberPub, memberName, status, respondedAt: response.respondedAt, respondedByPub: response.respondedByPub, location: response.location, note: response.note },
       queuedAt: Date.now(),
     })
   }
@@ -144,6 +151,7 @@ export async function closeMuster(tribeId: string, musterId: string): Promise<vo
 
   const updated: MusterCall = { ...existing, closedAt: Date.now(), status: 'closed' }
   await db.put('muster-calls', updated, key)
+  void convexWrite('rollcall.closeMuster', { musterId, tribeId })
 
   const closedPayload = gunEscape(updated as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('muster').get(musterId)
@@ -154,6 +162,8 @@ export async function closeMuster(tribeId: string, musterId: string): Promise<vo
       id: `muster-calls:${tribeId}:${musterId}:${Date.now()}`,
       gunStore: 'muster', tribeId, recordKey: musterId,
       payload: closedPayload,
+      convexMutation: 'rollcall.closeMuster',
+      convexArgs: { musterId, tribeId },
       queuedAt: Date.now(),
     })
   }

@@ -3,6 +3,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { ProductionEntry, AssetType } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -56,6 +57,7 @@ export async function logProductionEntry(
 
   const db = await getDB()
   await db.put('production-log', entry, `${tribeId}:${entry.id}`)
+  void convexWrite('production.log', { entryId: entry.id, tribeId, assetType, amount, periodDays, loggedAt: entry.loggedAt, loggedBy, source: opts?.source, notes: opts?.notes })
 
   const productionPayload = gunEscape(entry as unknown as Record<string, unknown>)
   gun
@@ -68,6 +70,8 @@ export async function logProductionEntry(
       id: `production:${tribeId}:${entry.id}:${Date.now()}`,
       gunStore: 'production', tribeId, recordKey: entry.id,
       payload: productionPayload,
+      convexMutation: 'production.log',
+      convexArgs: { entryId: entry.id, tribeId, assetType, amount, periodDays, loggedAt: entry.loggedAt, loggedBy, source: opts?.source, notes: opts?.notes },
       queuedAt: Date.now(),
     })
   }

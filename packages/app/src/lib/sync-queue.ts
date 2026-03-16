@@ -9,6 +9,10 @@ export interface PendingSync {
   recordKey: string
   payload: Record<string, unknown>
   queuedAt: number
+  /** Convex mutation name (e.g. "tribes.upsert") — set for Convex-first flush */
+  convexMutation?: string
+  /** Convex-compatible args (native arrays, no gunEscape) — used when convexMutation is set */
+  convexArgs?: Record<string, unknown>
 }
 
 export async function addPendingSync(entry: PendingSync): Promise<void> {
@@ -29,9 +33,22 @@ export async function getPendingSyncIds(tribeId: string): Promise<string[]> {
 const ACK_TIMEOUT_MS = 8000
 
 export async function flushPendingSyncs(): Promise<void> {
+  const { isGridUp, convexWrite } = await import('./sync-adapter')
   const db = await getDB()
   const all = await db.getAll('pending-syncs') as PendingSync[]
+
   for (const entry of all) {
+    // When grid is up and Convex args are available, prefer Convex (reliable cloud sync)
+    if (isGridUp() && entry.convexMutation && entry.convexArgs) {
+      const ok = await convexWrite(entry.convexMutation, entry.convexArgs)
+      if (ok) {
+        await db.delete('pending-syncs', entry.id)
+        continue
+      }
+      // Convex failed — fall through to Gun
+    }
+
+    // Gun fallback (always run for entries without convex fields; fallback for failed Convex)
     await new Promise<void>(resolve => {
       const timer = setTimeout(() => resolve(), ACK_TIMEOUT_MS)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,12 +56,12 @@ export async function flushPendingSyncs(): Promise<void> {
       const path = entry.gunPath ?? ['tribes', entry.tribeId, entry.gunStore, entry.recordKey]
       for (const segment of path) { node = node.get(segment) }
       node.put(entry.payload as unknown as Record<string, unknown>, async (ack: unknown) => {
-          clearTimeout(timer)
-          if (!(ack as { err?: string }).err) {
-            await db.delete('pending-syncs', entry.id)
-          }
-          resolve()
-        })
+        clearTimeout(timer)
+        if (!(ack as { err?: string }).err) {
+          await db.delete('pending-syncs', entry.id)
+        }
+        resolve()
+      })
     })
   }
 }

@@ -3,6 +3,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { LatLng, TribeMapPin, PatrolRoute, TribeTerritory, PinAssetType } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ───────────────────
@@ -47,6 +48,7 @@ export async function saveTerritory(
   }
   const db = await getDB()
   await db.put('map-territory', territory, tribeId)
+  void convexWrite('map.upsertTerritory', { tribeId, polygon, updatedAt: territory.updatedAt, updatedBy: updaterPub })
   const territoryPayload = gunEscape(territory as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('map-territory').put(territoryPayload)
 
@@ -56,6 +58,8 @@ export async function saveTerritory(
       gunPath: ['tribes', tribeId, 'map-territory'],
       gunStore: 'map-territory', tribeId, recordKey: tribeId,
       payload: territoryPayload,
+      convexMutation: 'map.upsertTerritory',
+      convexArgs: { tribeId, polygon, updatedAt: territory.updatedAt, updatedBy: updaterPub },
       queuedAt: Date.now(),
     })
   }
@@ -81,6 +85,7 @@ export async function addPin(
   }
   const db = await getDB()
   await db.put('map-pins', pin, `${tribeId}:${pin.id}`)
+  void convexWrite('map.upsertPin', { pinId: pin.id, tribeId, assetType: params.assetType, label: params.label, notes: params.notes, lat: params.lat, lng: params.lng, createdBy: authorPub, createdAt: pin.createdAt })
   const pinPayload = gunEscape(pin as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('map-pins').get(pin.id).put(pinPayload)
 
@@ -89,6 +94,8 @@ export async function addPin(
       id: `map-pins:${tribeId}:${pin.id}:${Date.now()}`,
       gunStore: 'map-pins', tribeId, recordKey: pin.id,
       payload: pinPayload,
+      convexMutation: 'map.upsertPin',
+      convexArgs: { pinId: pin.id, tribeId, assetType: params.assetType, label: params.label, notes: params.notes, lat: params.lat, lng: params.lng, createdBy: authorPub, createdAt: pin.createdAt },
       queuedAt: Date.now(),
     })
   }
@@ -106,6 +113,7 @@ export async function updatePin(
   if (!existing) return
   const updated: TribeMapPin = { ...existing, ...updates }
   await db.put('map-pins', updated, key)
+  void convexWrite('map.upsertPin', { pinId, tribeId, assetType: updated.assetType, label: updated.label, notes: updated.notes, lat: updated.lat, lng: updated.lng, createdBy: updated.createdBy, createdAt: updated.createdAt })
   const pinUpdatePayload = gunEscape(updates as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('map-pins').get(pinId).put(pinUpdatePayload)
 
@@ -114,6 +122,8 @@ export async function updatePin(
       id: `map-pins:${tribeId}:${pinId}:${Date.now()}`,
       gunStore: 'map-pins', tribeId, recordKey: pinId,
       payload: pinUpdatePayload,
+      convexMutation: 'map.upsertPin',
+      convexArgs: { pinId, tribeId, assetType: updated.assetType, label: updated.label, notes: updated.notes, lat: updated.lat, lng: updated.lng, createdBy: updated.createdBy, createdAt: updated.createdAt },
       queuedAt: Date.now(),
     })
   }
@@ -151,6 +161,7 @@ export async function addPatrolRoute(
   }
   const db = await getDB()
   await db.put('patrol-routes', route, `${tribeId}:${route.id}`)
+  void convexWrite('map.upsertRoute', { routeId: route.id, tribeId, name: params.name, waypoints: params.waypointsJson, notes: params.notes, assignedTo: params.assignedTo, scheduleEventId: params.scheduleEventId, createdBy: authorPub, createdAt: route.createdAt })
   const routePayload = gunEscape(route as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('patrol-routes').get(route.id).put(routePayload)
 
@@ -159,6 +170,8 @@ export async function addPatrolRoute(
       id: `patrol-routes:${tribeId}:${route.id}:${Date.now()}`,
       gunStore: 'patrol-routes', tribeId, recordKey: route.id,
       payload: routePayload,
+      convexMutation: 'map.upsertRoute',
+      convexArgs: { routeId: route.id, tribeId, name: params.name, waypoints: params.waypointsJson, notes: params.notes, assignedTo: params.assignedTo, scheduleEventId: params.scheduleEventId, createdBy: authorPub, createdAt: route.createdAt },
       queuedAt: Date.now(),
     })
   }
@@ -176,6 +189,7 @@ export async function updatePatrolRoute(
   if (!existing) return
   const updated: PatrolRoute = { ...existing, ...updates }
   await db.put('patrol-routes', updated, key)
+  void convexWrite('map.upsertRoute', { routeId, tribeId, name: updated.name, waypoints: updated.waypointsJson, notes: updated.notes, assignedTo: updated.assignedTo, scheduleEventId: updated.scheduleEventId, createdBy: updated.createdBy, createdAt: updated.createdAt })
   const routeUpdatePayload = gunEscape(updates as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('patrol-routes').get(routeId).put(routeUpdatePayload)
 
@@ -184,6 +198,8 @@ export async function updatePatrolRoute(
       id: `patrol-routes:${tribeId}:${routeId}:${Date.now()}`,
       gunStore: 'patrol-routes', tribeId, recordKey: routeId,
       payload: routeUpdatePayload,
+      convexMutation: 'map.upsertRoute',
+      convexArgs: { routeId, tribeId, name: updated.name, waypoints: updated.waypointsJson, notes: updated.notes, assignedTo: updated.assignedTo, scheduleEventId: updated.scheduleEventId, createdBy: updated.createdBy, createdAt: updated.createdAt },
       queuedAt: Date.now(),
     })
   }

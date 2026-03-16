@@ -4,6 +4,7 @@ import { getDB } from './db'
 import { sendAlert, notify } from './notifications'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { BugOutPlan } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -44,6 +45,7 @@ export async function saveBugOutPlan(
 
   const db = await getDB()
   await db.put('bugout-plans', full, `${tribeId}:${id}`)
+  void convexWrite('bugout.upsert', { planId: id, tribeId, name: full.name, status: full.status as 'draft' | 'ready' | 'active', triggerCondition: full.triggerCondition, routeId: full.routeId, vehicles: full.vehiclesJson ? JSON.parse(full.vehiclesJson) : [], loadPriorities: full.loadPrioritiesJson ? JSON.parse(full.loadPrioritiesJson) : [], rallyPointIds: full.rallyPointIdsJson ? JSON.parse(full.rallyPointIdsJson) : [], notes: full.notes, activatedAt: full.activatedAt, activatedBy: full.activatedBy, createdAt: full.createdAt ?? Date.now(), createdBy: full.createdBy ?? '', updatedAt: full.updatedAt ?? Date.now() })
 
   const bugoutPayload = gunEscape(full as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('bugout-plans').get(id)
@@ -54,6 +56,8 @@ export async function saveBugOutPlan(
       id: `bugout-plans:${tribeId}:${id}:${Date.now()}`,
       gunStore: 'bugout-plans', tribeId, recordKey: id,
       payload: bugoutPayload,
+      convexMutation: 'bugout.upsert',
+      convexArgs: { planId: id, tribeId, name: full.name, status: full.status as 'draft' | 'ready' | 'active', triggerCondition: full.triggerCondition, routeId: full.routeId, vehicles: full.vehiclesJson ? JSON.parse(full.vehiclesJson) : [], loadPriorities: full.loadPrioritiesJson ? JSON.parse(full.loadPrioritiesJson) : [], rallyPointIds: full.rallyPointIdsJson ? JSON.parse(full.rallyPointIdsJson) : [], notes: full.notes, activatedAt: full.activatedAt, activatedBy: full.activatedBy, createdAt: full.createdAt ?? Date.now(), createdBy: full.createdBy ?? '', updatedAt: full.updatedAt ?? Date.now() },
       queuedAt: Date.now(),
     })
   }
@@ -87,6 +91,7 @@ export async function activateBugOutPlan(
   }
 
   await db.put('bugout-plans', updated, `${tribeId}:${planId}`)
+  void convexWrite('bugout.upsert', { planId, tribeId, name: updated.name, status: 'active' as const, triggerCondition: updated.triggerCondition, routeId: updated.routeId, vehicles: updated.vehiclesJson ? JSON.parse(updated.vehiclesJson) : [], loadPriorities: updated.loadPrioritiesJson ? JSON.parse(updated.loadPrioritiesJson) : [], rallyPointIds: updated.rallyPointIdsJson ? JSON.parse(updated.rallyPointIdsJson) : [], notes: updated.notes, activatedAt: updated.activatedAt, activatedBy: updated.activatedBy, createdAt: updated.createdAt, createdBy: updated.createdBy, updatedAt: updated.updatedAt ?? Date.now() })
   const activatePayload = gunEscape(updated as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('bugout-plans').get(planId)
     .put(activatePayload)
@@ -96,6 +101,8 @@ export async function activateBugOutPlan(
       id: `bugout-plans:${tribeId}:${planId}:${Date.now()}`,
       gunStore: 'bugout-plans', tribeId, recordKey: planId,
       payload: activatePayload,
+      convexMutation: 'bugout.upsert',
+      convexArgs: { planId, tribeId, name: updated.name, status: 'active' as const, triggerCondition: updated.triggerCondition, routeId: updated.routeId, vehicles: updated.vehiclesJson ? JSON.parse(updated.vehiclesJson) : [], loadPriorities: updated.loadPrioritiesJson ? JSON.parse(updated.loadPrioritiesJson) : [], rallyPointIds: updated.rallyPointIdsJson ? JSON.parse(updated.rallyPointIdsJson) : [], notes: updated.notes, activatedAt: updated.activatedAt, activatedBy: updated.activatedBy, createdAt: updated.createdAt, createdBy: updated.createdBy, updatedAt: updated.updatedAt ?? Date.now() },
       queuedAt: Date.now(),
     })
   }

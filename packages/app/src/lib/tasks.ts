@@ -4,6 +4,7 @@ import { getDB } from './db'
 import { notify } from './notifications'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { TribeGoal, GoalMilestone, TribeTask, GoalHorizon, TaskStatus, TaskPriority } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -62,6 +63,7 @@ export async function createGoal(
 
   const db = await getDB()
   await db.put('tribe-goals', goal, `${tribeId}:${id}`)
+  void convexWrite('goals.upsertGoal', { goalId: id, tribeId, title: fields.title, description: fields.description, horizon: fields.horizon, status: 'active', linkedProposalId: fields.linkedProposalId, createdAt: now, createdBy: fields.creatorPub, updatedAt: now })
 
   const goalPayload = gunEscape(goal as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('goals').get(id)
@@ -72,6 +74,8 @@ export async function createGoal(
       id: `goals:${tribeId}:${id}:${Date.now()}`,
       gunStore: 'goals', tribeId, recordKey: id,
       payload: goalPayload,
+      convexMutation: 'goals.upsertGoal',
+      convexArgs: { goalId: id, tribeId, title: fields.title, description: fields.description, horizon: fields.horizon, status: 'active', linkedProposalId: fields.linkedProposalId, createdAt: now, createdBy: fields.creatorPub, updatedAt: now },
       queuedAt: Date.now(),
     })
   }
@@ -100,6 +104,7 @@ export async function updateGoal(
 
   const updated = { ...(existing as TribeGoal), ...patch, updatedAt: Date.now() }
   await db.put('tribe-goals', updated, `${tribeId}:${goalId}`)
+  void convexWrite('goals.upsertGoal', { goalId, tribeId, title: updated.title, description: updated.description, horizon: updated.horizon, status: updated.status, linkedProposalId: updated.linkedProposalId, createdAt: updated.createdAt, createdBy: updated.createdBy, updatedAt: updated.updatedAt })
 
   const updatedGoalPayload = gunEscape(updated as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('goals').get(goalId)
@@ -110,6 +115,8 @@ export async function updateGoal(
       id: `goals:${tribeId}:${goalId}:${Date.now()}`,
       gunStore: 'goals', tribeId, recordKey: goalId,
       payload: updatedGoalPayload,
+      convexMutation: 'goals.upsertGoal',
+      convexArgs: { goalId, tribeId, title: updated.title, description: updated.description, horizon: updated.horizon, status: updated.status, linkedProposalId: updated.linkedProposalId, createdAt: updated.createdAt, createdBy: updated.createdBy, updatedAt: updated.updatedAt },
       queuedAt: Date.now(),
     })
   }
@@ -134,6 +141,7 @@ export async function createMilestone(
 
   const db = await getDB()
   await db.put('goal-milestones', milestone, `${tribeId}:${id}`)
+  void convexWrite('goals.upsertMilestone', { milestoneId: id, goalId, tribeId, title: fields.title, dueDate: fields.dueDate, createdAt: milestone.createdAt })
 
   const milestonePayload = gunEscape(milestone as unknown as Record<string, unknown>)
   gun.get('tribes').get(tribeId).get('milestones').get(id)
@@ -144,6 +152,8 @@ export async function createMilestone(
       id: `milestones:${tribeId}:${id}:${Date.now()}`,
       gunStore: 'milestones', tribeId, recordKey: id,
       payload: milestonePayload,
+      convexMutation: 'goals.upsertMilestone',
+      convexArgs: { milestoneId: id, goalId, tribeId, title: fields.title, dueDate: fields.dueDate, createdAt: milestone.createdAt },
       queuedAt: Date.now(),
     })
   }
@@ -192,6 +202,7 @@ export async function createTask(
 
   const db = await getDB()
   await db.put('tribe-tasks', task, `${tribeId}:${id}`)
+  void convexWrite('tasks.upsert', { taskId: id, tribeId, goalId: fields.goalId, milestoneId: fields.milestoneId, title: fields.title, description: fields.description, status: 'todo', priority: fields.priority, assignedTo: fields.assignedTo, dueDate: fields.dueDate, createdAt: now, createdBy: fields.creatorPub, updatedAt: now })
 
   const taskPayload = gunEscape(flatTask)
   gun.get('tribes').get(tribeId).get('tasks').get(id)
@@ -202,6 +213,8 @@ export async function createTask(
       id: `tasks:${tribeId}:${id}:${Date.now()}`,
       gunStore: 'tasks', tribeId, recordKey: id,
       payload: taskPayload,
+      convexMutation: 'tasks.upsert',
+      convexArgs: { taskId: id, tribeId, goalId: fields.goalId, milestoneId: fields.milestoneId, title: fields.title, description: fields.description, status: 'todo', priority: fields.priority, assignedTo: fields.assignedTo, dueDate: fields.dueDate, createdAt: now, createdBy: fields.creatorPub, updatedAt: now },
       queuedAt: Date.now(),
     })
   }
@@ -233,6 +246,7 @@ export async function updateTask(
 
   const updated = { ...(existing as TribeTask), ...patch, updatedAt: Date.now() }
   await db.put('tribe-tasks', updated, `${tribeId}:${taskId}`)
+  void convexWrite('tasks.upsert', { taskId, tribeId, goalId: updated.goalId, milestoneId: updated.milestoneId, title: updated.title, description: updated.description, status: updated.status, priority: updated.priority, assignedTo: updated.assignedTo, dueDate: updated.dueDate, completedAt: updated.completedAt, createdAt: updated.createdAt, createdBy: updated.createdBy, updatedAt: updated.updatedAt })
 
   const flatTask = {
     ...updated,
@@ -249,6 +263,8 @@ export async function updateTask(
       id: `tasks:${tribeId}:${taskId}:${Date.now()}`,
       gunStore: 'tasks', tribeId, recordKey: taskId,
       payload: updatedTaskPayload,
+      convexMutation: 'tasks.upsert',
+      convexArgs: { taskId, tribeId, goalId: updated.goalId, milestoneId: updated.milestoneId, title: updated.title, description: updated.description, status: updated.status, priority: updated.priority, assignedTo: updated.assignedTo, dueDate: updated.dueDate, completedAt: updated.completedAt, createdAt: updated.createdAt, createdBy: updated.createdBy, updatedAt: updated.updatedAt },
       queuedAt: Date.now(),
     })
   }

@@ -3,6 +3,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { TrainingSession, MemberSkill, SkillRole, ProficiencyLevel } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ───────────────────
@@ -65,6 +66,7 @@ export async function logTrainingSession(
 
   const db = await getDB()
   await db.put('training-sessions', session, `${tribeId}:${session.id}`)
+  void convexWrite('training.logSession', { sessionId: session.id, tribeId, title: params.title, skillRole: params.skillRole ?? undefined, date: params.date, durationMinutes: params.durationMinutes, trainerId: params.trainerId, attendees: params.attendees, notes: params.notes, loggedBy, loggedAt: session.loggedAt })
 
   const gunPayload = gunEscape({
     ...session,
@@ -78,6 +80,8 @@ export async function logTrainingSession(
       id: `training-sessions:${tribeId}:${session.id}:${Date.now()}`,
       gunStore: 'training-sessions', tribeId, recordKey: session.id,
       payload: gunPayload,
+      convexMutation: 'training.logSession',
+      convexArgs: { sessionId: session.id, tribeId, title: params.title, skillRole: params.skillRole ?? undefined, date: params.date, durationMinutes: params.durationMinutes, trainerId: params.trainerId, attendees: params.attendees, notes: params.notes, loggedBy, loggedAt: session.loggedAt },
       queuedAt: Date.now(),
     })
   }
@@ -106,6 +110,7 @@ export async function updateTrainingSession(
   }
 
   await db.put('training-sessions', updated, `${tribeId}:${sessionId}`)
+  void convexWrite('training.logSession', { sessionId, tribeId, title: updated.title, skillRole: updated.skillRole ?? undefined, date: updated.date, durationMinutes: updated.durationMinutes, trainerId: updated.trainerId, attendees: patch.attendees ?? JSON.parse(updated.attendeesJson), notes: updated.notes, loggedBy: updated.loggedBy, loggedAt: updated.loggedAt })
 
   const gunPayload = gunEscape({
     ...updated,
@@ -119,6 +124,8 @@ export async function updateTrainingSession(
       id: `training-sessions:${tribeId}:${sessionId}:${Date.now()}`,
       gunStore: 'training-sessions', tribeId, recordKey: sessionId,
       payload: gunPayload,
+      convexMutation: 'training.logSession',
+      convexArgs: { sessionId, tribeId, title: updated.title, skillRole: updated.skillRole ?? undefined, date: updated.date, durationMinutes: updated.durationMinutes, trainerId: updated.trainerId, attendees: patch.attendees ?? JSON.parse(updated.attendeesJson), notes: updated.notes, loggedBy: updated.loggedBy, loggedAt: updated.loggedAt },
       queuedAt: Date.now(),
     })
   }
@@ -155,6 +162,7 @@ export async function approveLevelUp(
   }
 
   await db.put('skills', updated, key)
+  void convexWrite('skills.declare', { memberId, tribeId, role, proficiency: newProficiency, declaredAt: updated.declaredAt, vouchedBy: updated.vouchedBy ?? [], specializations: updated.specializations, yearsExperience: updated.yearsExperience, notes: updated.notes })
 
   const gunPayload: Record<string, unknown> = {
     ...updated,
@@ -174,6 +182,8 @@ export async function approveLevelUp(
       id: `skills:${tribeId}:${memberId}__${role}:${Date.now()}`,
       gunStore: 'skills', tribeId, recordKey: `${memberId}__${role}`,
       payload: gunPayload as Record<string, unknown>,
+      convexMutation: 'skills.declare',
+      convexArgs: { memberId, tribeId, role, proficiency: newProficiency, declaredAt: updated.declaredAt, vouchedBy: updated.vouchedBy ?? [], specializations: updated.specializations, yearsExperience: updated.yearsExperience, notes: updated.notes },
       queuedAt: Date.now(),
     })
   }

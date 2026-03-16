@@ -2,6 +2,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { TribeAsset, AssetType } from '@plus-ultra/core'
 
 export async function updateAsset(
@@ -23,6 +24,7 @@ export async function updateAsset(
   // IDB first (source of truth, offline-safe)
   const db = await getDB()
   await db.put('inventory', entry, `${tribeId}:${asset}`)
+  void convexWrite('inventory.upsert', { tribeId, asset, quantity, notes, updatedAt: entry.updatedAt, updatedBy })
 
   // Gun fire-and-forget for P2P sync
   gun
@@ -37,6 +39,8 @@ export async function updateAsset(
       id: `inventory:${tribeId}:${asset}:${Date.now()}`,
       gunStore: 'inventory', tribeId, recordKey: asset,
       payload: entry as unknown as Record<string, unknown>,
+      convexMutation: 'inventory.upsert',
+      convexArgs: { tribeId, asset, quantity, notes, updatedAt: entry.updatedAt, updatedBy },
       queuedAt: Date.now(),
     })
   }

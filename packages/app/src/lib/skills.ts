@@ -2,6 +2,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { MemberSkill, SkillRole, ProficiencyLevel } from '@plus-ultra/core'
 
 // Composite key: memberId__role
@@ -37,6 +38,7 @@ export async function declareSkill(
   // Write to IDB first (survives restarts)
   const db = await getDB()
   await db.put('skills', skill, `${tribeId}:${skillKey(memberId, role)}`)
+  void convexWrite('skills.declare', { memberId, tribeId, role, proficiency, declaredAt: skill.declaredAt, vouchedBy: skill.vouchedBy ?? [], specializations: skill.specializations, yearsExperience: skill.yearsExperience, notes: skill.notes })
 
   // Gun for P2P sync (fire and forget)
   // Gun can't store JS arrays as node values; serialize specializations as JSON string
@@ -59,6 +61,8 @@ export async function declareSkill(
       id: `skills:${tribeId}:${skillKey(memberId, role)}:${Date.now()}`,
       gunStore: 'skills', tribeId, recordKey: skillKey(memberId, role),
       payload: gunPayload,
+      convexMutation: 'skills.declare',
+      convexArgs: { memberId, tribeId, role, proficiency, declaredAt: skill.declaredAt, vouchedBy: skill.vouchedBy ?? [], specializations: skill.specializations, yearsExperience: skill.yearsExperience, notes: skill.notes },
       queuedAt: Date.now(),
     })
   }
@@ -85,6 +89,7 @@ export async function vouchForSkill(
 
   // IDB first
   await db.put('skills', updated, key)
+  void convexWrite('skills.vouch', { tribeId, memberId, role, voucherPub })
 
   // Gun fire-and-forget — vouchedBy as JSON string (Gun can't store arrays)
   gun
@@ -99,6 +104,8 @@ export async function vouchForSkill(
       id: `skills:${tribeId}:${skillKey(memberId, role)}:${Date.now()}`,
       gunStore: 'skills', tribeId, recordKey: skillKey(memberId, role),
       payload: { vouchedBy: JSON.stringify(updated.vouchedBy) },
+      convexMutation: 'skills.vouch',
+      convexArgs: { tribeId, memberId, role, voucherPub },
       queuedAt: Date.now(),
     })
   }

@@ -1,7 +1,9 @@
 {
   "name": "plus-ultra",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm run dev --workspace=packages/app",
     "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/app",
@@ -11,5 +13,8 @@
     "build:ios": "npm run build --workspace=packages/core && npm run build:ios --workspace=packages/app",
     "serve-app": "node relay/serve-app.js",
     "relay": "node relay/relay.js"
+  },
+  "dependencies": {
+    "convex": "^1.33.1"
   }
 }

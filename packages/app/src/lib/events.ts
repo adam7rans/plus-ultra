@@ -3,6 +3,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { ScheduledEvent, EventType, RecurrenceRule } from '@plus-ultra/core'
 
 export async function createEvent(
@@ -38,6 +39,7 @@ export async function createEvent(
   // IDB first (source of truth)
   const db = await getDB()
   await db.put('events', event, `${tribeId}:${event.id}`)
+  void convexWrite('events.upsert', { eventId: event.id, tribeId, type: params.type, title: params.title, description: params.description, startAt: params.startAt, durationMin: params.durationMin, recurrence: params.recurrence, createdBy, createdAt: event.createdAt, assignedTo: params.assignedTo, location: params.location, cancelled: false })
 
   // Gun for P2P sync (fire and forget)
   // Strip undefined values and flatten for Gun
@@ -60,6 +62,8 @@ export async function createEvent(
       id: `events:${tribeId}:${event.id}:${Date.now()}`,
       gunStore: 'events', tribeId, recordKey: event.id,
       payload: gunData,
+      convexMutation: 'events.upsert',
+      convexArgs: { eventId: event.id, tribeId, type: params.type, title: params.title, description: params.description, startAt: params.startAt, durationMin: params.durationMin, recurrence: params.recurrence, createdBy, createdAt: event.createdAt, assignedTo: params.assignedTo, location: params.location, cancelled: false },
       queuedAt: Date.now(),
     })
   }
@@ -78,6 +82,7 @@ export async function updateEvent(
 
   const updated: ScheduledEvent = { ...(existing as ScheduledEvent), ...updates }
   await db.put('events', updated, `${tribeId}:${eventId}`)
+  void convexWrite('events.upsert', { eventId, tribeId, type: updated.type, title: updated.title, description: updated.description, startAt: updated.startAt, durationMin: updated.durationMin, recurrence: updated.recurrence, createdBy: updated.createdBy, createdAt: updated.createdAt, assignedTo: updated.assignedTo, location: updated.location, cancelled: updated.cancelled })
 
   // Gun sync (fire and forget)
   const gunData: Record<string, unknown> = { ...updates }
@@ -99,6 +104,8 @@ export async function updateEvent(
       id: `events:${tribeId}:${eventId}:${Date.now()}`,
       gunStore: 'events', tribeId, recordKey: eventId,
       payload: gunData,
+      convexMutation: 'events.upsert',
+      convexArgs: { eventId, tribeId, type: updated.type, title: updated.title, description: updated.description, startAt: updated.startAt, durationMin: updated.durationMin, recurrence: updated.recurrence, createdBy: updated.createdBy, createdAt: updated.createdAt, assignedTo: updated.assignedTo, location: updated.location, cancelled: updated.cancelled },
       queuedAt: Date.now(),
     })
   }
@@ -132,6 +139,7 @@ export async function cancelEvent(
     const updated = { ...(existing as ScheduledEvent), cancelled: true }
     await db.put('events', updated, `${tribeId}:${eventId}`)
   }
+  void convexWrite('events.cancel', { eventId, tribeId })
 
   gun
     .get('tribes')
@@ -145,6 +153,8 @@ export async function cancelEvent(
       id: `events:${tribeId}:${eventId}:${Date.now()}`,
       gunStore: 'events', tribeId, recordKey: eventId,
       payload: { cancelled: true },
+      convexMutation: 'events.cancel',
+      convexArgs: { eventId, tribeId },
       queuedAt: Date.now(),
     })
   }

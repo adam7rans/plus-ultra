@@ -2,6 +2,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { GridState } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -42,6 +43,7 @@ export async function getGridState(tribeId: string): Promise<GridState | null> {
 export async function setGridState(state: GridState): Promise<void> {
   const db = await getDB()
   await db.put('grid-state', state, state.tribeId)
+  void convexWrite('gridState.upsert', { tribeId: state.tribeId, mode: state.mode, isSimulation: state.isSimulation, setBy: state.setBy, setByName: state.setByName, setAt: state.setAt, expiresAt: state.expiresAt, message: state.message })
   const gridPayload = gunEscape(state as unknown as Record<string, unknown>) as unknown as Record<string, unknown>
   gun.get('tribes').get(state.tribeId).get('grid-state').put(gridPayload)
 
@@ -51,6 +53,8 @@ export async function setGridState(state: GridState): Promise<void> {
       gunPath: ['tribes', state.tribeId, 'grid-state'],
       gunStore: 'grid-state', tribeId: state.tribeId, recordKey: state.tribeId,
       payload: gridPayload as Record<string, unknown>,
+      convexMutation: 'gridState.upsert',
+      convexArgs: { tribeId: state.tribeId, mode: state.mode, isSimulation: state.isSimulation, setBy: state.setBy, setByName: state.setByName, setAt: state.setAt, expiresAt: state.expiresAt, message: state.message },
       queuedAt: Date.now(),
     })
   }

@@ -3,6 +3,7 @@ import SEA from 'gun/sea'
 import { gun } from './gun'
 import { getDB } from './db'
 import { triggerPush } from './push'
+import { convexWrite } from './sync-adapter'
 import type { Message, QueuedMessage } from '@plus-ultra/core'
 
 // ─── Channel helpers ─────────────────────────────────────────────────────────
@@ -57,6 +58,7 @@ export async function sendTribeMessage(
 
   await writeMessage(tribeId, 'tribe-wide', message)
   await cacheMessage(message)
+  void convexWrite('messages.send', { msgId: id, tribeId, channelId: tribewideChannelId(), senderId, type, content, mimeType, sentAt, sig, replyTo })
 }
 
 /** Encrypt and sign a DM message without writing to Gun or IDB. Safe to queue offline. */
@@ -116,6 +118,7 @@ export async function sendDM(
 
   await writeDM(message.channelId, message)
   await cacheMessage(message)
+  void convexWrite('messages.send', { msgId: message.id, tribeId, channelId: message.channelId, senderId, type, content: message.content, mimeType, sentAt: message.sentAt, sig: message.sig, replyTo })
 
   // Fire push notification for the recipient (grid-up only, fire and forget)
   void triggerPush(
@@ -397,6 +400,7 @@ export async function addTribeReaction(
   pubkey: string
 ): Promise<void> {
   const reactions = await applyReaction(messageId, emoji, pubkey)
+  void convexWrite('messages.addReaction', { msgId: messageId, tribeId, emoji, pubkey })
   tribeChannelRef(tribeId)
     .get(messageId)
     .put({ reactions: JSON.stringify(reactions) } as unknown as Record<string, unknown>)
@@ -409,6 +413,7 @@ export async function addDMReaction(
   pubkey: string
 ): Promise<void> {
   const reactions = await applyReaction(messageId, emoji, pubkey)
+  void convexWrite('messages.addReaction', { msgId: messageId, tribeId: '', emoji, pubkey })
   dmChannelRef(channelId)
     .get(messageId)
     .put({ reactions: JSON.stringify(reactions) } as unknown as Record<string, unknown>)

@@ -2,6 +2,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { TribePacePlan, PaceMethod, CheckInSchedule, RallyPoint } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -53,6 +54,7 @@ export async function savePacePlan(
 
   const db = await getDB()
   await db.put('pace-plan', plan, tribeId)
+  void convexWrite('comms.upsertPacePlan', { tribeId, methods, checkInSchedules: checkIns, rallyPoints, codeWords, lastUpdatedAt: plan.lastUpdatedAt, lastUpdatedBy: updaterPub })
 
   // Single-node Gun put (not a map — plan is one record per tribe)
   const pacePlanPayload = gunEscape(plan as unknown as Record<string, unknown>) as unknown as Record<string, unknown>
@@ -64,6 +66,8 @@ export async function savePacePlan(
       gunPath: ['tribes', tribeId, 'pace-plan'],
       gunStore: 'pace-plan', tribeId, recordKey: tribeId,
       payload: pacePlanPayload as Record<string, unknown>,
+      convexMutation: 'comms.upsertPacePlan',
+      convexArgs: { tribeId, methods, checkInSchedules: checkIns, rallyPoints, codeWords, lastUpdatedAt: plan.lastUpdatedAt, lastUpdatedBy: updaterPub },
       queuedAt: Date.now(),
     })
   }

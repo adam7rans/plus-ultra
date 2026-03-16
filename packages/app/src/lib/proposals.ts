@@ -3,6 +3,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { addPendingSync } from './sync-queue'
 import { getOfflineSince } from './offline-tracker'
+import { convexWrite } from './sync-adapter'
 import type { Tribe } from '@plus-ultra/core'
 import type { Proposal, Vote, ProposalComment, ProposalScope, VoteChoice, ProposalOutcome } from '@plus-ultra/core'
 import { proposalDuration } from '@plus-ultra/core'
@@ -60,6 +61,7 @@ export async function createProposal(
 
   const db = await getDB()
   await db.put('proposals', proposal, `${tribeId}:${proposal.id}`)
+  void convexWrite('proposals.create', { proposalId: proposal.id, tribeId, title: params.title, body: params.body, scope: params.scope, createdBy: authorPub, createdAt: now, closesAt: proposal.closesAt })
 
   const proposalPayload = gunEscape(proposal as unknown as Record<string, unknown>)
   gun
@@ -72,6 +74,8 @@ export async function createProposal(
       id: `proposals:${tribeId}:${proposal.id}:${Date.now()}`,
       gunStore: 'proposals', tribeId, recordKey: proposal.id,
       payload: proposalPayload,
+      convexMutation: 'proposals.create',
+      convexArgs: { proposalId: proposal.id, tribeId, title: params.title, body: params.body, scope: params.scope, createdBy: authorPub, createdAt: now, closesAt: proposal.closesAt },
       queuedAt: Date.now(),
     })
   }
@@ -95,6 +99,7 @@ export async function castVote(
 
   const db = await getDB()
   await db.put('proposal-votes', vote, `${proposalId}:${memberPub}`)
+  void convexWrite('proposals.castVote', { proposalId, tribeId, memberPub, choice, castAt: vote.castAt })
 
   const votePayload = gunEscape(vote as unknown as Record<string, unknown>)
   gun
@@ -109,6 +114,8 @@ export async function castVote(
       gunPath: ['tribes', tribeId, 'proposal-votes', proposalId, memberPub],
       gunStore: 'proposal-votes', tribeId, recordKey: `${proposalId}:${memberPub}`,
       payload: votePayload,
+      convexMutation: 'proposals.castVote',
+      convexArgs: { proposalId, tribeId, memberPub, choice, castAt: vote.castAt },
       queuedAt: Date.now(),
     })
   }
@@ -131,6 +138,7 @@ export async function addComment(
 
   const db = await getDB()
   await db.put('proposal-comments', comment, `${proposalId}:${comment.id}`)
+  void convexWrite('proposals.addComment', { commentId: comment.id, proposalId, tribeId, authorPub, body, postedAt: comment.postedAt })
 
   const commentPayload = gunEscape(comment as unknown as Record<string, unknown>)
   gun
@@ -143,6 +151,8 @@ export async function addComment(
       id: `proposal-comments:${tribeId}:${comment.id}:${Date.now()}`,
       gunStore: 'proposal-comments', tribeId, recordKey: comment.id,
       payload: commentPayload,
+      convexMutation: 'proposals.addComment',
+      convexArgs: { commentId: comment.id, proposalId, tribeId, authorPub, body, postedAt: comment.postedAt },
       queuedAt: Date.now(),
     })
   }
@@ -169,6 +179,7 @@ export async function withdrawProposal(
     closedBy: requesterPub,
   }
   await db.put('proposals', updated, `${tribeId}:${proposalId}`)
+  void convexWrite('proposals.close', { proposalId, tribeId, outcome: 'withdrawn' as const, closedBy: requesterPub })
 
   const withdrawPayload = gunEscape({ status: 'withdrawn', outcome: 'withdrawn', closedAt: updated.closedAt, closedBy: requesterPub } as Record<string, unknown>)
   gun
@@ -181,6 +192,8 @@ export async function withdrawProposal(
       id: `proposals:${tribeId}:${proposalId}:${Date.now()}`,
       gunStore: 'proposals', tribeId, recordKey: proposalId,
       payload: withdrawPayload,
+      convexMutation: 'proposals.close',
+      convexArgs: { proposalId, tribeId, outcome: 'withdrawn' as const, closedBy: requesterPub },
       queuedAt: Date.now(),
     })
   }
@@ -206,6 +219,7 @@ export async function closeProposal(
     closedBy,
   }
   await db.put('proposals', updated, `${tribeId}:${proposalId}`)
+  void convexWrite('proposals.close', { proposalId, tribeId, outcome, closedBy })
 
   const closePayload = gunEscape({ status: 'closed', outcome, closedAt: updated.closedAt, closedBy } as Record<string, unknown>)
   gun
@@ -218,6 +232,8 @@ export async function closeProposal(
       id: `proposals:${tribeId}:${proposalId}:${Date.now()}`,
       gunStore: 'proposals', tribeId, recordKey: proposalId,
       payload: closePayload,
+      convexMutation: 'proposals.close',
+      convexArgs: { proposalId, tribeId, outcome, closedBy },
       queuedAt: Date.now(),
     })
   }

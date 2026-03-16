@@ -5,6 +5,7 @@ import { getDB } from './db'
 import { notify } from './notifications'
 import { updateAsset } from './inventory'
 import { logConsumption } from './consumption'
+import { convexWrite } from './sync-adapter'
 import type {
   FederationRelationship,
   FederationRelationshipStatus,
@@ -173,6 +174,7 @@ export async function addFederationContact(
 
   const db = await getDB()
   await db.put('federation-relationships', rel, `${myTribeId}:${channelId}`)
+  void convexWrite('federation.upsertRelationship', { channelId, myTribeId, otherTribeId: contactCard.tribeId, otherTribeName: contactCard.name, otherTribeLocation: contactCard.location, otherTribePub: contactCard.pub, otherTribeEpub: contactCard.epub, status: 'contact', initiatedBy, initiatedAt: now, updatedAt: now })
 
   // Publish our status to the shared federation channel
   gun
@@ -202,6 +204,7 @@ export async function updateRelationshipStatus(
 
   const updated: FederationRelationship = { ...existing, status, updatedAt: Date.now() }
   await db.put('federation-relationships', updated, key)
+  void convexWrite('federation.upsertRelationship', { channelId, myTribeId, otherTribeId: existing.otherTribeId, otherTribeName: existing.otherTribeName, otherTribeLocation: existing.otherTribeLocation, otherTribePub: existing.otherTribePub, otherTribeEpub: existing.otherTribeEpub, status, initiatedBy: existing.initiatedBy, initiatedAt: existing.initiatedAt, updatedAt: updated.updatedAt })
 
   gun
     .get('federation').get(channelId)
@@ -264,6 +267,7 @@ export async function sendFederatedMessage(
 
   const db = await getDB()
   await db.put('federation-messages', msg, `${channelId}:${id}`)
+  void convexWrite('federation.sendMessage', { messageId: id, channelId, fromTribeId, fromTribeName, senderPub, senderName, type, content: ciphertext, sentAt })
 
   // Write encrypted version to Gun
   const gunPayload = {
@@ -353,6 +357,7 @@ export async function proposeTrade(
 
   const db = await getDB()
   await db.put('federation-trades', proposal, `${channelId}:${id}`)
+  void convexWrite('federation.proposeTrade', { tradeId: id, channelId, fromTribeId, toTribeId, fromTribeName, toTribeName, offer, request, message, proposedBy, proposedAt: now, status: 'pending' })
 
   gun
     .get('federation').get(channelId)
@@ -411,6 +416,7 @@ export async function respondToTrade(
   }
 
   await db.put('federation-trades', updated, key)
+  void convexWrite('federation.updateTradeStatus', { tradeId: proposalId, channelId, status: updated.status, respondedAt: now, respondedBy, counterOffer, lastRespondedByTribeId: myTribeId })
 
   const gunPatch: Record<string, unknown> = {
     status: updated.status,
@@ -451,6 +457,7 @@ export async function confirmTradeFulfillment(
   if (bothDone) updated.status = 'fulfilled'
 
   await db.put('federation-trades', updated, key)
+  void convexWrite('federation.updateTradeStatus', { tradeId: proposalId, channelId, status: updated.status, fromFulfilled: updated.fromFulfilled, toFulfilled: updated.toFulfilled })
   gun
     .get('federation').get(channelId)
     .get('trades').get(proposalId)

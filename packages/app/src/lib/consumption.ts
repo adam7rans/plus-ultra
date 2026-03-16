@@ -5,6 +5,7 @@ import { updateAsset } from './inventory'
 import { notify } from './notifications'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import { computeBurnRate, getDepletionStatus, DEPLETION_THRESHOLDS } from '@plus-ultra/core'
 import { assetsNeeded, ASSET_BY_KEY } from '@plus-ultra/core'
 import type { ConsumptionEntry, AssetType } from '@plus-ultra/core'
@@ -65,6 +66,7 @@ export async function logConsumption(
   // 1. Write entry to IDB + Gun
   const db = await getDB()
   await db.put('consumption-log', entry, `${tribeId}:${entry.id}`)
+  void convexWrite('consumption.log', { entryId: entry.id, tribeId, asset, amount, periodDays, loggedAt: entry.loggedAt, loggedBy, notes })
 
   const consumptionPayload = gunEscape(entry as unknown as Record<string, unknown>)
   gun
@@ -77,6 +79,8 @@ export async function logConsumption(
       id: `consumption-log:${tribeId}:${entry.id}:${Date.now()}`,
       gunStore: 'consumption-log', tribeId, recordKey: entry.id,
       payload: consumptionPayload,
+      convexMutation: 'consumption.log',
+      convexArgs: { entryId: entry.id, tribeId, asset, amount, periodDays, loggedAt: entry.loggedAt, loggedBy, notes },
       queuedAt: Date.now(),
     })
   }

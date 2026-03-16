@@ -4,6 +4,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { addPendingSync } from './sync-queue'
 import { getOfflineSince } from './offline-tracker'
+import { convexWrite } from './sync-adapter'
 import { shortId } from './identity'
 import type { Tribe, TribeMember, HealthStatus } from '@plus-ultra/core'
 
@@ -56,6 +57,11 @@ export async function createTribe(
   }
   if (tribe.lat !== undefined) gunTribeData.lat = tribe.lat
   if (tribe.lng !== undefined) gunTribeData.lng = tribe.lng
+
+  // Sync to Convex (grid-up) — no priv keys go to cloud
+  void convexWrite('tribes.upsert', gunTribeData)
+
+  // Sync to Gun (always — for P2P grid-down fallback)
   gun.get('tribes').get(tribeId).put(gunTribeData)
 
   // Write founder as first member
@@ -97,13 +103,15 @@ export async function createInviteToken(tribeId: string): Promise<string> {
   const token = nanoid(16)
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000 // 24 hours
 
-  gun.get('tribes').get(tribeId).get('invites').get(token).put({
+  const inviteData = {
     token,
     tribeId,
     createdAt: Date.now(),
     expiresAt,
     used: false,
-  })
+  }
+  void convexWrite('invites.create', inviteData)
+  gun.get('tribes').get(tribeId).get('invites').get(token).put(inviteData)
 
   return token
 }
@@ -269,15 +277,25 @@ async function writeMember(tribeId: string, member: TribeMember): Promise<void> 
   // Write to IDB first (source of truth, survives process restarts)
   const db = await getDB()
   await db.put('members', member, `${tribeId}:${member.pubkey}`)
+
+  // Sync to Convex (grid-up) — exclude photo (too large for cloud)
+  const { photo: _photo, ...cloudFields } = member
+  void _photo
+  void convexWrite('members.upsert', cloudFields)
+
   // Gun write for live P2P sync (fire and forget)
   const memberPayload = member as unknown as Record<string, unknown>
   gun.get('tribes').get(tribeId).get('members').get(member.pubkey).put(memberPayload)
 
   if (getOfflineSince() !== null) {
+    const { photo: _p, ...convexMemberFields } = member
+    void _p
     void addPendingSync({
       id: `members:${tribeId}:${member.pubkey}:${Date.now()}`,
       gunStore: 'members', tribeId, recordKey: member.pubkey,
       payload: memberPayload,
+      convexMutation: 'members.upsert',
+      convexArgs: convexMemberFields as Record<string, unknown>,
       queuedAt: Date.now(),
     })
   }
@@ -396,6 +414,9 @@ export async function updateMemberProfile(
   // Write full record to IDB (includes photo)
   await db.put('members', updated, key)
 
+  // Sync to Convex (grid-up) — photo excluded, only profile fields
+  void convexWrite('members.updateProfile', { tribeId, pubkey, bio: profile.bio, availability: profile.availability, physicalLimitations: profile.physicalLimitations, memberType: profile.memberType })
+
   // Sync to Gun — exclude photo (too large for P2P mesh)
   const { photo: _photo, ...gunFields } = updated
   void _photo // suppress unused variable warning
@@ -407,6 +428,8 @@ export async function updateMemberProfile(
       id: `members:${tribeId}:${pubkey}:${Date.now()}`,
       gunStore: 'members', tribeId, recordKey: pubkey,
       payload: profilePayload,
+      convexMutation: 'members.updateProfile',
+      convexArgs: { tribeId, pubkey, bio: profile.bio, availability: profile.availability, physicalLimitations: profile.physicalLimitations, memberType: profile.memberType },
       queuedAt: Date.now(),
     })
   }
@@ -424,6 +447,7 @@ export async function setDiplomatStatus(
     const updated = { ...(existing as TribeMember), isDiplomat: isDiplomat || undefined }
     await db.put('members', updated, key)
   }
+  void convexWrite('members.setDiplomatStatus', { tribeId, pubkey: targetPubkey, isDiplomat })
   const diplomatPayload = { isDiplomat: isDiplomat || null } as unknown as Record<string, unknown>
   gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(diplomatPayload)
 
@@ -432,6 +456,8 @@ export async function setDiplomatStatus(
       id: `members:${tribeId}:${targetPubkey}:${Date.now()}`,
       gunStore: 'members', tribeId, recordKey: targetPubkey,
       payload: diplomatPayload,
+      convexMutation: 'members.setDiplomatStatus',
+      convexArgs: { tribeId, pubkey: targetPubkey, isDiplomat },
       queuedAt: Date.now(),
     })
   }
@@ -449,6 +475,7 @@ export async function setAuthorityRole(
     const updated = { ...(existing as TribeMember), authorityRole }
     await db.put('members', updated, key)
   }
+  if (authorityRole) void convexWrite('members.setAuthorityRole', { tribeId, pubkey: targetPubkey, authorityRole })
   const rolePayload = { authorityRole } as unknown as Record<string, unknown>
   gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(rolePayload)
 
@@ -457,6 +484,7 @@ export async function setAuthorityRole(
       id: `members:${tribeId}:${targetPubkey}:${Date.now()}`,
       gunStore: 'members', tribeId, recordKey: targetPubkey,
       payload: rolePayload,
+      ...(authorityRole ? { convexMutation: 'members.setAuthorityRole', convexArgs: { tribeId, pubkey: targetPubkey, authorityRole } } : {}),
       queuedAt: Date.now(),
     })
   }
@@ -502,6 +530,7 @@ export async function updateTribeMeta(
   if (normalizedRegion !== undefined) gunPayload.region = normalizedRegion
   if (updates.lat !== undefined) gunPayload.lat = updates.lat
   if (updates.lng !== undefined) gunPayload.lng = updates.lng
+  void convexWrite('tribes.updateMeta', { id: tribeId, ...gunPayload })
   gun.get('tribes').get(tribeId).put(gunPayload)
 
   if (getOfflineSince() !== null) {
@@ -510,6 +539,8 @@ export async function updateTribeMeta(
       gunPath: ['tribes', tribeId],
       gunStore: 'tribe-meta', tribeId, recordKey: tribeId,
       payload: gunPayload,
+      convexMutation: 'tribes.updateMeta',
+      convexArgs: { id: tribeId, ...gunPayload },
       queuedAt: Date.now(),
     })
   }
@@ -526,6 +557,7 @@ export async function leaveTribe(tribeId: string, memberPub: string): Promise<vo
   if (existing) {
     const updated: TribeMember = { ...existing, status: 'departed' }
     await db.put('members', updated, key)
+    void convexWrite('members.markDeparted', { tribeId, pubkey: memberPub })
     gun.get('tribes').get(tribeId).get('members').get(memberPub).put(
       updated as unknown as Record<string, unknown>
     )
@@ -545,6 +577,7 @@ export async function removeMember(tribeId: string, targetPubkey: string): Promi
   if (existing) {
     const updated: TribeMember = { ...existing, status: 'departed' }
     await db.put('members', updated, key)
+    void convexWrite('members.markDeparted', { tribeId, pubkey: targetPubkey })
     // Write full updated record so Gun merge doesn't drop the lastSeen check
     gun.get('tribes').get(tribeId).get('members').get(targetPubkey).put(
       updated as unknown as Record<string, unknown>
@@ -583,6 +616,7 @@ export async function updateMemberHealth(
   }
 
   await db.put('members', updated, key)
+  void convexWrite('members.updateHealth', { tribeId, pubkey: targetPub, bloodType: health.bloodType, allergies: health.allergies, medications: health.medications, medicalConditions: health.medicalConditions, currentHealthStatus: health.currentHealthStatus, healthStatusUpdatedAt: updated.healthStatusUpdatedAt, healthStatusUpdatedBy: updated.healthStatusUpdatedBy })
 
   // Gun: arrays must be serialized to JSON strings (same as waypointsJson pattern)
   const { photo: _photo, ...baseFields } = updated
@@ -600,6 +634,8 @@ export async function updateMemberHealth(
       id: `members:${tribeId}:${targetPub}:${Date.now()}`,
       gunStore: 'members', tribeId, recordKey: targetPub,
       payload: healthPayload,
+      convexMutation: 'members.updateHealth',
+      convexArgs: { tribeId, pubkey: targetPub, bloodType: health.bloodType, allergies: health.allergies, medications: health.medications, medicalConditions: health.medicalConditions, currentHealthStatus: health.currentHealthStatus, healthStatusUpdatedAt: updated.healthStatusUpdatedAt, healthStatusUpdatedBy: updated.healthStatusUpdatedBy },
       queuedAt: Date.now(),
     })
   }
@@ -610,6 +646,7 @@ export async function updateMemberHealth(
 export async function deleteTribe(tribeId: string): Promise<void> {
   // Mark deleted in Gun so other peers see it
   gun.get('tribes').get(tribeId).put({ deleted: true, deletedAt: Date.now() } as unknown as Record<string, unknown>)
+  void convexWrite('tribes.markDeleted', { id: tribeId })
 
   const db = await getDB()
   await db.delete('my-tribes', tribeId)

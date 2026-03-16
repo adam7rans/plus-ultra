@@ -2,6 +2,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import { scoreQuiz, computeArchetype, mergeProfileDimensions } from '@plus-ultra/core'
 import type { PsychProfile, PsychDimensions, PeerRating } from '@plus-ultra/core'
 
@@ -136,6 +137,7 @@ export async function saveQuizResult(
   }
 
   await db.put('psych-profiles', profile, key)
+  void convexWrite('psych.upsertProfile', { memberId: memberPub, tribeId, archetype: profile.archetype, dimensions: profile.dimensions, quizCompletedAt: profile.quizCompletedAt ?? undefined, lastUpdatedAt: profile.lastUpdatedAt, peerDimensions: profile.peerDimensions, peerRatingCount: profile.peerRatingCount })
   const quizPayload = serializeProfile(profile)
   gun.get('tribes').get(tribeId).get('psych-profiles').get(memberPub)
     .put(quizPayload)
@@ -145,6 +147,8 @@ export async function saveQuizResult(
       id: `psych-profiles:${tribeId}:${memberPub}:${Date.now()}`,
       gunStore: 'psych-profiles', tribeId, recordKey: memberPub,
       payload: quizPayload,
+      convexMutation: 'psych.upsertProfile',
+      convexArgs: { memberId: memberPub, tribeId, archetype: profile.archetype, dimensions: profile.dimensions, quizCompletedAt: profile.quizCompletedAt ?? undefined, lastUpdatedAt: profile.lastUpdatedAt, peerDimensions: profile.peerDimensions, peerRatingCount: profile.peerRatingCount },
       queuedAt: Date.now(),
     })
   }
@@ -197,6 +201,7 @@ export async function submitPeerRating(
 
   // Store locally (rater identity not sent to Gun — only used for dedup)
   await db.put('peer-ratings', peerRating, ratingKey)
+  void convexWrite('psych.submitRating', { ratingId: peerRating.id, tribeId, ratedPub, stressTolerance: validatedRatings.stressTolerance, leadershipStyle: validatedRatings.leadershipStyle, conflictApproach: validatedRatings.conflictApproach, ratedAt: peerRating.ratedAt })
 
   // Aggregate: fetch all local peer ratings for this member across all raters
   // Then recompute average and update profile
@@ -217,6 +222,8 @@ export async function submitPeerRating(
           id: `psych-profiles:${tribeId}:${ratedPub}:${Date.now()}`,
           gunStore: 'psych-profiles', tribeId, recordKey: ratedPub,
           payload: peerRatingPayload,
+          convexMutation: 'psych.upsertProfile',
+          convexArgs: { memberId: ratedPub, tribeId, archetype: profile.archetype, dimensions: profile.dimensions, quizCompletedAt: profile.quizCompletedAt ?? undefined, lastUpdatedAt: profile.lastUpdatedAt, peerDimensions: profile.peerDimensions, peerRatingCount: profile.peerRatingCount },
           queuedAt: Date.now(),
         })
       }
@@ -314,6 +321,7 @@ export async function recordVoteSignal(
   }
 
   await db.put('psych-profiles', updatedProfile, key)
+  void convexWrite('psych.upsertProfile', { memberId: memberPub, tribeId, archetype: updatedProfile.archetype, dimensions: updatedProfile.dimensions, quizCompletedAt: updatedProfile.quizCompletedAt ?? undefined, lastUpdatedAt: updatedProfile.lastUpdatedAt, peerDimensions: updatedProfile.peerDimensions, peerRatingCount: updatedProfile.peerRatingCount })
   const voteSignalPayload = serializeProfile(updatedProfile)
   gun.get('tribes').get(tribeId).get('psych-profiles').get(memberPub)
     .put(voteSignalPayload)
@@ -323,6 +331,8 @@ export async function recordVoteSignal(
       id: `psych-profiles:${tribeId}:${memberPub}:${Date.now()}`,
       gunStore: 'psych-profiles', tribeId, recordKey: memberPub,
       payload: voteSignalPayload,
+      convexMutation: 'psych.upsertProfile',
+      convexArgs: { memberId: memberPub, tribeId, archetype: updatedProfile.archetype, dimensions: updatedProfile.dimensions, quizCompletedAt: updatedProfile.quizCompletedAt ?? undefined, lastUpdatedAt: updatedProfile.lastUpdatedAt, peerDimensions: updatedProfile.peerDimensions, peerRatingCount: updatedProfile.peerRatingCount },
       queuedAt: Date.now(),
     })
   }

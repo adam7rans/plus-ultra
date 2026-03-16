@@ -3,6 +3,7 @@ import { gun } from './gun'
 import { getDB } from './db'
 import { getOfflineSince } from './offline-tracker'
 import { addPendingSync } from './sync-queue'
+import { convexWrite } from './sync-adapter'
 import type { TribeDoc, DocCategory, DocStatus } from '@plus-ultra/core'
 
 // ─── Gun SEA-safe helpers (inlined per project convention) ────────────────────
@@ -99,6 +100,7 @@ export async function createDoc(
 
   const db = await getDB()
   await db.put('tribe-docs', doc, `${tribeId}:${id}`)
+  void convexWrite('docs.upsert', { docId: id, tribeId, title: fields.title, category: fields.category, status: 'draft', content: fields.content, version: 1, authorPub, createdAt: now, updatedAt: now, linkedRoles: fields.linkedRoles, tags: fields.tags })
   const docPayload = gunEscape(toGunRecord(doc))
   gun.get('tribes').get(tribeId).get('docs').get(id)
     .put(docPayload)
@@ -108,6 +110,8 @@ export async function createDoc(
       id: `docs:${tribeId}:${id}:${Date.now()}`,
       gunStore: 'docs', tribeId, recordKey: id,
       payload: docPayload,
+      convexMutation: 'docs.upsert',
+      convexArgs: { docId: id, tribeId, title: fields.title, category: fields.category, status: 'draft', content: fields.content, version: 1, authorPub, createdAt: now, updatedAt: now, linkedRoles: fields.linkedRoles, tags: fields.tags },
       queuedAt: Date.now(),
     })
   }
@@ -135,6 +139,7 @@ export async function updateDoc(
   }
 
   await db.put('tribe-docs', updated, `${tribeId}:${docId}`)
+  void convexWrite('docs.upsert', { docId, tribeId, title: updated.title, category: updated.category, status: updated.status, content: updated.content, version: updated.version, authorPub: updated.authorPub, approvedBy: updated.approvedBy, createdAt: updated.createdAt, updatedAt: updated.updatedAt, approvedAt: updated.approvedAt, linkedRoles: updated.linkedRoles, tags: updated.tags })
   const updateDocPayload = gunEscape(toGunRecord(updated))
   gun.get('tribes').get(tribeId).get('docs').get(docId)
     .put(updateDocPayload)
@@ -144,6 +149,8 @@ export async function updateDoc(
       id: `docs:${tribeId}:${docId}:${Date.now()}`,
       gunStore: 'docs', tribeId, recordKey: docId,
       payload: updateDocPayload,
+      convexMutation: 'docs.upsert',
+      convexArgs: { docId, tribeId, title: updated.title, category: updated.category, status: updated.status, content: updated.content, version: updated.version, authorPub: updated.authorPub, approvedBy: updated.approvedBy, createdAt: updated.createdAt, updatedAt: updated.updatedAt, approvedAt: updated.approvedAt, linkedRoles: updated.linkedRoles, tags: updated.tags },
       queuedAt: Date.now(),
     })
   }
@@ -168,6 +175,7 @@ export async function approveDoc(
   }
 
   await db.put('tribe-docs', updated, `${tribeId}:${docId}`)
+  void convexWrite('docs.upsert', { docId, tribeId, title: updated.title, category: updated.category, status: updated.status, content: updated.content, version: updated.version, authorPub: updated.authorPub, approvedBy: updated.approvedBy, createdAt: updated.createdAt, updatedAt: updated.updatedAt, approvedAt: updated.approvedAt, linkedRoles: updated.linkedRoles, tags: updated.tags })
   const approveDocPayload = gunEscape(toGunRecord(updated))
   gun.get('tribes').get(tribeId).get('docs').get(docId)
     .put(approveDocPayload)
@@ -177,6 +185,8 @@ export async function approveDoc(
       id: `docs:${tribeId}:${docId}:${Date.now()}`,
       gunStore: 'docs', tribeId, recordKey: docId,
       payload: approveDocPayload,
+      convexMutation: 'docs.upsert',
+      convexArgs: { docId, tribeId, title: updated.title, category: updated.category, status: updated.status, content: updated.content, version: updated.version, authorPub: updated.authorPub, approvedBy: updated.approvedBy, createdAt: updated.createdAt, updatedAt: updated.updatedAt, approvedAt: updated.approvedAt, linkedRoles: updated.linkedRoles, tags: updated.tags },
       queuedAt: Date.now(),
     })
   }
@@ -195,6 +205,7 @@ export async function archiveDoc(tribeId: string, docId: string): Promise<void> 
   }
 
   await db.put('tribe-docs', updated, `${tribeId}:${docId}`)
+  void convexWrite('docs.upsert', { docId, tribeId, title: updated.title, category: updated.category, status: 'archived', content: updated.content, version: updated.version, authorPub: updated.authorPub, createdAt: updated.createdAt, updatedAt: updated.updatedAt, linkedRoles: updated.linkedRoles, tags: updated.tags })
   const archiveDocPayload = gunEscape(toGunRecord(updated))
   gun.get('tribes').get(tribeId).get('docs').get(docId)
     .put(archiveDocPayload)
@@ -204,6 +215,8 @@ export async function archiveDoc(tribeId: string, docId: string): Promise<void> 
       id: `docs:${tribeId}:${docId}:${Date.now()}`,
       gunStore: 'docs', tribeId, recordKey: docId,
       payload: archiveDocPayload,
+      convexMutation: 'docs.upsert',
+      convexArgs: { docId, tribeId, title: updated.title, category: updated.category, status: 'archived', content: updated.content, version: updated.version, authorPub: updated.authorPub, createdAt: updated.createdAt, updatedAt: updated.updatedAt, linkedRoles: updated.linkedRoles, tags: updated.tags },
       queuedAt: Date.now(),
     })
   }
