@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from 'convex/react'
+import { api } from '../../../../convex/_generated/api'
 import { useIdentity } from '../contexts/IdentityContext'
 import {
   subscribeToMuster,
@@ -7,23 +9,44 @@ import {
   closeMuster as libCloseMuster,
   getMusterHistory,
 } from '../lib/rollcall'
+import { useIsGridUp } from './useIsGridUp'
 import type { MusterCall, MusterResponse, MusterStatus, MusterReason } from '@plus-ultra/core'
 
 export function useRollCall(tribeId: string, memberName: string) {
   const { identity } = useIdentity()
-  const [activeMuster, setActiveMuster] = useState<MusterCall | null>(null)
-  const [responses, setResponses] = useState<MusterResponse[]>([])
+  const gridUp = useIsGridUp()
+
+  // Convex path (grid-up): list all musters for tribe, find active one
+  const convexMusters = useQuery(
+    api.rollcall.listByTribe,
+    gridUp && tribeId ? { tribeId } : 'skip'
+  )
+  // Derive the active muster from the list
+  const convexActiveMuster = convexMusters
+    ? ((convexMusters as unknown as MusterCall[]).find(m => m.status === 'active') ?? null)
+    : null
+  const convexResponses = useQuery(
+    api.rollcall.listResponses,
+    gridUp && convexActiveMuster ? { musterId: convexActiveMuster.id } : 'skip'
+  )
+
+  // Gun path (grid-down): existing subscription
+  const [gunActiveMuster, setGunActiveMuster] = useState<MusterCall | null>(null)
+  const [gunResponses, setGunResponses] = useState<MusterResponse[]>([])
   const [history, setHistory] = useState<MusterCall[]>([])
 
   useEffect(() => {
-    if (!tribeId) return
+    if (gridUp || !tribeId) return
     const unsub = subscribeToMuster(tribeId, (muster, resps) => {
-      setActiveMuster(muster)
-      setResponses(resps)
+      setGunActiveMuster(muster)
+      setGunResponses(resps)
     })
     getMusterHistory(tribeId).then(setHistory)
     return unsub
-  }, [tribeId])
+  }, [tribeId, gridUp])
+
+  const activeMuster = gridUp ? convexActiveMuster : gunActiveMuster
+  const responses = gridUp ? (convexResponses ?? []) as unknown as MusterResponse[] : gunResponses
 
   const myResponse = identity
     ? responses.find(r => r.memberPub === identity.pub) ?? null
@@ -76,10 +99,12 @@ export function useRollCall(tribeId: string, memberName: string) {
   const closeMuster = useCallback(async () => {
     if (!activeMuster) return
     await libCloseMuster(tribeId, activeMuster.id)
-    setActiveMuster(null)
-    setResponses([])
-    getMusterHistory(tribeId).then(setHistory)
-  }, [tribeId, activeMuster])
+    if (!gridUp) {
+      setGunActiveMuster(null)
+      setGunResponses([])
+      getMusterHistory(tribeId).then(setHistory)
+    }
+  }, [tribeId, activeMuster, gridUp])
 
   return {
     activeMuster,

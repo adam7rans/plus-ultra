@@ -1,33 +1,50 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from 'convex/react'
+import { api } from '../../../../convex/_generated/api'
 import { useIdentity } from '../contexts/IdentityContext'
 import {
   subscribeToGridState,
   setGridState as libSetGridState,
   clearGridState as libClearGridState,
 } from '../lib/grid-state'
+import { useIsGridUp } from './useIsGridUp'
 import type { GridState } from '@plus-ultra/core'
 
 export function useGridState(tribeId: string, memberName?: string) {
   const { identity } = useIdentity()
-  const [gridState, setGridState] = useState<GridState | null>(null)
-  const [loading, setLoading] = useState(true)
+  const gridUp = useIsGridUp()
+
+  // Convex path (grid-up): real-time, no polling
+  const convexData = useQuery(
+    api.gridState.get,
+    gridUp && tribeId ? { tribeId } : 'skip'
+  )
+
+  // Gun path (grid-down): existing subscription
+  const [gunState, setGunState] = useState<GridState | null>(null)
+  const [gunLoading, setGunLoading] = useState(true)
 
   useEffect(() => {
-    if (!tribeId) return
+    if (gridUp || !tribeId) return
     let cancelled = false
     const unsub = subscribeToGridState(tribeId, (state) => {
       if (cancelled) return
-      setGridState(state)
-      setLoading(false)
+      setGunState(state)
+      setGunLoading(false)
     })
     // If no state arrives within 500ms, mark done loading
-    const timeout = setTimeout(() => { if (!cancelled) setLoading(false) }, 500)
+    const timeout = setTimeout(() => { if (!cancelled) setGunLoading(false) }, 500)
     return () => {
       cancelled = true
       unsub()
       clearTimeout(timeout)
     }
-  }, [tribeId])
+  }, [tribeId, gridUp])
+
+  const gridState = gridUp
+    ? (convexData ?? null) as unknown as GridState | null
+    : gunState
+  const loading = gridUp ? convexData === undefined : gunLoading
 
   // Auto-clear if expired on every render
   const now = Date.now()
@@ -38,9 +55,11 @@ export function useGridState(tribeId: string, memberName?: string) {
   // Clear expired state from IDB/Gun
   useEffect(() => {
     if (isExpired) {
-      libClearGridState(tribeId).then(() => setGridState(null))
+      libClearGridState(tribeId).then(() => {
+        if (!gridUp) setGunState(null)
+      })
     }
-  }, [isExpired, tribeId])
+  }, [isExpired, tribeId, gridUp])
 
   const setGridDown = useCallback(async (opts: {
     days: number          // 0 = until cleared (no expiry)
@@ -64,8 +83,8 @@ export function useGridState(tribeId: string, memberName?: string) {
 
   const clearGridDown = useCallback(async () => {
     await libClearGridState(tribeId)
-    setGridState(null)
-  }, [tribeId])
+    if (!gridUp) setGunState(null)
+  }, [tribeId, gridUp])
 
   return {
     gridState: isExpired ? null : gridState,

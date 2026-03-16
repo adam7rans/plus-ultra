@@ -1,18 +1,33 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useQuery } from 'convex/react'
+import { api } from '../../../../convex/_generated/api'
 import { subscribeToProduction, logProductionEntry } from '../lib/production'
 import { computeProductionRate } from '@plus-ultra/core'
+import { useIsGridUp } from './useIsGridUp'
 import type { ProductionEntry, AssetType } from '@plus-ultra/core'
 
 export function useProduction(tribeId: string | null) {
-  const [entries, setEntries] = useState<ProductionEntry[]>([])
+  const gridUp = useIsGridUp()
 
+  // Convex path (grid-up): real-time, no polling
+  const convexData = useQuery(
+    api.production.listByTribe,
+    gridUp && tribeId ? { tribeId } : 'skip'
+  )
+
+  // Gun path (grid-down): existing subscription
+  const [gunData, setGunData] = useState<ProductionEntry[]>([])
   useEffect(() => {
-    if (!tribeId) return
+    if (gridUp || !tribeId) return
     const unsub = subscribeToProduction(tribeId, all => {
-      setEntries([...all].sort((a, b) => b.loggedAt - a.loggedAt))
+      setGunData([...all].sort((a, b) => b.loggedAt - a.loggedAt))
     })
     return unsub
-  }, [tribeId])
+  }, [tribeId, gridUp])
+
+  const entries = gridUp
+    ? ([...(convexData ?? [])].sort((a, b) => b.loggedAt - a.loggedAt) as unknown as ProductionEntry[])
+    : gunData
 
   // Compute per-asset production rates
   const rateByAsset = new Map<AssetType, number | null>()
