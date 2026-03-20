@@ -40,6 +40,7 @@ Plus Ultra gives tribes the tools to function as self-reliant units:
 - **Composite Readiness Score** — Six-dimension operational readiness report (personnel, supply, infrastructure, comms, coordination, cohesion) weighted to a 0–100 composite score with letter grade. Critical gaps listed with suggested actions. Replaces the simpler survivability score widget on the dashboard.
 - **Grid-Down Operational Mode** — Declare tribe-wide grid-down status (real or simulation/drill). Persistent red/amber banner on the dashboard. Nav cards reorder automatically to surface crisis-critical screens (Roll Call, PACE, Inventory, Map, Bug-Out first). Dimmed cards for grid-up-only features (Proposals, Finances, Federation). Drill mode triggered via muster system (`grid_down_drill` reason) with a 4-item checklist card. Auto-expires after 3/5/7 days or manual clear. Gun-synced tribe-wide.
 - **Automatic Offline Detection** — Relay ping every 60s (not `navigator.onLine`). Five escalating stages based on how long the relay has been unreachable: silent offline dot (5 min), yellow warning banner (3 hr), orange banner + infrastructure checklist (6 hr), red banner + PACE surfaced (12 hr), full grid-down auto-declared (24 hr). `offlineSince` timestamp persisted in `localStorage` so stage survives page reloads. On relay restore, queued messages flush automatically.
+- **Phone-to-Phone Mesh Sync** — three-tier P2P layer: mDNS relay on same WiFi/hotspot (Phase A — embedded axum Gun relay, auto-discovered via `_plusultra._tcp`), WiFi Direct phone-to-phone (Phase B — Android, no infrastructure required, group owner IP always `192.168.49.1`), and BLE passive background discovery that triggers WiFi Direct when a tribe member comes within ~100m (Phase C — Android, UUID derived from `sha256(tribeId)`). Zero configuration, starts automatically on grid-down.
 - **Infrastructure Failure Checklist** — Appears at stage 3+ (6 hr offline). Members independently tap which of 11 infrastructure items are failing around them: Water, Power, Stores, TV/Broadcast, Radio, Cell Service, Gas/Fuel, Banks/ATMs, Hospitals, Police/Fire, Roads. Reports stored per-member in IDB + Gun under `tribes/{tribeId}/member-infra-status`. Collapsible "Tribe Reports" section shows every other member's checked items in real time.
 - **Bug-Out CTA** — When all 11 infrastructure items are failing AND the device has been offline 24+ hours, a prominent "BUG OUT NOW" card appears on the dashboard linking directly to the active bug-out plan.
 
@@ -76,6 +77,32 @@ User action
 ```
 
 Gun writes are always fire-and-forget. The app never blocks on Gun acks — no relay = no problem, data is in IDB.
+
+### Mesh Sync (Three-Tier P2P)
+
+When the Gun relay is unreachable, the app automatically activates the mesh sync layer — three concentric rings of connectivity, each requiring less infrastructure than the last:
+
+```
+Ring 1 — mDNS Relay (Phase A)
+  Rust axum server embedded in the Tauri binary (port 8766)
+  Advertises itself via mDNS as _plusultra._tcp
+  Peers on the same WiFi network or phone hotspot auto-discover and connect
+  Implements the same Gun relay protocol — no JS changes needed
+
+Ring 2 — WiFi Direct (Phase B, Android)
+  WifiP2pManager + BroadcastReceiver Kotlin plugin
+  Group owner always gets IP 192.168.49.1 — Gun peers connect to ws://192.168.49.1:8766/gun
+  No WiFi infrastructure needed — phones connect directly to each other
+  Event flow: discoverPeers → peer-found → connectToPeer → connected → Gun peer added
+
+Ring 3 — BLE Discovery (Phase C, Android)
+  Passive background BLE scan for tribe member UUIDs
+  UUID derived from sha256(tribeId).slice(0,16), formatted as UUID-128
+  When a tribe member is detected (~100m range), triggers WiFi Direct discovery automatically
+  Zero-interaction proximity sync — tribe members auto-mesh just by being nearby
+```
+
+**Sync tier priority** (`sync-adapter.ts`): Convex (grid-up) → Mesh P2P (grid-down, mesh active) → local-only (fully isolated). The app always writes to IDB first; the sync tier only affects where the write is replicated.
 
 ### IDB Schema (v25)
 
@@ -374,6 +401,9 @@ Local 2-user sync fully validated on macOS (Tauri + Chrome against local Gun rel
 | Automatic offline detection (5-stage relay ping, localStorage) | ✅ |
 | Infrastructure failure checklist (11 items, tribe reports) | ✅ |
 | Bug-out CTA (full-infra + 24hr offline trigger) | ✅ |
+| Phone-to-phone mesh sync (Phase A — mDNS embedded relay) | ✅ |
+| Phone-to-phone mesh sync (Phase B — WiFi Direct, Android) | ✅ Code complete, pending device test |
+| Phone-to-phone mesh sync (Phase C — BLE discovery, Android) | ✅ Code complete, pending device test |
 | Real-time cross-context sync (Tauri ↔ Chrome) | ✅ Validated |
 | Data persistence across restarts (IDB) | ✅ |
 | PWA (offline-capable, installable) | ✅ |
