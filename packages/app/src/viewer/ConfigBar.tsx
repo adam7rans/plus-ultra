@@ -3,7 +3,7 @@ import { useViewer } from './ViewerContext'
 import { injectIDBData, BASE_TRIBE_RECORDS } from './utils/idbInject'
 
 export default function ConfigBar() {
-  const { appUrl, setAppUrl, tribeId, setTribeId, showToast } = useViewer()
+  const { appUrl, setAppUrl, tribeId, setTribeId, frameScale, setFrameScale, showToast } = useViewer()
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking')
   const [latency, setLatency] = useState<number | null>(null)
 
@@ -56,6 +56,19 @@ export default function ConfigBar() {
       />
       <div className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor}`} />
       <span className="text-[11px] text-zinc-500">{statusText}</span>
+      <span className="text-zinc-700">|</span>
+      <label className="text-[11px] text-zinc-500">Frame</label>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => setFrameScale(frameScale - 0.05)}
+          className="w-6 h-6 flex items-center justify-center bg-zinc-800 border border-zinc-700 text-zinc-300 rounded hover:bg-zinc-700 text-[13px] leading-none"
+        >−</button>
+        <span className="text-[11px] text-zinc-300 w-10 text-center tabular-nums">{Math.round(frameScale * 100)}%</span>
+        <button
+          onClick={() => setFrameScale(frameScale + 0.05)}
+          className="w-6 h-6 flex items-center justify-center bg-zinc-800 border border-zinc-700 text-zinc-300 rounded hover:bg-zinc-700 text-[13px] leading-none"
+        >+</button>
+      </div>
       <span className="text-zinc-700">|</span>
       <button
         onClick={handleSeedBase}

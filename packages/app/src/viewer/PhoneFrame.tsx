@@ -4,11 +4,8 @@ import { injectIDBData } from './utils/idbInject'
 import { prefillFormFields } from './utils/prefill'
 import type { IDBRecord, PrefillField } from './types'
 
-const PHONE_W = 215
-const PHONE_H = 464
 const IFRAME_W = 390
 const IFRAME_H = 844
-const SCALE = PHONE_W / IFRAME_W
 
 interface Props {
   iframeId: string
@@ -24,7 +21,9 @@ interface Props {
 export default function PhoneFrame({
   iframeId, route, injectIDB, injectLocalStorage, prefillForm, gridDown, gridDownKey, gridDownValue,
 }: Props) {
-  const { appUrl, tribeId, showToast } = useViewer()
+  const { appUrl, tribeId, frameScale, showToast } = useViewer()
+  const phoneW = Math.round(IFRAME_W * frameScale)
+  const phoneH = Math.round(IFRAME_H * frameScale)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   // tracks whether IDB injection has already fired for the current src
   const injectedRef = useRef(false)
@@ -96,7 +95,7 @@ export default function PhoneFrame({
     <div>
       <div
         className="overflow-hidden rounded-[28px] border-2 border-zinc-700 bg-black shadow-2xl"
-        style={{ width: PHONE_W, height: PHONE_H }}
+        style={{ width: phoneW, height: phoneH }}
       >
         <iframe
           id={iframeId}
@@ -108,7 +107,7 @@ export default function PhoneFrame({
           style={{
             width: IFRAME_W,
             height: IFRAME_H,
-            transform: `scale(${SCALE})`,
+            transform: `scale(${frameScale})`,
             transformOrigin: 'top left',
             border: 'none',
             display: 'block',
@@ -122,7 +121,7 @@ export default function PhoneFrame({
         >
           ↺ reset
         </button>
-        <span className="text-[10px] text-zinc-600">390×844 · 0.55×</span>
+        <span className="text-[10px] text-zinc-600">{IFRAME_W}×{IFRAME_H} · {frameScale.toFixed(2)}×</span>
         {injectIDB && (
           <button
             onClick={handleSeed}

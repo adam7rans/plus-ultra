@@ -5,6 +5,8 @@ interface ViewerContextValue {
   setAppUrl: (url: string) => void
   tribeId: string
   setTribeId: (id: string) => void
+  frameScale: number
+  setFrameScale: (s: number) => void
   toast: string
   showToast: (msg: string, isError?: boolean) => void
 }
@@ -17,6 +19,9 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
   )
   const [tribeId, setTribeIdRaw] = useState(
     () => localStorage.getItem('pu:tribeId') || '',
+  )
+  const [frameScale, setFrameScaleRaw] = useState(
+    () => parseFloat(localStorage.getItem('pu:frameScale') || '0.55'),
   )
   const [toast, setToast] = useState('')
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -33,6 +38,12 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('pu:tribeId', clean)
   }, [])
 
+  const setFrameScale = useCallback((s: number) => {
+    const clamped = Math.round(Math.min(1.0, Math.max(0.3, s)) * 100) / 100
+    setFrameScaleRaw(clamped)
+    localStorage.setItem('pu:frameScale', String(clamped))
+  }, [])
+
   const showToast = useCallback((msg: string, _isError?: boolean) => {
     setToast(msg)
     if (timerRef.current) clearTimeout(timerRef.current)
@@ -40,7 +51,7 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <ViewerContext.Provider value={{ appUrl, setAppUrl, tribeId, setTribeId, toast, showToast }}>
+    <ViewerContext.Provider value={{ appUrl, setAppUrl, tribeId, setTribeId, frameScale, setFrameScale, toast, showToast }}>
       {children}
     </ViewerContext.Provider>
   )
