@@ -45,26 +45,42 @@ export default function OnboardingScreen() {
   const { identity, saveDisplayName } = useIdentity()
   const navigate = useNavigate()
 
-  // Step tracking
-  const [currentStep, setCurrentStep] = useState<WizardStep>('profile')
+  // Step tracking — supports ?step= URL param for deep-linking (viewer/testing)
+  const [currentStep, setCurrentStep] = useState<WizardStep>(() => {
+    const param = new URLSearchParams(window.location.search).get('step') as WizardStep | null
+    return param && STEPS.includes(param) ? param : 'profile'
+  })
   const [currentDomainIdx, setCurrentDomainIdx] = useState(0)
 
-  // Step 1: Profile
-  const [displayName, setDisplayName] = useState(identity?.displayName ?? '')
-  const [memberType, setMemberType] = useState<MemberType | null>(null)
+  // Step 1: Profile — supports ?name= and ?memberType= for deep-linking
+  const [displayName, setDisplayName] = useState(() => {
+    const p = new URLSearchParams(window.location.search).get('name')
+    return p || (identity?.displayName ?? '')
+  })
+  const [memberType, setMemberType] = useState<MemberType | null>(() => {
+    const p = new URLSearchParams(window.location.search).get('memberType') as MemberType | null
+    return p && ['adult', 'elder', 'child', 'dependent'].includes(p) ? p : null
+  })
   const [, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [bio, setBio] = useState('')
 
-  // Step 2: Domains
-  const [selectedDomains, setSelectedDomains] = useState<SkillDomain[]>([])
+  // Step 2: Domains — supports ?domains=medical,comms for deep-linking
+  const [selectedDomains, setSelectedDomains] = useState<SkillDomain[]>(() => {
+    const p = new URLSearchParams(window.location.search).get('domains')
+    if (!p) return []
+    return p.split(',').filter(d => ALL_DOMAINS.includes(d as SkillDomain)) as SkillDomain[]
+  })
 
   // Step 3: Skills per role
   const [roleSelections, setRoleSelections] = useState<Map<SkillRole, RoleSelection>>(new Map())
   const [expandedRole, setExpandedRole] = useState<SkillRole | null>(null)
 
-  // Step 4: Availability
-  const [availability, setAvailability] = useState<string | null>(null)
+  // Step 4: Availability — supports ?availability=full-time for deep-linking
+  const [availability, setAvailability] = useState<string | null>(() => {
+    const p = new URLSearchParams(window.location.search).get('availability')
+    return p && ['full-time', 'part-time', 'on-call'].includes(p) ? p : null
+  })
   const [limitations, setLimitations] = useState('')
   const [notes, setNotes] = useState('')
 

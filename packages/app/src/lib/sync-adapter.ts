@@ -1,14 +1,19 @@
 import { getConvexClient } from './convex-client'
 import { getOfflineSince } from './offline-tracker'
+import { isMeshUp as _isMeshUp } from './mesh'
 
 /**
  * Sync adapter — decides whether to use Convex (grid-up) or Gun (grid-down).
  *
- * Grid-up: Convex is the cloud source of truth. Writes go to IDB + Convex.
- * Grid-down: Gun is the P2P sync layer. Writes go to IDB + Gun + pending-syncs queue.
+ * Three-tier priority:
+ *   1. Grid-up  — Convex cloud (online, Convex configured)
+ *   2. Mesh     — embedded relay + mDNS peer-to-peer (≥1 nearby device found)
+ *   3. Local    — IDB only, no remote sync
  *
  * IDB is ALWAYS written first (crash recovery guarantee).
  */
+
+export type SyncTier = 'grid-up' | 'mesh' | 'local-only'
 
 /** Returns true if we have a Convex connection and are online */
 export function isGridUp(): boolean {
@@ -22,6 +27,18 @@ export function isGridUp(): boolean {
 /** Returns true if we should use Gun (offline or no Convex configured) */
 export function isGridDown(): boolean {
   return !isGridUp()
+}
+
+/** Returns true if the mesh relay has ≥1 discovered peer. */
+export function isMeshUp(): boolean {
+  return _isMeshUp()
+}
+
+/** Current sync tier for UI display and routing decisions. */
+export function getSyncTier(): SyncTier {
+  if (isGridUp()) return 'grid-up'
+  if (isMeshUp()) return 'mesh'
+  return 'local-only'
 }
 
 /**

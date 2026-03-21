@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plus Ultra — Userflow Viewer</title>
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --bg2: #161616;
+    --bg3: #1e1e1e;
+    --border: #2a2a2a;
+    --accent: #484848;
+    --accent-bright: #b0b0b0;
+    --text: #dedede;
+    --text-dim: #7a7a7a;
+    --text-muted: #404040;
+    --yellow: #c8a84b;
+    --red: #c0504a;
+    --sidebar-w: 220px;
+    --config-h: 52px;
+    --phone-w: 215px;
+    --phone-h: 464px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; display: flex; flex-direction: column; }
+
+  /* CONFIG BAR */
+  #config-bar {
+    height: var(--config-h);
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px; padding: 0 16px;
+    flex-shrink: 0;
+  }
+  #config-bar label { color: var(--text-dim); font-size: 11px; white-space: nowrap; }
+  #config-bar input {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+    padding: 4px 8px; border-radius: 4px; font-family: inherit; font-size: 12px;
+    outline: none;
+  }
+  #config-bar input:focus { border-color: var(--accent); }
+  #input-url { width: 200px; }
+  #input-tribe { width: 260px; }
+  .config-sep { color: var(--text-muted); }
+  #status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+  #status-dot.online { background: var(--accent-bright); }
+  #status-label { font-size: 11px; color: var(--text-dim); }
+  .app-title { color: var(--accent-bright); font-weight: bold; font-size: 12px; letter-spacing: 0.05em; margin-right: 8px; }
+
+  /* LAYOUT */
+  #layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* SIDEBAR */
+  #sidebar {
+    width: var(--sidebar-w); background: var(--bg2); border-right: 1px solid var(--border);
+    overflow-y: auto; flex-shrink: 0; padding-bottom: 24px;
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-track { background: var(--bg2); }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .section-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 12px 6px;
+    color: var(--text-dim); font-size: 10px; font-weight: bold; letter-spacing: 0.08em;
+    text-transform: uppercase; cursor: pointer; user-select: none;
+    border-top: 1px solid var(--border); margin-top: 4px;
+  }
+  .section-header:first-child { border-top: none; margin-top: 0; }
+  .section-chevron { font-size: 9px; transition: transform 0.15s; margin-left: auto; }
+  .section-collapsed .section-chevron { transform: rotate(-90deg); }
+  .section-flows { overflow: hidden; }
+  .section-collapsed .section-flows { display: none; }
+
+  .flow-item {
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 5px 12px 5px 16px; cursor: pointer;
+    color: var(--text-dim); line-height: 1.3;
+    border-left: 2px solid transparent;
+    transition: background 0.1s, color 0.1s;
+  }
+  .flow-item:hover { background: var(--bg3); color: var(--text); }
+  .flow-item.active { background: var(--bg3); color: var(--accent-bright); border-left-color: var(--accent-bright); }
+  .flow-num { font-size: 10px; color: var(--text-muted); flex-shrink: 0; width: 22px; }
+  .flow-item.active .flow-num { color: var(--accent); }
+  .flow-title-text { font-size: 11px; }
+
+  /* MAIN */
+  #main { flex: 1; overflow-y: auto; padding: 24px 28px; }
+  #main::-webkit-scrollbar { width: 6px; }
+  #main::-webkit-scrollbar-track { background: var(--bg); }
+  #main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .flow-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  .flow-header h2 { font-size: 18px; color: var(--text); font-weight: bold; }
+  .flow-id { color: var(--text-muted); font-size: 13px; }
+  .mode-badge {
+    font-size: 10px; padding: 2px 7px; border-radius: 3px;
+    border: 1px solid var(--accent); color: var(--accent-bright); margin-left: auto;
+  }
+  .flow-summary { color: var(--text-dim); font-size: 12px; line-height: 1.6; margin-bottom: 20px; max-width: 55ch; }
+  .section-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 20px; }
+
+  /* STEPS */
+  .steps-grid { display: flex; flex-direction: column; }
+
+  .step-card {
+    display: flex; gap: 32px; align-items: flex-start;
+    padding: 32px 0;
+    border-top: 1px solid var(--border);
+  }
+  .step-card:first-child { border-top: none; padding-top: 0; }
+  .step-left { flex-shrink: 0; }
+  .step-right { flex: 1; min-width: 0; max-width: 55ch; padding-top: 4px; }
+
+  .step-n { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .step-screen { font-size: 12px; font-weight: bold; color: var(--text); margin-bottom: 4px; }
+  .step-desc { font-size: 11px; color: var(--text-dim); line-height: 1.6; margin-bottom: 8px; }
+  .step-action { font-size: 11px; color: var(--accent-bright); line-height: 1.5; }
+  .step-action::before { content: '\25B6 '; color: var(--accent); }
+
+  /* NOTE CARD */
+  .step-note {
+    font-size: 11px; color: var(--yellow); background: #1a1800; border: 1px solid #2e2a1a;
+    border-radius: 6px; padding: 10px 12px; line-height: 1.6; margin-bottom: 8px;
+  }
+
+  /* PHONE FRAME */
+  .phone-wrap {
+    width: var(--phone-w); height: var(--phone-h);
+    overflow: hidden; border-radius: 28px;
+    border: 2px solid #282828;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    flex-shrink: 0; background: #0a0a0a;
+  }
+  .phone-wrap iframe {
+    width: 390px; height: 844px;
+    transform: scale(0.55); transform-origin: top left;
+    border: none; display: block;
+  }
+  .phone-controls {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .btn-reset {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text-dim);
+    font-family: inherit; font-size: 11px; padding: 3px 10px; border-radius: 4px;
+    cursor: pointer; transition: background 0.1s, color 0.1s;
+  }
+  .btn-reset:hover { background: var(--accent); color: var(--text); border-color: var(--accent); }
+  .phone-label { font-size: 10px; color: var(--text-muted); }
+
+  /* INJECT BUTTON */
+  .btn-inject {
+    background: #1a1800; border: 1px solid #302c18; color: var(--yellow);
+    font-family: inherit; font-size: 11px; padding: 3px 10px; border-radius: 4px;
+    cursor: pointer; transition: background 0.1s;
+  }
+  .btn-inject:hover { background: #222018; }
+
+  /* MANUAL CARD */
+  .manual-card {
+    width: var(--phone-w); background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; text-align: center;
+  }
+  .manual-icon { font-size: 28px; margin-bottom: 8px; }
+  .manual-title { font-size: 11px; font-weight: bold; color: var(--text); margin-bottom: 6px; }
+  .manual-desc { font-size: 10px; color: var(--text-dim); line-height: 1.5; }
+
+  /* EMPTY STATE */
+  #empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 60vh; color: var(--text-muted); text-align: center; gap: 12px;
+  }
+  .empty-icon { font-size: 40px; }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+    background: #1e1e1e; border: 1px solid #2a2a2a; color: #dedede;
+    padding: 8px 14px; border-radius: 6px; font-size: 12px;
+    font-family: 'SF Mono', monospace; max-width: 360px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4); transition: opacity 0.3s;
+    opacity: 0; pointer-events: none;
+  }
+  #toast.visible { opacity: 1; }
+
+  @media (max-width: 900px) {
+    .step-card { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- CONFIG BAR -->
+<div id="config-bar">
+  <span class="app-title">PLUS ULTRA</span>
+  <span class="config-sep">|</span>
+  <label for="input-url">App URL</label>
+  <input id="input-url" type="text" placeholder="http://localhost:5175">
+  <span class="config-sep">|</span>
+  <label for="input-tribe">Tribe ID</label>
+  <input id="input-tribe" type="text" placeholder="Paste tribeId after creating a tribe">
+  <span id="status-dot" title="App server status"></span>
+  <span id="status-label">checking...</span>
+</div>
+
+<!-- LAYOUT -->
+<div id="layout">
+  <nav id="sidebar"></nav>
+  <main id="main">
+    <div id="empty-state">
+      <div class="empty-icon">&#x2B21;</div>
+      <p>Select a flow from the sidebar.<br>Make sure the dev server is running at the configured URL.</p>
+    </div>
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ─── HTML ESCAPE HELPER ───────────────────────────────────────────────────────
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ─── FLOWS DATA ───────────────────────────────────────────────────────────────
+const SECTIONS = [
+  'Setup & Identity',
+  'Daily Ops — Profile & People',
+  'Resources & Logistics',
+  'Governance & Planning',
+  'Communication',
+  'Emergency & Accountability',
+  'Federation',
+  'Grid Down Operations',
+  'Technical',
+];
+
+const FLOWS = [
+  // ── Section 1: Setup & Identity ──
+  {
+    id: 1, section: 'Setup & Identity', mode: 'Both',
+    title: 'First Launch & Identity Creation',
+    summary: 'On first launch, the app auto-generates a Gun/SEA cryptographic keypair and stores it in IndexedDB. No accounts, no servers required.',
+    steps: [
+      {
+        n: 1, screen: 'Home Screen', route: '/',
+        desc: 'Auto-generated cryptographic identity. Yellow backup warning banner if not backed up. "My Tribes" empty state. "Create New Tribe" and "Scan QR to Join" buttons.',
+        action: 'Observe the identity chip (top-right) and backup banner. Note the campfire empty state.'
+      }
+    ]
+  },
+  {
+    id: 2, section: 'Setup & Identity', mode: 'Both',
+    title: 'Identity Backup (QR Export)',
+    summary: 'The user exports their full keypair as a QR code to save offline. This is the only way to recover access on a new device.',
+    steps: [
+      {
+        n: 1, screen: 'Identity Screen — main view', route: '/identity',
+        desc: 'Public key card, display name, private key (masked), backup status card. "Back Up Now" and "Restore from QR Code" buttons.',
+        action: 'Tap "Back Up Now" to enter the backup view.',
+        note: 'Navigate to /identity — may redirect to home if no identity exists yet.'
+      },
+      {
+        n: 2, screen: 'Identity Screen — backup view', route: '/identity',
+        desc: 'QR code rendered from keypair JSON. Red danger card: "This QR contains your private key." "Done — I\'ve saved my backup" button.',
+        action: 'Tap "Done — I\'ve saved my backup" to mark backedUp = true and return.',
+        note: 'Tap "Back Up Now" on the identity screen to reach this state.'
+      }
+    ]
+  },
+  {
+    id: 3, section: 'Setup & Identity', mode: 'Both',
+    title: 'Identity Restore (from Backup QR)',
+    summary: 'User scans a previously exported backup QR to restore their identity on a new or wiped device.',
+    steps: [
+      {
+        n: 1, screen: 'Identity Screen — restore view', route: '/identity',
+        desc: 'Live camera QR scanner. Success card with "Continue" button on valid scan. Error card on invalid QR.',
+        action: 'Hold up the backup QR code to the camera scanner.',
+        note: 'Tap "Restore from QR Code" on the identity screen to reach this state.'
+      }
+    ]
+  },
+  {
+    id: 4, section: 'Setup & Identity', mode: 'Both',
+    title: 'Create a Tribe',
+    summary: 'The founding member sets up a new tribe with a name, location, region, governance model, and optional coordinates.',
+    steps: [
+      {
+        n: 1, screen: 'Create Tribe Screen', route: '/create-tribe',
+        desc: 'Tribe Name (max 60), Location, Region fields. Expandable "Set Coordinates" section with GPS button and manual lat/lng. Governance Model selector (Council / Direct Democracy / Hybrid) as radio cards. "Found This Tribe" button (disabled until required fields filled).',
+        action: 'Fill in Tribe Name, Location, Region. Select a governance model. Tap "Found This Tribe".'
+      }
+    ]
+  },
+  {
+    id: 5, section: 'Setup & Identity', mode: 'Both',
+    title: 'Join a Tribe (via Invite QR/Link)',
+    summary: 'A non-member receives an invite link or QR code, scans it, and is enrolled as a tribe member.',
+    steps: [
+      {
+        n: 1, screen: 'Home Screen — scanner active', route: '/',
+        desc: 'Inline camera QR scanner. "Cancel Scan" button. The scanner decodes the invite URL and navigates to the join screen.',
+        action: 'Tap "Scan QR to Join" to activate the scanner.'
+      },
+      {
+        n: 2, screen: 'Join Tribe Screen', route: '/join',
+        desc: 'Tribe preview card showing name, location, governance model (fetched from relay or URL params). "Join [Tribe Name]" button. Error/warning cards for offline or bad data.',
+        action: 'Tap "Join [Tribe Name]".',
+        note: 'For a realistic preview, provide ?tribe=ID&name=Name&loc=Location in the URL params.'
+      }
+    ]
+  },
+  {
+    id: 6, section: 'Setup & Identity', mode: 'Both',
+    title: 'Onboarding Wizard',
+    summary: 'After joining or creating a tribe, new members complete a 5-step wizard: profile, skill domains, individual roles, availability, and review.',
+    steps: [
+      {
+        n: 1, screen: 'Step 1 — Profile', route: '/tribe/{TRIBE}/onboarding',
+        desc: 'Progress dots (5 total). Display name input (required), 2x2 member type grid (Adult/Elder/Child/Dependent), optional photo upload (max 200KB), bio textarea.',
+        action: 'Enter display name, select member type, tap Next.'
+      },
+      {
+        n: 2, screen: 'Step 2 — Domains', route: '/tribe/{TRIBE}/onboarding',
+        desc: '2-column grid of skill domain cards (icon + label). Toggle-select style. At least one domain required.',
+        action: 'Select applicable skill domains, tap Next.',
+        note: 'Click Next on Step 1 to navigate to this step in the live iframe.'
+      },
+      {
+        n: 3, screen: 'Step 3 — Skills', route: '/tribe/{TRIBE}/onboarding',
+        desc: 'For each selected domain: domain header, list of role cards. Tap to select; tap again to expand proficiency picker (Basic/Intermediate/Expert/Verified Expert), sub-specialties, experience range.',
+        action: 'Select roles and set proficiencies. Tap "Next Domain" until all covered.',
+        note: 'Click through Steps 1-2 in the iframe to reach this step.'
+      },
+      {
+        n: 4, screen: 'Step 4 — Availability', route: '/tribe/{TRIBE}/onboarding',
+        desc: '3 large option buttons (Full-time / Part-time / On-call), optional physical limitations input, optional notes for tribe.',
+        action: 'Select availability, tap Next.',
+        note: 'Click through Steps 1-3 in the iframe to reach this step.'
+      },
+      {
+        n: 5, screen: 'Step 5 — Review', route: '/tribe/{TRIBE}/onboarding',
+        desc: 'Summary card: photo/name/member type, all selected skills by domain, availability. "Join Tribe" button submits and navigates to tribe dashboard.',
+        action: 'Review and tap "Join Tribe".',
+        note: 'Click through Steps 1-4 in the iframe to reach this step.'
+      }
+    ]
+  },
+
+  // ── Section 2: Daily Ops — Profile & People ──
+  {
+    id: 7, section: 'Daily Ops — Profile & People', mode: 'Both',
+    title: 'Navigate the Tribe Dashboard',
+    summary: 'The central hub of tribe life. Shows survivability score, upcoming events, resources, member roster, alerts, and navigation to all tribe features.',
+    steps: [
+      {
+        n: 1, screen: 'Tribe Dashboard', route: '/tribe/{TRIBE}',
+        desc: 'Survivability score card (0-100 + ring), Now & Up Next events, Resource Readiness bar, Critical Gaps panel, Members section, Tribe Channel card, Proposals badge, Federation card. Grid Down: offline stage banner and drill/infra checklists.',
+        action: 'Explore the dashboard cards. Tap the survivability score to expand the 6-bucket breakdown.'
+      }
+    ]
+  },
+  {
+    id: 8, section: 'Daily Ops — Profile & People', mode: 'Both',
+    title: 'Update Member Profile',
+    summary: 'Members can edit their display name, photo, bio, member type, availability, and physical limitations at any time.',
+    steps: [
+      {
+        n: 1, screen: 'Member Profile Screen', route: '/tribe/{TRIBE}/member/{TRIBE}',
+        desc: 'Avatar, name field (inline edit), member type selector, bio textarea, availability selector, physical limitations input, Save button.',
+        action: 'Edit a field, tap Save.',
+        note: 'The second {TRIBE} in the route is a placeholder — the actual route uses the member\'s pubkey. Set Tribe ID and open the dashboard to navigate to your profile from there.'
+      }
+    ]
+  },
+  {
+    id: 9, section: 'Daily Ops — Profile & People', mode: 'Both',
+    title: 'Declare Skills',
+    summary: 'Members update their skill declarations at any time from the dedicated Skills screen. Skills organized in 3 tiers and domains.',
+    steps: [
+      {
+        n: 1, screen: 'Skills Declaration Screen', route: '/tribe/{TRIBE}/skills',
+        desc: 'Roles grouped by Tier (Critical/Essential/Multipliers) and Domain. Tap to select/expand; proficiency picker (Basic/Intermediate/Expert/Verified Expert). Pending sync indicator. "Save Skills" fixed bar with count badge.',
+        action: 'Select roles and set proficiencies. Tap "Save Skills".'
+      }
+    ]
+  },
+  {
+    id: 10, section: 'Daily Ops — Profile & People', mode: 'Both',
+    title: 'View My Station',
+    summary: 'Shows the member\'s assigned station, responsibilities, domain coverage, and contribution to the tribe survivability score.',
+    steps: [
+      {
+        n: 1, screen: 'My Station Screen', route: '/tribe/{TRIBE}/station',
+        desc: 'Station assignment card, role responsibilities, domain coverage percentage, contribution to tribe survivability. Links to update skills.',
+        action: 'Review station assignment and tap "Update Skills" if changes needed.'
+      }
+    ]
+  },
+  {
+    id: 11, section: 'Daily Ops — Profile & People', mode: 'Both',
+    title: 'Psych Assessment',
+    summary: 'Members complete a psychological readiness assessment covering stress responses, conflict style, and team role preferences.',
+    steps: [
+      {
+        n: 1, screen: 'Psych Assessment Screen', route: '/tribe/{TRIBE}/psych/assessment',
+        desc: 'Multi-question form: stress response, conflict style, decision-making style, team role preference. Progress indicator. Submit button.',
+        action: 'Answer all questions and submit the assessment.'
+      }
+    ]
+  },
+  {
+    id: 12, section: 'Daily Ops — Profile & People', mode: 'Both',
+    title: 'Tribe Psych Overview',
+    summary: 'Tribe-level view of psychological profiles — aggregate stress patterns, role balance, and compatibility insights.',
+    steps: [
+      {
+        n: 1, screen: 'Tribe Psych Overview', route: '/tribe/{TRIBE}/psych',
+        desc: 'Aggregate charts: stress response distribution, conflict style mix, role balance heatmap. Individual member psych summaries. Insights and recommendations.',
+        action: 'Review the tribe-level psychological readiness overview.'
+      }
+    ]
+  },
+  {
+    id: 13, section: 'Daily Ops — Profile & People', mode: 'Both',
+    title: 'My People (Member Roster)',
+    summary: 'Full roster of tribe members with status, skills summary, station assignment, and availability.',
+    steps: [
+      {
+        n: 1, screen: 'My People Screen', route: '/tribe/{TRIBE}/people',
+        desc: 'Member list with avatar, name, member type, status (active/away), skill tier badge, station. Tap to view full profile. Filter/sort controls.',
+        action: 'Browse members. Tap a member card to view their full profile.'
+      }
+    ]
+  },
+
+  // ── Section 3: Resources & Logistics ──
+  {
+    id: 14, section: 'Resources & Logistics', mode: 'Both',
+    title: 'Add / Update Inventory',
+    summary: 'Members add, edit, or remove inventory items — food stores, water, medical supplies, tools — contributing to the resource readiness score.',
+    steps: [
+      {
+        n: 1, screen: 'Inventory Screen', route: '/tribe/{TRIBE}/inventory',
+        desc: 'Categorized item list (Food/Water/Medical/Tools/Other). Quantity, unit, expiry date per item. Add Item button. Resource readiness percentage. Edit/delete per row.',
+        action: 'Tap "Add Item", fill in details, save.'
+      }
+    ]
+  },
+  {
+    id: 15, section: 'Resources & Logistics', mode: 'Both',
+    title: 'Log Consumption',
+    summary: 'Members log daily consumption of tracked resources, reducing current quantities and flagging items below threshold.',
+    steps: [
+      {
+        n: 1, screen: 'Inventory Screen — Log Consumption', route: '/tribe/{TRIBE}/inventory',
+        desc: 'Same inventory screen. "Log Consumption" action per item. Quantity consumed input. Auto-deducts from inventory.',
+        action: 'Tap "Log Consumption" on an item. Enter quantity used. Confirm.',
+        note: 'Tap the "Log Consumption" action on an inventory item to trigger the log form.'
+      }
+    ]
+  },
+  {
+    id: 16, section: 'Resources & Logistics', mode: 'Both',
+    title: 'Log Production',
+    summary: 'Members log produced goods (harvested food, purified water, fabricated items), increasing inventory quantities.',
+    steps: [
+      {
+        n: 1, screen: 'Production Log Screen', route: '/tribe/{TRIBE}/production',
+        desc: 'Log form: item type selector (existing inventory or new), quantity produced, unit, date. Production history list below.',
+        action: 'Select item, enter quantity produced, tap "Log Production".'
+      }
+    ]
+  },
+  {
+    id: 17, section: 'Resources & Logistics', mode: 'Both',
+    title: 'Resource Readiness Dashboard',
+    summary: 'Tribe-wide view of all resource categories, days-of-supply calculations, gap analysis, and per-category progress bars.',
+    steps: [
+      {
+        n: 1, screen: 'Resource Readiness Screen', route: '/tribe/{TRIBE}/readiness',
+        desc: 'Overall readiness score + ring. Category breakdown (Food/Water/Medical/Tools) with progress bars and days-of-supply. Critical gaps highlighted in red. Recommendations.',
+        action: 'Review resource categories. Tap a category to see per-item breakdown.'
+      }
+    ]
+  },
+  {
+    id: 18, section: 'Resources & Logistics', mode: 'Both',
+    title: 'Manage Finances',
+    summary: 'Track tribe funds, expenses, income, and resource transactions. Supports both fiat and barter accounting.',
+    steps: [
+      {
+        n: 1, screen: 'Finance Screen', route: '/tribe/{TRIBE}/finance',
+        desc: 'Balance summary card. Transaction list (income/expense, barter items). Add Transaction button. Category filter. Running totals.',
+        action: 'Tap "Add Transaction", fill in details (amount, type, category, note), save.'
+      }
+    ]
+  },
+  {
+    id: 19, section: 'Resources & Logistics', mode: 'Both',
+    title: 'Add External Contacts',
+    summary: 'Maintain a contact list of non-member allies, suppliers, medical contacts, and local authority liaisons.',
+    steps: [
+      {
+        n: 1, screen: 'Contacts Screen', route: '/tribe/{TRIBE}/contacts',
+        desc: 'Contact list with name, role/type, phone, notes. "Add Contact" button. Filter by type (Ally/Medical/Supplier/Authority). Tap to expand contact details.',
+        action: 'Tap "Add Contact", fill in name and role, save.'
+      }
+    ]
+  },
+
+  // ── Section 4: Governance & Planning ──
+  {
+    id: 20, section: 'Governance & Planning', mode: 'Both',
+    title: 'Create a Proposal',
+    summary: 'Any member can create a proposal for the tribe to vote on. Governance model determines voting window and threshold.',
+    steps: [
+      {
+        n: 1, screen: 'New Proposal Screen', route: '/tribe/{TRIBE}/proposals/new',
+        desc: 'Title input, description textarea, proposal type selector (Policy/Resource/Emergency/Other), voting deadline (auto-set by governance model). "Submit Proposal" button.',
+        action: 'Fill in title and description. Select proposal type. Tap "Submit Proposal".'
+      }
+    ]
+  },
+  {
+    id: 21, section: 'Governance & Planning', mode: 'Both',
+    title: 'Vote on a Proposal',
+    summary: 'Members review open proposals and cast their vote (Yes / No / Abstain). Results calculated live.',
+    steps: [
+      {
+        n: 1, screen: 'Proposals Screen', route: '/tribe/{TRIBE}/proposals',
+        desc: 'Open proposals list with title, author, deadline countdown, current vote tally. Closed proposals section. Tap to expand proposal details and vote.',
+        action: 'Tap a proposal. Read details. Cast vote (Yes/No/Abstain). Confirm.'
+      }
+    ]
+  },
+  {
+    id: 22, section: 'Governance & Planning', mode: 'Both',
+    title: 'Create Goal from Proposal',
+    summary: 'After a proposal passes, a tribe admin converts it into a trackable Goal with milestones and assigned tasks.',
+    steps: [
+      {
+        n: 1, screen: 'Goals Screen', route: '/tribe/{TRIBE}/goals',
+        desc: 'Active goals list with title, progress bar, milestone count, task count, assigned members. "New Goal" button. Tap to expand goal details.',
+        action: 'Tap "New Goal". Link to passed proposal (optional). Set title, milestones. Save.'
+      }
+    ]
+  },
+  {
+    id: 23, section: 'Governance & Planning', mode: 'Both',
+    title: 'Add and Assign Tasks',
+    summary: 'Within a goal, members add tasks, assign them to tribe members, and set due dates.',
+    steps: [
+      {
+        n: 1, screen: 'Goals Screen — Add Task', route: '/tribe/{TRIBE}/goals',
+        desc: 'Expanded goal with task list. "Add Task" button. Task form: title, description, assigned member selector, due date, priority.',
+        action: 'Tap a goal to expand. Tap "Add Task". Fill in task details, assign member, save.',
+        note: 'Tap a goal card to expand it, then tap "Add Task" to reveal the task creation form.'
+      }
+    ]
+  },
+  {
+    id: 24, section: 'Governance & Planning', mode: 'Both',
+    title: 'View Goals & Track Progress',
+    summary: 'Overview of all tribe goals, milestone completion status, task completion rates, and deadline tracking.',
+    steps: [
+      {
+        n: 1, screen: 'Goals Overview', route: '/tribe/{TRIBE}/goals',
+        desc: 'Goals list with progress bars, milestone indicators, task completion counts, deadline badges. Filter by status (Active/Completed/Overdue). Tap to expand full details.',
+        action: 'Review goals. Tap a task to mark it complete. Observe progress bar update.'
+      }
+    ]
+  },
+  {
+    id: 25, section: 'Governance & Planning', mode: 'Both',
+    title: 'Create Schedule Event',
+    summary: 'Tribe admins and members create scheduled events — drills, meetings, foraging runs, watch rotations.',
+    steps: [
+      {
+        n: 1, screen: 'Schedule Screen', route: '/tribe/{TRIBE}/schedule',
+        desc: 'Calendar view (week/month toggle) with existing events. "New Event" button. Upcoming events list. Tap event to view details.',
+        action: 'Tap "New Event". Fill in title, date/time, location, type. Save.'
+      }
+    ]
+  },
+  {
+    id: 26, section: 'Governance & Planning', mode: 'Both',
+    title: 'Assign Members to Events',
+    summary: 'After creating an event, assign specific tribe members as required attendees or role-based participants.',
+    steps: [
+      {
+        n: 1, screen: 'Schedule Screen — New Event', route: '/tribe/{TRIBE}/schedule',
+        desc: 'Event creation form with "Assign Members" section — multi-select member chips, role assignment, required vs optional toggle.',
+        action: 'Tap "New Event", fill details, expand "Assign Members", select members, save.',
+        note: 'Tap "New Event" to open the event creation form which includes the member assignment section.'
+      }
+    ]
+  },
+  {
+    id: 27, section: 'Governance & Planning', mode: 'Both',
+    title: 'PACE Comms Plan Setup',
+    summary: 'Configure the tribe\'s PACE (Primary/Alternate/Contingency/Emergency) communication plan covering all connectivity scenarios.',
+    steps: [
+      {
+        n: 1, screen: 'PACE Comms Screen', route: '/tribe/{TRIBE}/comms',
+        desc: 'Four PACE tiers, each with comms method selector (Internet/Radio/Mesh/Physical), frequency/channel, schedule, and notes. Save button. Shareable plan card.',
+        action: 'Configure each PACE tier. Enter frequency/method details. Tap Save.'
+      }
+    ]
+  },
+  {
+    id: 28, section: 'Governance & Planning', mode: 'Both',
+    title: 'Tribe Schematic & Readiness',
+    summary: 'Visual schematic of the tribe\'s domain coverage, skill gaps, and readiness score breakdown across 6 buckets.',
+    steps: [
+      {
+        n: 1, screen: 'Tribe Schematic', route: '/tribe/{TRIBE}/schematic',
+        desc: 'Visual hexagonal or radial skill map showing domain coverage per member. Gap indicators. "View Readiness" link.',
+        action: 'Explore the schematic. Identify coverage gaps by domain.'
+      },
+      {
+        n: 2, screen: 'Readiness Detail', route: '/tribe/{TRIBE}/readiness',
+        desc: 'Detailed readiness score breakdown: People, Resources, Communications, Planning, Training, Governance. Per-bucket progress bars and gap list.',
+        action: 'Review each readiness bucket. Tap a gap item to navigate to the relevant screen.'
+      }
+    ]
+  },
+  {
+    id: 29, section: 'Governance & Planning', mode: 'Both',
+    title: 'Knowledge Base Browse',
+    summary: 'Members browse the tribe\'s internal knowledge base — SOPs, guides, maps, references — organized by category.',
+    steps: [
+      {
+        n: 1, screen: 'Knowledge Base Screen', route: '/tribe/{TRIBE}/kb',
+        desc: 'Category sidebar (Medical/Food/Security/Comms/Governance/Other). Article list with title, author, date, tag chips. Search bar. "Create Article" button.',
+        action: 'Browse categories. Use search. Tap an article to read.'
+      }
+    ]
+  },
+  {
+    id: 30, section: 'Governance & Planning', mode: 'Both',
+    title: 'KB Create / Approve',
+    summary: 'Members draft new knowledge articles. Admins review and approve before publication.',
+    steps: [
+      {
+        n: 1, screen: 'Knowledge Base — Create', route: '/tribe/{TRIBE}/kb',
+        desc: 'Article editor: title, category selector, tags, markdown body editor, submit for review button.',
+        action: 'Tap "Create Article". Write content. Submit for review.',
+        note: 'Tap "Create Article" or the "New" button to open the article editor.'
+      }
+    ]
+  },
+  {
+    id: 31, section: 'Governance & Planning', mode: 'Both',
+    title: 'Map View Territory',
+    summary: 'View the tribe\'s defined territory on an interactive map with member locations, resources, and waypoints.',
+    steps: [
+      {
+        n: 1, screen: 'Map Screen', route: '/tribe/{TRIBE}/map',
+        desc: 'Interactive map centered on tribe coordinates. Territory boundary polygon. Member location pins. Resource/cache markers. Waypoint list.',
+        action: 'Pan and zoom the map. Tap a marker to see details.'
+      }
+    ]
+  },
+  {
+    id: 32, section: 'Governance & Planning', mode: 'Both',
+    title: 'Map Draw Territory',
+    summary: 'Tribe admin draws or updates the territory boundary on the map using draw tools.',
+    steps: [
+      {
+        n: 1, screen: 'Map Screen — Draw Mode', route: '/tribe/{TRIBE}/map',
+        desc: 'Draw toolbar (polygon, waypoint, erase). Tap points to define territory polygon. "Save Territory" button. Layer toggles.',
+        action: 'Tap "Draw". Click points to define territory. Tap "Save Territory".',
+        note: 'Tap the "Draw" button on the map screen to enter draw mode.'
+      }
+    ]
+  },
+
+  // ── Section 5: Communication ──
+  {
+    id: 33, section: 'Communication', mode: 'Both',
+    title: 'Send Message — Tribe Channel',
+    summary: 'All tribe members can send and receive messages in the main tribe channel. Gun p2p relay in Grid Up; queued in Grid Down.',
+    steps: [
+      {
+        n: 1, screen: 'Tribe Channel Screen', route: '/tribe/{TRIBE}/channel',
+        desc: 'Message list (newest at bottom). Message input with send button. Attachment button. Member avatars beside messages. Unread badge in header.',
+        action: 'Type a message. Tap send. Observe the message appear in the list.'
+      }
+    ]
+  },
+  {
+    id: 34, section: 'Communication', mode: 'Both',
+    title: 'Send Direct Message',
+    summary: 'Members send encrypted direct messages to another tribe member.',
+    steps: [
+      {
+        n: 1, screen: 'DM Screen', route: '/tribe/{TRIBE}/dm/{TRIBE}',
+        desc: 'Private message thread with a single member. Message input. Encrypted indicator. Message history.',
+        action: 'Type a message and send.',
+        note: 'Both {TRIBE} tokens are placeholders. The first is tribeId, the second would be the target member\'s pubkey. Navigate from the member roster for a real DM.'
+      }
+    ]
+  },
+  {
+    id: 35, section: 'Communication', mode: 'Both',
+    title: 'React & Reply to Message',
+    summary: 'Members react to messages with emoji reactions and reply in thread.',
+    steps: [
+      {
+        n: 1, screen: 'Tribe Channel — reactions', route: '/tribe/{TRIBE}/channel',
+        desc: 'Long-press or hover on a message to see reaction picker (emoji grid). Existing reactions shown as badges with count. Reply button opens thread view.',
+        action: 'Long-press a message. Select an emoji reaction. Tap Reply to thread.',
+        note: 'Long-press (or right-click on desktop) a message to open the reaction/reply context menu.'
+      }
+    ]
+  },
+  {
+    id: 36, section: 'Communication', mode: 'Both',
+    title: 'Training — Log Session',
+    summary: 'Members log training sessions (drills, skills practice, physical training) with duration, type, and notes.',
+    steps: [
+      {
+        n: 1, screen: 'Training Screen', route: '/tribe/{TRIBE}/training',
+        desc: 'Training log list by date. "Log Session" button. Session form: type selector, duration, skill domain, notes, date. Training history below.',
+        action: 'Tap "Log Session". Fill in training details. Save.'
+      }
+    ]
+  },
+  {
+    id: 37, section: 'Communication', mode: 'Both',
+    title: 'Training — Record Certification',
+    summary: 'Members record external certifications (First Aid, HAM Radio, etc.) which increase their proficiency tier.',
+    steps: [
+      {
+        n: 1, screen: 'Training Screen — Certifications', route: '/tribe/{TRIBE}/training',
+        desc: 'Certifications tab or section. "Add Certification" button. Form: cert name, issuing body, date earned, expiry, related skill domain, photo upload.',
+        action: 'Tap the "Cert" tab. Tap "Add Certification". Fill in details. Save.',
+        note: 'Tap the "Cert" tab or button on the training screen to see the certifications section.'
+      }
+    ]
+  },
+  {
+    id: 38, section: 'Communication', mode: 'Both',
+    title: 'Training — Approve Level-Up',
+    summary: 'Tribe admin reviews member certification submissions and approves or rejects skill level upgrades.',
+    steps: [
+      {
+        n: 1, screen: 'Training Screen — Pending Approvals', route: '/tribe/{TRIBE}/training',
+        desc: 'Pending approvals section (admin only). Cert submission card with member name, cert details, photo. Approve / Reject buttons.',
+        action: 'Review pending certification submission. Tap Approve.',
+        note: 'The pending approvals section is visible to admins only when there are submissions awaiting review.'
+      }
+    ]
+  },
+
+  // ── Section 6: Emergency & Accountability ──
+  {
+    id: 39, section: 'Emergency & Accountability', mode: 'Both',
+    title: 'Initiate Roll Call / Muster',
+    summary: 'Tribe admin initiates a roll call to verify all members\' status and location in an emergency or drill.',
+    steps: [
+      {
+        n: 1, screen: 'Roll Call Screen', route: '/tribe/{TRIBE}/rollcall',
+        desc: 'Active muster list (if any). "Initiate Muster" button with reason input and optional message. Member response status grid (acknowledged / pending / absent).',
+        action: 'Tap "Initiate Muster". Enter reason. Send. Observe member status grid.'
+      }
+    ]
+  },
+  {
+    id: 40, section: 'Emergency & Accountability', mode: 'Both',
+    title: 'Respond to Roll Call',
+    summary: 'Members receive a muster notification and respond with their status and location.',
+    steps: [
+      {
+        n: 1, screen: 'Roll Call Response', route: '/tribe/{TRIBE}/rollcall',
+        manual: true,
+        manualDesc: 'Requires an active muster. First initiate a roll call (Flow 39) from one account, then open the app on a second device or account. The response screen shows a status selector (Safe / At Risk / Need Help) and optional location note. Tap "Send Response" to acknowledge.',
+        desc: 'Status selector: Safe / At Risk / Need Help. Optional location note. Send Response button.',
+        action: 'Select status. Add location note. Tap "Send Response".'
+      }
+    ]
+  },
+  {
+    id: 41, section: 'Emergency & Accountability', mode: 'Both',
+    title: 'Report Infrastructure Status',
+    summary: 'Members check off the 11-item infrastructure status checklist (power, water, comms, food, shelter, etc.) from the tribe dashboard.',
+    steps: [
+      {
+        n: 1, screen: 'Tribe Dashboard — Infra Checklist', route: '/tribe/{TRIBE}',
+        desc: '11-item infrastructure checklist card on the dashboard. Each item has a status toggle (OK / Issue / Unknown). Overall infra health score updates live.',
+        action: 'Scroll to the Infra Checklist card. Toggle a few items. Observe health score update.',
+        note: 'The Infra Checklist card appears on the tribe dashboard — scroll down to find it.'
+      }
+    ]
+  },
+  {
+    id: 42, section: 'Emergency & Accountability', mode: 'Both',
+    title: 'Send Emergency Alert',
+    summary: 'Tribe admin sends an emergency alert to all members with severity level and message.',
+    steps: [
+      {
+        n: 1, screen: 'Tribe Dashboard — Send Alert', route: '/tribe/{TRIBE}',
+        desc: '"Send Alert" button in dashboard header. Modal: message input, severity selector (Info/Warning/Critical/Emergency). Send button.',
+        action: 'Tap "Send Alert" in the dashboard header. Select severity. Enter message. Send.',
+        note: 'Tap the "Send Alert" (lightning bolt) button in the dashboard header to open the alert modal.'
+      }
+    ]
+  },
+  {
+    id: 43, section: 'Emergency & Accountability', mode: 'Both',
+    title: 'Receive Emergency Alert',
+    summary: 'Members receive an incoming emergency alert notification and acknowledge it.',
+    steps: [
+      {
+        n: 1, screen: 'Emergency Alert — Received', route: '/tribe/{TRIBE}',
+        manual: true,
+        manualDesc: 'Requires a second user or device to send the alert (Flow 42). The receiving device shows a full-screen alert overlay with severity color coding, message text, sender name, and timestamp. Members tap "Acknowledge" to confirm receipt.',
+        desc: 'Full-screen alert overlay with severity color. Message, sender, timestamp. "Acknowledge" button.',
+        action: 'Tap "Acknowledge" to confirm receipt of the alert.'
+      }
+    ]
+  },
+  {
+    id: 44, section: 'Emergency & Accountability', mode: 'Both',
+    title: 'Create Bug-Out Plan',
+    summary: 'Tribe creates a structured bug-out plan with rally points, routes, supply caches, and member assignments.',
+    steps: [
+      {
+        n: 1, screen: 'Bug-Out Screen', route: '/tribe/{TRIBE}/bugout',
+        desc: 'Bug-out plan builder: rally point locations (map pins), primary/alternate routes, supply cache locations, member vehicle/role assignments, activation condition. "Save Plan" button.',
+        action: 'Define rally points and route. Assign members. Tap "Save Plan".'
+      }
+    ]
+  },
+  {
+    id: 45, section: 'Emergency & Accountability', mode: 'Both',
+    title: 'Activate Bug-Out Plan',
+    summary: 'Admin activates the bug-out plan, pushing notifications to all members with their assignments.',
+    steps: [
+      {
+        n: 1, screen: 'Bug-Out Screen — Activate', route: '/tribe/{TRIBE}/bugout',
+        desc: 'Existing bug-out plan displayed. "Activate Plan" button. Confirmation modal with countdown. All members notified with their assignments and rally point.',
+        action: 'Tap "Activate Plan". Confirm in the modal. Observe activation status.',
+        note: 'Requires a saved bug-out plan (created in Flow 44). Tap "Activate Plan" button.'
+      }
+    ]
+  },
+
+  // ── Section 7: Federation ──
+  {
+    id: 46, section: 'Federation', mode: 'Both',
+    title: 'Generate Federation Contact Card',
+    summary: 'Generate a shareable federation contact card (QR + link) for your tribe so allied tribes can connect.',
+    steps: [
+      {
+        n: 1, screen: 'Federation Screen', route: '/tribe/{TRIBE}/federation',
+        desc: 'Federation panel. "Generate Contact Card" button. QR code with tribe name, location, public key, relay address. Share link. List of existing allied tribes.',
+        action: 'Tap "Generate Contact Card". Share the QR or link with an allied tribe.'
+      }
+    ]
+  },
+  {
+    id: 47, section: 'Federation', mode: 'Both',
+    title: 'Connect with Allied Tribe',
+    summary: 'Scan another tribe\'s federation contact card QR to establish an alliance.',
+    steps: [
+      {
+        n: 1, screen: 'Connect Screen', route: '/connect',
+        desc: 'QR scanner for federation contact cards. On scan: shows allied tribe preview (name, location, region, governance). "Connect" button sends alliance request.',
+        action: 'Scan an allied tribe\'s federation QR. Tap "Connect".'
+      }
+    ]
+  },
+  {
+    id: 48, section: 'Federation', mode: 'Grid Up',
+    title: 'Message in Federation Channel',
+    summary: 'Send messages to an allied tribe\'s shared federation channel — visible to all members of both tribes.',
+    steps: [
+      {
+        n: 1, screen: 'Federation Channel', route: '/tribe/{TRIBE}/federation',
+        manual: true,
+        manualDesc: 'Requires an established alliance with another tribe (Flow 47). Both tribes must have connected and accepted the alliance. The federation channel appears in the federation screen after connection. Messages are visible to members of both allied tribes.',
+        desc: 'Federation channel message list. Cross-tribe member avatars with tribe badge. Message input. Send button.',
+        action: 'Type a message. Send. Observe cross-tribe message delivery.'
+      }
+    ]
+  },
+  {
+    id: 49, section: 'Federation', mode: 'Both',
+    title: 'Create Trade Proposal',
+    summary: 'Create a trade proposal to exchange resources with an allied tribe.',
+    steps: [
+      {
+        n: 1, screen: 'New Proposal Screen — Trade', route: '/tribe/{TRIBE}/proposals/new',
+        desc: 'Proposal type set to "Trade". Offering: item, quantity. Requesting: item, quantity. Allied tribe selector. Terms and delivery notes.',
+        action: 'Select proposal type "Trade". Fill in offer and request details. Submit.'
+      }
+    ]
+  },
+  {
+    id: 50, section: 'Federation', mode: 'Both',
+    title: 'Share Intel / PACE Plan',
+    summary: 'Share the tribe\'s PACE comms plan or intel reports with allied tribes through the federation.',
+    steps: [
+      {
+        n: 1, screen: 'PACE Comms Screen — Share', route: '/tribe/{TRIBE}/comms',
+        desc: 'PACE plan display with "Share with Allies" button. Generates a read-only shareable version for allied tribes. Intel sharing form below.',
+        action: 'Tap "Share with Allies". Select allied tribes. Confirm share.'
+      }
+    ]
+  },
+
+  // ── Section 8: Grid Down Operations ──
+  {
+    id: 51, section: 'Grid Down Operations', mode: 'Grid Down',
+    title: 'Manage Tribe Settings',
+    summary: 'Configure tribe settings: invite permissions, admin roles, notification preferences, relay configuration.',
+    steps: [
+      {
+        n: 1, screen: 'Tribe Settings Screen', route: '/tribe/{TRIBE}/settings',
+        desc: 'General settings (tribe name, location, region edit), Admin roster, Invite permissions (admin-only vs all members), Notification settings, Relay/sync config, Danger zone (delete tribe).',
+        action: 'Review and update tribe settings. Tap Save Changes.'
+      }
+    ]
+  },
+  {
+    id: 52, section: 'Grid Down Operations', mode: 'Grid Down',
+    title: 'Offline Escalation Stages',
+    summary: 'The app tracks offline duration and escalates through 5 stages (Stage 1: monitoring to Stage 5: emergency), each with different UI indicators and feature unlocks.',
+    steps: [
+      {
+        n: 1, screen: 'Stage 1 — Monitoring (5 min offline)', route: '/tribe/{TRIBE}',
+        gridDown: true,
+        gridDownKey: 'plusultra:offlineSince',
+        gridDownValue: function() { return Date.now() - 5 * 60 * 1000; },
+        desc: 'Dashboard with subtle yellow banner: "Stage 1 — Monitoring. Grid connectivity lost 5 minutes ago." Normal dashboard features available.',
+        action: 'Inject 5-minute offline time. Observe Stage 1 banner.'
+      },
+      {
+        n: 2, screen: 'Stage 3 — Escalated (4 hours offline)', route: '/tribe/{TRIBE}',
+        gridDown: true,
+        gridDownKey: 'plusultra:offlineSince',
+        gridDownValue: function() { return Date.now() - 4 * 60 * 60 * 1000; },
+        desc: 'Dashboard with orange escalated banner: "Stage 3 — Escalated. 4 hours offline." Grid-down drill checklist visible. Mesh discovery active.',
+        action: 'Inject 4-hour offline time. Observe Stage 3 escalation banner and drill checklist.'
+      },
+      {
+        n: 3, screen: 'Stage 5 — Emergency (48+ hours offline)', route: '/tribe/{TRIBE}',
+        gridDown: true,
+        gridDownKey: 'plusultra:offlineSince',
+        gridDownValue: function() { return Date.now() - 48 * 60 * 60 * 1000; },
+        desc: 'Dashboard with red emergency banner: "Stage 5 — Emergency. 48+ hours offline." Bug-out CTA visible. Emergency features unlocked.',
+        action: 'Inject 48-hour offline time. Observe full emergency stage UI.'
+      }
+    ]
+  },
+  {
+    id: 53, section: 'Grid Down Operations', mode: 'Grid Down',
+    title: 'Grid-Down Dashboard',
+    summary: 'Full grid-down dashboard view with all offline-mode features: stage banner, drill checklist, infra checklist, mesh status, queue indicator.',
+    steps: [
+      {
+        n: 1, screen: 'Grid-Down Dashboard (2 hours offline)', route: '/tribe/{TRIBE}',
+        gridDown: true,
+        gridDownKey: 'plusultra:offlineSince',
+        gridDownValue: function() { return Date.now() - 2 * 60 * 60 * 1000; },
+        desc: 'Full grid-down dashboard: Stage 2 banner, drill checklist card, infra status checklist, mesh peer count, message queue indicator, bug-out plan CTA.',
+        action: 'Inject 2-hour offline time. Explore all grid-down cards and features.'
+      }
+    ]
+  },
+  {
+    id: 54, section: 'Grid Down Operations', mode: 'Grid Down',
+    title: 'Offline Message Queue',
+    summary: 'Messages sent while offline are queued locally and display a pending indicator. They sync when connectivity returns.',
+    steps: [
+      {
+        n: 1, screen: 'Tribe Channel — Offline Queue (1 hour offline)', route: '/tribe/{TRIBE}/channel',
+        gridDown: true,
+        gridDownKey: 'plusultra:offlineSince',
+        gridDownValue: function() { return Date.now() - 60 * 60 * 1000; },
+        desc: 'Channel screen with offline indicator. Messages with "Queued" status badge (clock icon). "X messages pending sync" banner at top. Offline compose still works.',
+        action: 'Inject 1-hour offline time. Type and send a message. Observe queued status badge.'
+      }
+    ]
+  },
+  {
+    id: 55, section: 'Grid Down Operations', mode: 'Grid Down',
+    title: 'Mesh mDNS Discovery',
+    summary: 'On Tauri desktop, the app broadcasts and discovers peers on the local network via mDNS. Discovered peers appear in the mesh panel.',
+    steps: [
+      {
+        n: 1, screen: 'mDNS Discovery', route: '/tribe/{TRIBE}',
+        manual: true,
+        manualDesc: 'Requires Tauri desktop build. Run the app via "cargo tauri dev" or the compiled binary. The mDNS service starts automatically. Peers on the same LAN are discovered within 30 seconds. The mesh panel on the dashboard shows discovered peers with IP and last-seen time.',
+        desc: 'Mesh panel on dashboard. Discovered LAN peers list. mDNS service status indicator.',
+        action: 'Run two Tauri desktop instances on the same network. Observe peer discovery in mesh panel.'
+      }
+    ]
+  },
+  {
+    id: 56, section: 'Grid Down Operations', mode: 'Grid Down',
+    title: 'WiFi Direct Phone-to-Phone',
+    summary: 'On Android (Tauri), enable WiFi Direct for device-to-device sync without a router or internet connection.',
+    steps: [
+      {
+        n: 1, screen: 'WiFi Direct', route: '/tribe/{TRIBE}',
+        manual: true,
+        manualDesc: 'Requires Android Tauri build with WiFi Direct plugin. Two Android devices needed. Enable WiFi Direct in the mesh settings panel. One device acts as group owner; the other connects. Tribe data syncs over the direct WiFi link without internet.',
+        desc: 'WiFi Direct panel. Group Owner / Client mode toggle. Connected device list. Sync status.',
+        action: 'Enable WiFi Direct on both Android devices. One selects Group Owner. Other connects.'
+      }
+    ]
+  },
+  {
+    id: 57, section: 'Grid Down Operations', mode: 'Grid Down',
+    title: 'BLE Peer Discovery',
+    summary: 'On Tauri mobile (iOS/Android), use Bluetooth Low Energy to discover nearby tribe members and exchange minimal sync packets.',
+    steps: [
+      {
+        n: 1, screen: 'BLE Discovery', route: '/tribe/{TRIBE}',
+        manual: true,
+        manualDesc: 'Requires Tauri mobile build with BLE plugin on iOS or Android. Two devices needed within BLE range (typically 10-30m). BLE discovery advertises tribe membership tokens. Discovered peers appear in the mesh panel with signal strength (RSSI).',
+        desc: 'BLE panel. Scan button. Discovered peers with RSSI signal strength. Mini sync transfer.',
+        action: 'Enable BLE scan on both devices. Bring within 20m. Observe peer discovery and mini-sync.'
+      }
+    ]
+  },
+  {
+    id: 58, section: 'Grid Down Operations', mode: 'Grid Down',
+    title: 'Grid-Down Drill Mode',
+    summary: 'Activate drill mode to simulate a grid-down scenario without actually going offline. Tests tribe readiness procedures.',
+    steps: [
+      {
+        n: 1, screen: 'Grid-Down Drill Mode', route: '/tribe/{TRIBE}',
+        gridDown: true,
+        gridDownKey: 'plusultra:drillMode',
+        gridDownValue: function() { return JSON.stringify({ active: true, startedAt: Date.now() }); },
+        desc: 'Dashboard with drill mode banner (orange with "DRILL" badge, distinct from real offline). Drill checklist: 8 tasks to complete. Drill timer. "End Drill" button.',
+        action: 'Inject drill mode. Complete drill checklist items. Observe drill timer. End drill.'
+      }
+    ]
+  },
+
+  // ── Section 9: Technical ──
+  {
+    id: 59, section: 'Technical', mode: 'Both',
+    title: 'Diagnostics',
+    summary: 'Technical diagnostics screen showing IndexedDB status, Gun relay connection, Convex sync state, identity details, and version info.',
+    steps: [
+      {
+        n: 1, screen: 'Diagnostics Screen', route: '/diagnostics',
+        desc: 'IndexedDB: tribe count, message count, skill count. Gun relay: connection status + latency. Convex: sync status + last sync time. Identity: public key, backed up flag. App version. "Reset All Data" danger button.',
+        action: 'Review diagnostics. Note connection statuses and sync states.'
+      }
+    ]
+  },
+  {
+    id: 60, section: 'Technical', mode: 'Grid Up',
+    title: 'Enable Push Notifications',
+    summary: 'Enable browser or native push notifications so members receive alerts, muster calls, and proposal notifications when the app is in the background.',
+    steps: [
+      {
+        n: 1, screen: 'Tribe Dashboard — Push Toggle', route: '/tribe/{TRIBE}',
+        desc: 'Push notifications toggle card on the tribe dashboard. Browser permission prompt on enable. Status shows: enabled with expiry, or disabled. "Test Notification" button.',
+        action: 'Tap the push notifications toggle. Grant browser permission. Tap "Test Notification".',
+        note: 'Scroll to the bottom of the tribe dashboard to find the push notifications toggle card.'
+      }
+    ]
+  }
+];
+
+// ─── APP STATE ────────────────────────────────────────────────────────────────
+let appUrl = localStorage.getItem('pu:appUrl') || 'http://localhost:5175';
+let tribeId = localStorage.getItem('pu:tribeId') || '';
+let activeFlowId = null;
+let collapsedSections = {};
+try { collapsedSections = JSON.parse(localStorage.getItem('pu:collapsed') || '{}'); } catch(e) {}
+
+// ─── DOM REFS ─────────────────────────────────────────────────────────────────
+const sidebar = document.getElementById('sidebar');
+const mainEl  = document.getElementById('main');
+const inputUrl   = document.getElementById('input-url');
+const inputTribe = document.getElementById('input-tribe');
+const statusDot  = document.getElementById('status-dot');
+const statusLabel = document.getElementById('status-label');
+const toast = document.getElementById('toast');
+
+// ─── INIT INPUTS ─────────────────────────────────────────────────────────────
+inputUrl.value   = appUrl;
+inputTribe.value = tribeId;
+
+// ─── ROUTE HELPERS ───────────────────────────────────────────────────────────
+function resolveRoute(route) {
+  const base = appUrl.replace(/\/$/, '');
+  const path = route.replace(/\{TRIBE\}/g, tribeId || 'NO_TRIBE_ID_SET');
+  return base + path;
+}
+
+// ─── STATUS CHECK ─────────────────────────────────────────────────────────────
+let checkTimer;
+function checkStatus() {
+  const img = new Image();
+  const start = Date.now();
+  img.onload = function() {
+    statusDot.className = 'online';
+    statusLabel.textContent = 'online (' + (Date.now() - start) + 'ms)';
+  };
+  img.onerror = function() {
+    statusDot.className = '';
+    statusLabel.textContent = 'server not reachable';
+  };
+  img.src = appUrl.replace(/\/$/, '') + '/favicon.ico?' + Date.now();
+}
+function scheduleCheck() {
+  clearTimeout(checkTimer);
+  checkTimer = setTimeout(function() { checkStatus(); scheduleCheck(); }, 5000);
+}
+checkStatus();
+scheduleCheck();
+
+// ─── CONFIG EVENTS ────────────────────────────────────────────────────────────
+inputUrl.addEventListener('change', function() {
+  appUrl = inputUrl.value.trim().replace(/\/$/, '');
+  localStorage.setItem('pu:appUrl', appUrl);
+  checkStatus();
+  reloadAllIframes();
+});
+inputTribe.addEventListener('change', function() {
+  tribeId = inputTribe.value.trim();
+  localStorage.setItem('pu:tribeId', tribeId);
+  reloadAllIframes();
+});
+
+function reloadAllIframes() {
+  document.querySelectorAll('iframe[data-route]').forEach(function(iframe) {
+    iframe.src = resolveRoute(iframe.dataset.route);
+  });
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, isError) {
+  toast.textContent = msg;
+  toast.style.borderColor = isError ? '#c0504a' : '#2a2a2a';
+  toast.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { toast.classList.remove('visible'); }, 3000);
+}
+
+// ─── GRID-DOWN INJECTION ─────────────────────────────────────────────────────
+function injectGridDown(iframeId, flowId, stepN) {
+  const iframe = document.getElementById(iframeId);
+  if (!iframe) return;
+  const flow = FLOWS.find(function(f) { return f.id === flowId; });
+  const step = flow && flow.steps.find(function(s) { return s.n === stepN; });
+  if (!step) return;
+
+  const key = step.gridDownKey;
+  const value = typeof step.gridDownValue === 'function'
+    ? step.gridDownValue()
+    : step.gridDownValue;
+  const valueStr = typeof value === 'string' ? value : String(value);
+
+  try {
+    iframe.contentWindow.localStorage.setItem(key, valueStr);
+    iframe.contentWindow.location.reload();
+    showToast('Injected: ' + key);
+  } catch(e) {
+    showToast('Injection failed — ensure app runs at the configured URL (same origin required).', true);
+  }
+}
+
+// ─── RESET IFRAME ─────────────────────────────────────────────────────────────
+function resetIframe(iframeId, route) {
+  const iframe = document.getElementById(iframeId);
+  if (iframe) iframe.src = resolveRoute(route);
+}
+
+// ─── DOM HELPERS ─────────────────────────────────────────────────────────────
+function el(tag, props, children) {
+  const node = document.createElement(tag);
+  if (props) {
+    Object.entries(props).forEach(function(kv) {
+      if (kv[0] === 'className') node.className = kv[1];
+      else if (kv[0] === 'textContent') node.textContent = kv[1];
+      else if (kv[0] === 'title') node.title = kv[1];
+      else node.setAttribute(kv[0], kv[1]);
+    });
+  }
+  if (children) children.forEach(function(c) { if (c) node.appendChild(c); });
+  return node;
+}
+function txt(str) { return document.createTextNode(String(str)); }
+
+// ─── SIDEBAR RENDER ───────────────────────────────────────────────────────────
+function renderSidebar() {
+  while (sidebar.firstChild) sidebar.removeChild(sidebar.firstChild);
+
+  SECTIONS.forEach(function(section) {
+    const flows = FLOWS.filter(function(f) { return f.section === section; });
+    if (!flows.length) return;
+
+    const isCollapsed = !!collapsedSections[section];
+    const sectionGroup = el('div', { className: 'section-group' + (isCollapsed ? ' section-collapsed' : '') });
+
+    const header = el('div', { className: 'section-header' });
+    const headerLabel = el('span', { textContent: section });
+    const chevron = el('span', { className: 'section-chevron', textContent: '\u25BC' });
+    header.appendChild(headerLabel);
+    header.appendChild(chevron);
+    header.addEventListener('click', function() {
+      sectionGroup.classList.toggle('section-collapsed');
+      collapsedSections[section] = sectionGroup.classList.contains('section-collapsed');
+      localStorage.setItem('pu:collapsed', JSON.stringify(collapsedSections));
+    });
+    sectionGroup.appendChild(header);
+
+    const flowsContainer = el('div', { className: 'section-flows' });
+    flows.forEach(function(flow) {
+      const item = el('div', { className: 'flow-item' + (flow.id === activeFlowId ? ' active' : '') });
+      item.dataset.id = String(flow.id);
+      const numSpan = el('span', { className: 'flow-num', textContent: String(flow.id).padStart(2, '0') });
+      const titleSpan = el('span', { className: 'flow-title-text', textContent: flow.title });
+      item.appendChild(numSpan);
+      item.appendChild(titleSpan);
+      item.addEventListener('click', function() { selectFlow(flow.id); });
+      flowsContainer.appendChild(item);
+    });
+    sectionGroup.appendChild(flowsContainer);
+    sidebar.appendChild(sectionGroup);
+  });
+}
+
+// ─── MAIN RENDER ─────────────────────────────────────────────────────────────
+function selectFlow(id) {
+  activeFlowId = id;
+  localStorage.setItem('pu:activeFlow', String(id));
+
+  document.querySelectorAll('.flow-item').forEach(function(item) {
+    item.classList.toggle('active', Number(item.dataset.id) === id);
+  });
+
+  const flow = FLOWS.find(function(f) { return f.id === id; });
+  if (flow) renderFlow(flow);
+  mainEl.scrollTop = 0;
+}
+
+function renderFlow(flow) {
+  while (mainEl.firstChild) mainEl.removeChild(mainEl.firstChild);
+
+  // Header
+  const flowHeader = el('div', { className: 'flow-header' });
+  flowHeader.appendChild(el('span', { className: 'flow-id', textContent: '#' + String(flow.id).padStart(2, '0') }));
+  const h2 = el('h2', {});
+  h2.textContent = flow.title;
+  flowHeader.appendChild(h2);
+  flowHeader.appendChild(el('span', { className: 'mode-badge', textContent: 'Mode: ' + flow.mode }));
+  mainEl.appendChild(flowHeader);
+
+  mainEl.appendChild(el('div', { className: 'section-label', textContent: flow.section }));
+  mainEl.appendChild(el('p', { className: 'flow-summary', textContent: flow.summary }));
+
+  const grid = el('div', { className: 'steps-grid' });
+
+  flow.steps.forEach(function(step) {
+    const card = el('div', { className: 'step-card' });
+
+    // Left column
+    const leftEl = el('div', { className: 'step-left' });
+
+    if (step.manual) {
+      const manualCard = el('div', { className: 'manual-card' });
+      manualCard.appendChild(el('div', { className: 'manual-icon', textContent: '\u26A0' }));
+      manualCard.appendChild(el('div', { className: 'manual-title', textContent: 'Manual Testing Required' }));
+      manualCard.appendChild(el('div', { className: 'manual-desc', textContent: step.manualDesc }));
+      leftEl.appendChild(manualCard);
+    } else {
+      const iframeId = 'iframe-' + flow.id + '-' + step.n;
+      const route = resolveRoute(step.route);
+
+      const phoneWrap = el('div', { className: 'phone-wrap' });
+      const iframe = document.createElement('iframe');
+      iframe.id = iframeId;
+      iframe.dataset.route = step.route;
+      iframe.src = route;
+      iframe.loading = 'lazy';
+      iframe.title = 'Step ' + step.n + ': ' + step.screen;
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals');
+      phoneWrap.appendChild(iframe);
+      leftEl.appendChild(phoneWrap);
+
+      const controls = el('div', { className: 'phone-controls' });
+
+      const resetBtn = el('button', { className: 'btn-reset', textContent: '\u21BA reset' });
+      (function(fid, route) {
+        resetBtn.addEventListener('click', function() { resetIframe(fid, route); });
+      }(iframeId, step.route));
+      controls.appendChild(resetBtn);
+      controls.appendChild(el('span', { className: 'phone-label', textContent: '390\xD7844 \xB7 0.55\xD7' }));
+
+      if (step.gridDown) {
+        const injectBtn = el('button', { className: 'btn-inject', textContent: '\u26A1 Inject Offline State' });
+        (function(fid, fid2, sn) {
+          injectBtn.addEventListener('click', function() { injectGridDown(fid, fid2, sn); });
+        }(iframeId, flow.id, step.n));
+        controls.appendChild(injectBtn);
+      }
+
+      leftEl.appendChild(controls);
+    }
+
+    // Right column
+    const rightEl = el('div', { className: 'step-right' });
+    rightEl.appendChild(el('div', { className: 'step-n', textContent: 'Step ' + step.n }));
+    rightEl.appendChild(el('div', { className: 'step-screen', textContent: step.screen }));
+    rightEl.appendChild(el('div', { className: 'step-desc', textContent: step.desc }));
+
+    if (step.note) {
+      rightEl.appendChild(el('div', { className: 'step-note', textContent: '\u26A0 Note: ' + step.note }));
+    }
+    if (step.gridDown) {
+      rightEl.appendChild(el('div', { className: 'step-note', textContent: '\u26A1 Grid-Down flow — tap "Inject Offline State" to set localStorage in the iframe and simulate offline conditions.' }));
+    }
+
+    rightEl.appendChild(el('div', { className: 'step-action', textContent: step.action }));
+
+    card.appendChild(leftEl);
+    card.appendChild(rightEl);
+    grid.appendChild(card);
+  });
+
+  mainEl.appendChild(grid);
+}
+
+// ─── KEYBOARD NAVIGATION ─────────────────────────────────────────────────────
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const current = FLOWS.findIndex(function(f) { return f.id === activeFlowId; });
+  if ((e.key === 'ArrowDown' || e.key === 'j') && current < FLOWS.length - 1) {
+    selectFlow(FLOWS[current + 1].id);
+  } else if ((e.key === 'ArrowUp' || e.key === 'k') && current > 0) {
+    selectFlow(FLOWS[current - 1].id);
+  }
+});
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+renderSidebar();
+
+const lastActive = parseInt(localStorage.getItem('pu:activeFlow') || '0', 10);
+if (lastActive && FLOWS.find(function(f) { return f.id === lastActive; })) {
+  selectFlow(lastActive);
+}
+</script>
+</body>
+</html>

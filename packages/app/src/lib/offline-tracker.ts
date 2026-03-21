@@ -1,5 +1,6 @@
 import type { OfflineStage } from '@plus-ultra/core'
 import { OFFLINE_STAGE_THRESHOLDS_MS } from '@plus-ultra/core'
+import { startMeshMode, stopMeshMode } from './mesh'
 
 const LS_KEY = 'plusultra:offlineSince'
 
@@ -20,6 +21,8 @@ export function setOfflineSince(ts: number): void {
   } catch {
     // Ignore — storage full or sandboxed
   }
+  // Auto-start mesh when we go grid-down (Tauri only; no-op in browser)
+  startMeshMode().catch(() => {})
 }
 
 export function clearOfflineSince(): void {
@@ -28,6 +31,8 @@ export function clearOfflineSince(): void {
   } catch {
     // Ignore
   }
+  // Grid is back — stop mesh relay to conserve resources
+  stopMeshMode().catch(() => {})
 }
 
 export function computeOfflineStage(offlineSince: number | null): OfflineStage {

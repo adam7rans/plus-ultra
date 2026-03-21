@@ -37,6 +37,7 @@ import BugOutScreen from './screens/BugOutScreen'
 import KnowledgeBaseScreen from './screens/KnowledgeBaseScreen'
 import FinanceScreen from './screens/FinanceScreen'
 import ReadinessScreen from './screens/ReadinessScreen'
+import Viewer from './viewer/Viewer'
 
 function RootLayout() {
   return (
@@ -272,6 +273,20 @@ const diagnosticsRoute = createRoute({
   component: DiagnosticsScreen,
 })
 
+const viewerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/viewer',
+  component: Viewer,
+})
+
+// Individual flow routes: /$sectionSlug/$flowSlug
+// e.g. /setup-and-identity/onboarding-wizard
+const viewerFlowRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$sectionSlug/$flowSlug',
+  component: Viewer,
+})
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   identityRoute,
@@ -309,6 +324,8 @@ const routeTree = rootRoute.addChildren([
   financeRoute,
   readinessRoute,
   diagnosticsRoute,
+  viewerRoute,
+  viewerFlowRoute,
 ])
 
 export const router = createRouter({ routeTree })
