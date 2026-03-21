@@ -32,22 +32,23 @@ const TRIBE_RECORDS = [
   },
 ]
 
-// Zero-quantity records to clear any stale IDB inventory from step 1b
-const CLEAR_INVENTORY = [
-  { store: 'inventory', key: '{TRIBE}:food_reserve',     data: { tribeId: '{TRIBE}', asset: 'food_reserve',     quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:water_reserve',    data: { tribeId: '{TRIBE}', asset: 'water_reserve',    quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:medical_supplies', data: { tribeId: '{TRIBE}', asset: 'medical_supplies', quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:solar_panel_kit',  data: { tribeId: '{TRIBE}', asset: 'solar_panel_kit',  quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:generator',        data: { tribeId: '{TRIBE}', asset: 'generator',        quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:firearm',          data: { tribeId: '{TRIBE}', asset: 'firearm',          quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:radio_handheld',   data: { tribeId: '{TRIBE}', asset: 'radio_handheld',   quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:medical_kit',      data: { tribeId: '{TRIBE}', asset: 'medical_kit',      quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:truck_suv',        data: { tribeId: '{TRIBE}', asset: 'truck_suv',        quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:residential_land', data: { tribeId: '{TRIBE}', asset: 'residential_land', quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:agricultural_land',data: { tribeId: '{TRIBE}', asset: 'agricultural_land',quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:shelter_housing',  data: { tribeId: '{TRIBE}', asset: 'shelter_housing',  quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
-  { store: 'inventory', key: '{TRIBE}:fuel_reserve',     data: { tribeId: '{TRIBE}', asset: 'fuel_reserve',     quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' } },
+// Zero-quantity records for every possible asset — fully clears any stale IDB
+const ALL_ASSET_TYPES = [
+  'residential_land','agricultural_land','defensive_perimeter','water_source_access',
+  'shelter_housing','medical_facility','food_storage','water_storage','armory','workshop',
+  'comms_post','guard_post','community_hall','kitchen_mess','sanitation_facility','school','fuel_depot',
+  'firearm','radio_handheld','radio_base_station','solar_panel_kit','generator','water_filter_system',
+  'medical_kit','surgical_kit','drone','night_vision','hand_tools_set','power_tools_set',
+  'smartphone','mesh_network_node','binoculars_optics','chainsaw','welding_rig',
+  'truck_suv','atv_utv','trailer','bicycle','horse','boat',
+  'food_reserve','water_reserve','fuel_reserve','ammo_reserve','medical_supplies',
+  'seed_stock','clothing_reserve','building_materials',
 ]
+
+const CLEAR_INVENTORY = ALL_ASSET_TYPES.map(asset => ({
+  store: 'inventory', key: `{TRIBE}:${asset}`,
+  data: { tribeId: '{TRIBE}', asset, quantity: 0, notes: '', updatedAt: '{NOW}', updatedBy: '{SELF_PUB}' },
+}))
 
 // Populated inventory — good coverage across categories
 const POPULATED_INVENTORY = [
