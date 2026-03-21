@@ -58,6 +58,7 @@ import { flow as flow57 } from './flow-57'
 import { flow as flow58 } from './flow-58'
 import { flow as flow59 } from './flow-59'
 import { flow as flow60 } from './flow-60'
+import { flow as flow61 } from './flow-61'
 
 export const ALL_FLOWS = [
   flow01, flow02, flow03, flow04, flow05, flow06, flow07, flow08, flow09, flow10,
@@ -66,4 +67,5 @@ export const ALL_FLOWS = [
   flow31, flow32, flow33, flow34, flow35, flow36, flow37, flow38, flow39, flow40,
   flow41, flow42, flow43, flow44, flow45, flow46, flow47, flow48, flow49, flow50,
   flow51, flow52, flow53, flow54, flow55, flow56, flow57, flow58, flow59, flow60,
+  flow61,
 ]

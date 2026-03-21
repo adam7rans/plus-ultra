@@ -9,17 +9,31 @@ export default function HomeScreen() {
   const { identity, loading: identityLoading } = useIdentity()
   const { myTribes, loadingTribes } = useTribe()
   const [scanning, setScanning] = useState(false)
+  const [pastingLink, setPastingLink] = useState(false)
+  const [pastedLink, setPastedLink] = useState('')
+  const [pasteError, setPasteError] = useState<string | null>(null)
 
   function handleQrScan(data: string) {
     setScanning(false)
+    navigateToInvite(data)
+  }
+
+  function navigateToInvite(raw: string) {
     try {
-      const url = new URL(data)
-      if (!url.searchParams.get('tribe') || !url.searchParams.get('token')) return
-      // Navigate to the join page — reuse the same path+search the invite URL contains
+      const url = new URL(raw.trim())
+      if (!url.searchParams.get('tribe') || !url.searchParams.get('token')) {
+        setPasteError('Not a valid tribe invite link.')
+        return
+      }
       window.location.href = url.pathname + url.search
     } catch {
-      // Not a valid URL — ignore
+      setPasteError('Not a valid URL.')
     }
+  }
+
+  function handlePasteSubmit() {
+    setPasteError(null)
+    navigateToInvite(pastedLink)
   }
 
   if (identityLoading) {
@@ -109,10 +123,33 @@ export default function HomeScreen() {
         </Link>
         <button
           className="btn-secondary w-full"
-          onClick={() => setScanning(prev => !prev)}
+          onClick={() => { setScanning(prev => !prev); setPastingLink(false) }}
         >
           {scanning ? 'Cancel Scan' : '📷 Scan QR to Join'}
         </button>
+        <button
+          className="btn-secondary w-full"
+          onClick={() => { setPastingLink(prev => !prev); setScanning(false); setPasteError(null) }}
+        >
+          {pastingLink ? 'Cancel' : '🔗 Paste Invite Link'}
+        </button>
+        {pastingLink && (
+          <div className="space-y-2">
+            <input
+              type="url"
+              className="input w-full"
+              placeholder="Paste invite link here..."
+              value={pastedLink}
+              onChange={e => { setPastedLink(e.target.value); setPasteError(null) }}
+              onKeyDown={e => e.key === 'Enter' && handlePasteSubmit()}
+              autoFocus
+            />
+            {pasteError && <p className="text-xs text-danger-400">{pasteError}</p>}
+            <button className="btn-primary w-full" onClick={handlePasteSubmit}>
+              Go →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Diagnostics link (dev/validation only) */}

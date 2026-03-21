@@ -10,11 +10,33 @@ export const flow: Flow = {
   steps: [
     {
       n: 1,
-      screen: 'Identity Screen — restore view',
+      screen: 'Identity Screen — main',
       route: '/identity',
-      desc: 'Live camera QR scanner. Success card with "Continue" button on valid scan. Error card on invalid QR.',
-      action: 'Hold up the backup QR code to the camera scanner.',
-      note: 'Tap "Restore from QR Code" on the identity screen to reach this state.',
+      desc: 'Full identity screen. "Restore from QR Code" secondary button at the bottom. This is the entry point for restore on a new or wiped device.',
+      action: 'Tap "Restore from QR Code" to open the QR scanner.',
+    },
+    {
+      n: 2,
+      screen: 'Identity Screen — restore / scanner active',
+      route: '/identity?view=restore',
+      desc: 'Live camera QR scanner fills the screen. Instruction: "Scan your backup QR code to restore your identity on this device." Scanner awaits a valid keypair QR.',
+      action: 'Hold the printed backup QR code up to the camera. The app decodes and restores the keypair automatically.',
+    },
+    {
+      n: 3,
+      screen: 'Identity Screen — restore success',
+      route: '/identity?view=restore&success=true',
+      desc: 'Green success card: "✓ Identity restored — Your identity has been restored successfully." "Continue" button navigates to the home screen.',
+      action: 'Tap "Continue" to go home. The restored identity is now active in IndexedDB.',
+    },
+    {
+      n: 4,
+      screen: 'Identity Screen — restore error',
+      route: '/identity?view=restore',
+      desc: 'If the scanned QR is not a valid keypair (wrong format, corrupted data), a red error card appears below the scanner: "Failed to restore identity." Scanner remains active to retry.',
+      action: 'Scan an invalid QR. Observe the error card. Try again with the correct backup QR.',
+      manual: true,
+      manualDesc: 'Trigger by scanning any non-identity QR code while the restore scanner is active. The error state renders inline below the scanner without leaving the view.',
     },
   ],
 }

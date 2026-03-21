@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
 import { useViewer } from './ViewerContext'
 import { injectIDBData } from './utils/idbInject'
 import { prefillFormFields } from './utils/prefill'
@@ -25,15 +25,53 @@ export default function PhoneFrame({
 }: Props) {
   const { appUrl, tribeId, showToast } = useViewer()
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const resolved = route.replace(/\{TRIBE\}/g, tribeId || 'NO_TRIBE_SET')
+  // tracks whether IDB injection has already fired for the current src
+  const injectedRef = useRef(false)
+  const prevSrcRef = useRef('')
+
+  const selfPub = localStorage.getItem('plusultra:dummyPub') || 'dummy_self_pub_key_abc123'
+  const resolved = route
+    .replace(/\{TRIBE\}/g, tribeId || 'DEMO_TRIBE')
+    .replace(/\{SELF_PUB\}/g, selfPub)
   const src = `${appUrl.replace(/\/$/, '')}${resolved}`
 
+  // Reset injection flag whenever src changes (new flow step or tribe id update)
+  if (prevSrcRef.current !== src) {
+    prevSrcRef.current = src
+    injectedRef.current = false
+  }
+
+  const handleLoad = useCallback(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+
+    if (injectIDB && !injectedRef.current) {
+      // First load: inject data then let it reload
+      injectedRef.current = true
+      injectIDBData(iframe, injectIDB, tribeId, showToast)
+    } else if (prefillForm) {
+      // After reload (or on first load if no IDB injection): prefill forms
+      prefillFormFields(iframe, prefillForm, showToast)
+    }
+  }, [injectIDB, prefillForm, tribeId, showToast])
+
+  // Attach load handler
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    iframe.addEventListener('load', handleLoad)
+    return () => iframe.removeEventListener('load', handleLoad)
+  }, [handleLoad])
+
   const reset = useCallback(() => {
-    if (iframeRef.current) iframeRef.current.src = src
+    if (!iframeRef.current) return
+    injectedRef.current = false
+    iframeRef.current.src = src
   }, [src])
 
   const handleSeed = useCallback(() => {
     if (!iframeRef.current || !injectIDB) return
+    injectedRef.current = true
     injectIDBData(iframeRef.current, injectIDB, tribeId, showToast)
   }, [injectIDB, tribeId, showToast])
 

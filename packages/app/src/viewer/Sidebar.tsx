@@ -31,7 +31,7 @@ export default function Sidebar({ flows, activeId, onSelect }: Props) {
           <div key={section}>
             <button
               onClick={() => toggle(section)}
-              className="w-full text-left px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-600 hover:text-zinc-400 flex items-center gap-1.5"
+              className="w-full text-left px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-300 hover:text-zinc-100 flex items-center gap-1.5"
             >
               <span className="text-[8px]">{isCollapsed ? '▶' : '▼'}</span>
               {section}

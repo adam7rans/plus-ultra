@@ -18,6 +18,31 @@
   * {
     @apply box-border;
   }
+
+  /* Custom scrollbars */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a3a2a;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a5a3a;
+  }
+  /* Viewer uses zinc palette */
+  .bg-zinc-950 ::-webkit-scrollbar-thumb,
+  .bg-zinc-950::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+  }
+  .bg-zinc-950 ::-webkit-scrollbar-thumb:hover,
+  .bg-zinc-950::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
+  }
 }
 
 @layer components {

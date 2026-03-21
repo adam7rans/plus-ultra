@@ -9,9 +9,14 @@ type View = 'main' | 'backup' | 'restore'
 
 export default function IdentityScreen() {
   const { identity, loading, restoreIdentity, saveDisplayName } = useIdentity()
-  const [view, setView] = useState<View>('main')
+  const [view, setView] = useState<View>(() => {
+    const p = new URLSearchParams(window.location.search).get('view') as View | null
+    return p && ['main', 'backup', 'restore'].includes(p) ? p : 'main'
+  })
   const [restoreError, setRestoreError] = useState<string | null>(null)
-  const [restoreSuccess, setRestoreSuccess] = useState(false)
+  const [restoreSuccess, setRestoreSuccess] = useState(() =>
+    new URLSearchParams(window.location.search).get('success') === 'true'
+  )
   const [showPrivateWarning, setShowPrivateWarning] = useState(false)
   const [displayNameInput, setDisplayNameInput] = useState('')
   const [editingDisplayName, setEditingDisplayName] = useState(false)
