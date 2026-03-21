@@ -24,6 +24,7 @@ export default function StepCard({ step, flowId }: Props) {
             route={step.route ?? '/'}
             injectIDB={step.injectIDB}
             injectLocalStorage={step.injectLocalStorage}
+            hideSeedButton={step.seedHint === null}
             prefillForm={step.prefillForm}
             gridDown={step.gridDown}
             gridDownKey={step.gridDownKey}

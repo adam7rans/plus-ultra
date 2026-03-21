@@ -12,6 +12,7 @@ interface Props {
   route: string
   injectIDB?: IDBRecord[]
   injectLocalStorage?: Record<string, string | (() => string)>
+  hideSeedButton?: boolean
   prefillForm?: PrefillField[]
   gridDown?: boolean
   gridDownKey?: string
@@ -19,7 +20,7 @@ interface Props {
 }
 
 export default function PhoneFrame({
-  iframeId, route, injectIDB, injectLocalStorage, prefillForm, gridDown, gridDownKey, gridDownValue,
+  iframeId, route, injectIDB, injectLocalStorage, hideSeedButton, prefillForm, gridDown, gridDownKey, gridDownValue,
 }: Props) {
   const { appUrl, tribeId, frameScale, showToast } = useViewer()
   const phoneW = Math.round(IFRAME_W * frameScale)
@@ -122,7 +123,7 @@ export default function PhoneFrame({
           ↺ reset
         </button>
         <span className="text-[10px] text-zinc-600">{IFRAME_W}×{IFRAME_H} · {frameScale.toFixed(2)}×</span>
-        {injectIDB && (
+        {injectIDB && !hideSeedButton && (
           <button
             onClick={handleSeed}
             className="px-2 py-0.5 text-[11px] bg-yellow-950 border border-yellow-800 text-yellow-400 rounded hover:bg-yellow-900"
