@@ -37,6 +37,7 @@ export interface Step {
   gridDownKey?: string
   gridDownValue?: () => string | number
   injectIDB?: IDBRecord[]
+  injectLocalStorage?: Record<string, string | (() => string)>
   prefillForm?: PrefillField[]
 }
 

@@ -58,7 +58,38 @@ const IDENTITY_RECORD = {
   data: { pub: '{SELF_PUB}', priv: 'dummy_priv_key', epub: 'dummy_epub_key', epriv: 'dummy_epriv_key', createdAt: '{NOW-30d}', backedUp: true, displayName: 'Alex Rivera' },
 }
 
-const ALL_RECORDS = [...BASE_RECORDS, IDENTITY_RECORD, SELF_MEMBER, ...OTHER_MEMBERS, ...SKILL_RECORDS]
+// Psych profiles (serialized d_ format for deserializeProfile compatibility)
+const PSYCH_RECORDS = [
+  {
+    store: 'psych-profiles', key: '{TRIBE}:{SELF_PUB}',
+    data: {
+      memberId: '{SELF_PUB}', tribeId: '{TRIBE}', archetype: 'Commander',
+      quizCompletedAt: '{NOW-14d}', lastUpdatedAt: '{NOW-14d}', peerRatingCount: 3,
+      d_decisionSpeed: 82, d_stressTolerance: 78, d_leadershipStyle: 30,
+      d_conflictApproach: 70, d_riskAppetite: 75, d_socialEnergy: 60,
+      pd_stressTolerance: 74, pd_leadershipStyle: 35, pd_conflictApproach: 65,
+      pd_decisionSpeed: -1, pd_riskAppetite: -1, pd_socialEnergy: -1,
+    },
+  },
+  {
+    store: 'psych-profiles', key: '{TRIBE}:PUB_2',
+    data: {
+      memberId: 'PUB_2', tribeId: '{TRIBE}', archetype: 'Sustainer',
+      quizCompletedAt: '{NOW-12d}', lastUpdatedAt: '{NOW-12d}', peerRatingCount: 2,
+      d_decisionSpeed: 40, d_stressTolerance: 72, d_leadershipStyle: 65,
+      d_conflictApproach: 35, d_riskAppetite: 30, d_socialEnergy: 55,
+      pd_stressTolerance: 70, pd_leadershipStyle: 60, pd_conflictApproach: -1,
+      pd_decisionSpeed: -1, pd_riskAppetite: -1, pd_socialEnergy: -1,
+    },
+  },
+]
+
+const ALL_RECORDS = [...BASE_RECORDS, IDENTITY_RECORD, SELF_MEMBER, ...OTHER_MEMBERS, ...SKILL_RECORDS, ...PSYCH_RECORDS]
+
+// Force offline so usePsychProfile reads from IDB not Convex
+const OFFLINE_LS: Record<string, () => string> = {
+  'plusultra:offlineSince': () => String(Date.now() - 2 * 3600 * 1000),
+}
 
 export const flow: Flow = {
   id: 8,
@@ -75,6 +106,7 @@ export const flow: Flow = {
       desc: 'Full profile card for Alex Rivera (Founder). Shows authority badge, health status (Well · O+), skills list (Paramedic · Expert · vouched, HAM Radio Operator · Intermediate, Tactical Shooter · Basic), bio, and availability. "Edit Profile" button visible because this is your own profile.',
       action: 'Scroll to see all profile sections. Tap "Edit Profile" to open edit mode.',
       injectIDB: ALL_RECORDS,
+      injectLocalStorage: OFFLINE_LS,
     },
     {
       n: 2,
@@ -83,15 +115,17 @@ export const flow: Flow = {
       desc: 'Edit mode active (tap "Edit Profile" from step 1). Bio textarea, availability dropdown, physical limitations field, blood type selector, and allergy/medication chip inputs all become editable. "Save" and "Cancel" buttons appear.',
       action: 'Modify the bio or availability. Tap "Save" to persist changes.',
       injectIDB: ALL_RECORDS,
+      injectLocalStorage: OFFLINE_LS,
       note: 'Edit mode is triggered by tapping "Edit Profile" — the iframe loads with populated data; click the button to see the edit form.',
     },
     {
       n: 3,
       screen: 'Other Member Profile — Sam Chen',
       route: '/tribe/{TRIBE}/member/PUB_2',
-      desc: 'Profile for Sam Chen (member). No "Edit Profile" button (not your profile). Shows Farmer · Expert skill (vouched by 2 members). Peer rating sliders visible at the bottom (stress resilience, leadership, conflict resolution). Vouch button on unverified skills.',
-      action: 'Scroll to peer rating section. Adjust sliders and tap "Submit Rating".',
+      desc: 'Profile for Sam Chen (member, Sustainer archetype). No "Edit Profile" button. Skills tab: Farmer · Expert. Psych tab: Sustainer badge, radar chart with dimensions. Peer rating sliders at bottom.',
+      action: 'Tap the "Psych" tab to see Sam\'s archetype radar. Adjust peer rating sliders and submit.',
       injectIDB: ALL_RECORDS,
+      injectLocalStorage: OFFLINE_LS,
     },
   ],
 }

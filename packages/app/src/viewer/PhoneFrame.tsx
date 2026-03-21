@@ -14,6 +14,7 @@ interface Props {
   iframeId: string
   route: string
   injectIDB?: IDBRecord[]
+  injectLocalStorage?: Record<string, string | (() => string)>
   prefillForm?: PrefillField[]
   gridDown?: boolean
   gridDownKey?: string
@@ -21,7 +22,7 @@ interface Props {
 }
 
 export default function PhoneFrame({
-  iframeId, route, injectIDB, prefillForm, gridDown, gridDownKey, gridDownValue,
+  iframeId, route, injectIDB, injectLocalStorage, prefillForm, gridDown, gridDownKey, gridDownValue,
 }: Props) {
   const { appUrl, tribeId, showToast } = useViewer()
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -48,7 +49,7 @@ export default function PhoneFrame({
     if (injectIDB && !injectedRef.current) {
       // First load: inject data then let it reload
       injectedRef.current = true
-      injectIDBData(iframe, injectIDB, tribeId, showToast)
+      injectIDBData(iframe, injectIDB, tribeId, showToast, injectLocalStorage)
     } else if (prefillForm) {
       // After reload (or on first load if no IDB injection): prefill forms
       prefillFormFields(iframe, prefillForm, showToast)
@@ -72,8 +73,8 @@ export default function PhoneFrame({
   const handleSeed = useCallback(() => {
     if (!iframeRef.current || !injectIDB) return
     injectedRef.current = true
-    injectIDBData(iframeRef.current, injectIDB, tribeId, showToast)
-  }, [injectIDB, tribeId, showToast])
+    injectIDBData(iframeRef.current, injectIDB, tribeId, showToast, injectLocalStorage)
+  }, [injectIDB, injectLocalStorage, tribeId, showToast])
 
   const handlePrefill = useCallback(() => {
     if (!iframeRef.current || !prefillForm) return

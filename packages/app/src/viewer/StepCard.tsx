@@ -23,6 +23,7 @@ export default function StepCard({ step, flowId }: Props) {
             iframeId={iframeId}
             route={step.route ?? '/'}
             injectIDB={step.injectIDB}
+            injectLocalStorage={step.injectLocalStorage}
             prefillForm={step.prefillForm}
             gridDown={step.gridDown}
             gridDownKey={step.gridDownKey}

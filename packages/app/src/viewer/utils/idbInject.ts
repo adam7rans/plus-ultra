@@ -25,6 +25,7 @@ export function injectIDBData(
   records: IDBRecord[],
   tribeId: string,
   onDone: (msg: string, isError?: boolean) => void,
+  localStorageEntries?: Record<string, string | (() => string)>,
 ): void {
   const tid = tribeId || 'DEMO_TRIBE'
   const selfPub = localStorage.getItem('plusultra:dummyPub') || 'dummy_self_pub_key_abc123'
@@ -51,6 +52,11 @@ export function injectIDBData(
       for (const r of resolved) tx.objectStore(r.store).put(r.data, r.key)
       tx.oncomplete = () => {
         db.close()
+        if (localStorageEntries) {
+          for (const [k, v] of Object.entries(localStorageEntries)) {
+            iframe.contentWindow?.localStorage.setItem(k, typeof v === 'function' ? v() : v)
+          }
+        }
         iframe.contentWindow?.location.reload()
         onDone(`Seeded ${resolved.length} record(s) → reloading`)
       }
