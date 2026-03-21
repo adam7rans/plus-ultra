@@ -90,14 +90,18 @@ export default function MyPeopleScreen() {
     return (
       <div key={member.pubkey} className="card flex items-center gap-3 py-3">
         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${status.color}`} />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-gray-100 truncate">
+        <Link
+          to="/tribe/$tribeId/member/$memberPub"
+          params={{ tribeId, memberPub: member.pubkey }}
+          className="flex-1 min-w-0"
+        >
+          <div className="text-sm font-medium text-gray-100 truncate hover:text-forest-300 transition-colors">
             {member.displayName}
           </div>
           <div className="text-xs text-gray-500">
             {status.label} · {lastSeenLabel}
           </div>
-        </div>
+        </Link>
         <div className="flex items-center gap-2 flex-shrink-0">
           <Link
             to="/tribe/$tribeId/dm/$memberPub"

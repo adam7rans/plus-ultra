@@ -44,9 +44,9 @@ export default function StepCard({ step, flowId }: Props) {
             ⚠ {step.note}
           </div>
         )}
-        {step.injectIDB && (
+        {step.injectIDB && step.seedHint !== null && (
           <div className="text-[11px] text-yellow-300/70 bg-zinc-900 border border-zinc-800 rounded px-3 py-2 leading-relaxed mb-2">
-            ⬡ Tap "Seed Data" to write dummy IDB records and reload.
+            ⬡ {step.seedHint ?? 'Tap "Seed Data" to write dummy IDB records and reload.'}
           </div>
         )}
         {step.prefillForm && (

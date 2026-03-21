@@ -38,6 +38,7 @@ export interface Step {
   gridDownValue?: () => string | number
   injectIDB?: IDBRecord[]
   injectLocalStorage?: Record<string, string | (() => string)>
+  seedHint?: string | null   // null = hide the default Seed Data hint
   prefillForm?: PrefillField[]
 }
 
