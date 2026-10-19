@@ -16,6 +16,9 @@ import { getAuthority, hasAuthority, ROLE_BY_KEY, ALL_ROLES } from '@plus-ultra/
 import type { SkillRole, Tribe, MemberCertification, TrainingSession } from '@plus-ultra/core'
 import { useOfflineStage } from '../hooks/useOfflineStage'
 import OfflineStageBanner from '../components/OfflineStageBanner'
+import AppIcon from '../components/AppIcon'
+import { ROLE_APP_ICONS } from '../components/registry-icons'
+import { AppButton, AppCard, AppField, AppInput, AppSelect, AppTextarea } from '../components/ui'
 
 type Tab = 'sessions' | 'certifications' | 'levelup'
 
@@ -204,7 +207,7 @@ export default function TrainingScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Back to Dashboard
+        <AppIcon name="back" size={16} /> Back to Dashboard
       </Link>
 
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
@@ -233,35 +236,34 @@ export default function TrainingScreen() {
       {activeTab === 'sessions' && (
         <div>
           {isLead && (
-            <button
-              className="btn-primary w-full mb-4 text-sm"
+            <AppButton
+              fullWidth
+              className="mb-4 text-sm"
               onClick={() => openSessionForm()}
             >
               + Log Session
-            </button>
+            </AppButton>
           )}
 
           {/* Session form */}
           {showSessionForm && (
-            <div className="card mb-4 space-y-3">
+            <AppCard className="mb-4 space-y-3">
               <h3 className="text-sm font-semibold text-gray-200">
                 {editingSession ? 'Edit Session' : 'Log Training Session'}
               </h3>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Title *</label>
-                <input
-                  className="input w-full text-sm"
+              <AppField label="Title *">
+                <AppInput
+                  className="text-sm"
                   value={sTitle}
                   onChange={e => setSTitle(e.target.value)}
                   placeholder="e.g. First Aid Refresher"
                 />
-              </div>
+              </AppField>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Skill Role (optional)</label>
-                <select
-                  className="input w-full text-sm"
+              <AppField label="Skill Role (optional)">
+                <AppSelect
+                  className="text-sm"
                   value={sRole}
                   onChange={e => setSRole(e.target.value as SkillRole | '')}
                 >
@@ -270,39 +272,36 @@ export default function TrainingScreen() {
                     const spec = ROLE_BY_KEY[role]
                     return (
                       <option key={role} value={role}>
-                        {spec.icon} {spec.label}
+                        {spec.label}
                       </option>
                     )
                   })}
-                </select>
-              </div>
+                </AppSelect>
+              </AppField>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Date</label>
-                  <input
+                <AppField label="Date">
+                  <AppInput
                     type="date"
-                    className="input w-full text-sm"
+                    className="text-sm"
                     value={sDate}
                     onChange={e => setSDate(e.target.value)}
                   />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Duration (minutes)</label>
-                  <input
+                </AppField>
+                <AppField label="Duration (minutes)">
+                  <AppInput
                     type="number"
-                    className="input w-full text-sm"
+                    className="text-sm"
                     value={sDuration}
                     min={1}
                     onChange={e => setSDuration(Number(e.target.value))}
                   />
-                </div>
+                </AppField>
               </div>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Trainer</label>
-                <select
-                  className="input w-full text-sm"
+              <AppField label="Trainer">
+                <AppSelect
+                  className="text-sm"
                   value={sTrainer}
                   onChange={e => setSTrainer(e.target.value)}
                 >
@@ -312,8 +311,8 @@ export default function TrainingScreen() {
                       {m.displayName}{m.pubkey === identity?.pub ? ' (you)' : ''}
                     </option>
                   ))}
-                </select>
-              </div>
+                </AppSelect>
+              </AppField>
 
               <div>
                 <label className="text-xs text-gray-400 mb-2 block">Attendees</label>
@@ -340,42 +339,42 @@ export default function TrainingScreen() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Notes</label>
-                <textarea
-                  className="input w-full text-sm"
+              <AppField label="Notes">
+                <AppTextarea
+                  className="text-sm"
                   value={sNotes}
                   onChange={e => setSNotes(e.target.value)}
                   rows={2}
                   placeholder="Optional notes..."
                 />
-              </div>
+              </AppField>
 
               <div className="flex gap-2">
-                <button
-                  className="btn-primary flex-1 text-sm"
+                <AppButton
+                  className="flex-1 text-sm"
                   onClick={handleSaveSession}
                   disabled={sSaving || !sTitle.trim()}
                 >
                   {sSaving ? 'Saving...' : 'Save Session'}
-                </button>
-                <button
-                  className="btn-secondary flex-1 text-sm"
+                </AppButton>
+                <AppButton
+                  variant="secondary"
+                  className="flex-1 text-sm"
                   onClick={() => setShowSessionForm(false)}
                 >
                   Cancel
-                </button>
+                </AppButton>
               </div>
-            </div>
+            </AppCard>
           )}
 
           {/* Session list */}
           {sessionsLoading ? (
             <div className="text-center py-8 text-gray-500 text-sm animate-pulse">Loading sessions...</div>
           ) : sortedSessions.length === 0 ? (
-            <div className="card text-center py-8">
+            <AppCard className="text-center py-8">
               <p className="text-gray-500 text-sm">No training sessions logged yet.</p>
-            </div>
+            </AppCard>
           ) : (
             <div className="space-y-2">
               {sortedSessions.map(session => {
@@ -385,14 +384,14 @@ export default function TrainingScreen() {
                 const trainerMember = members.find(m => m.pubkey === session.trainerId)
 
                 return (
-                  <div key={session.id} className="card">
+                  <AppCard key={session.id}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-gray-100 truncate">{session.title}</div>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {roleSpec ? (
                             <span className="text-xs bg-forest-900 border border-forest-700 rounded px-1.5 py-0.5 text-forest-300">
-                              {roleSpec.icon} {roleSpec.label}
+                              <AppIcon name={ROLE_APP_ICONS[roleSpec.role]} size={16} /> {roleSpec.label}
                             </span>
                           ) : (
                             <span className="text-xs bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-gray-400">
@@ -409,22 +408,25 @@ export default function TrainingScreen() {
                       </div>
                       {isLead && (
                         <div className="flex gap-1 flex-shrink-0">
-                          <button
-                            className="text-xs text-forest-400 hover:text-forest-300 px-2 py-1"
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
                             onClick={() => openSessionForm(session)}
                           >
                             Edit
-                          </button>
-                          <button
-                            className="text-xs text-danger-400 hover:text-danger-300 px-2 py-1"
+                          </AppButton>
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
+                            className="!text-danger-400 hover:!text-danger-300"
                             onClick={() => deleteTrainingSession(tribeId, session.id)}
                           >
                             Delete
-                          </button>
+                          </AppButton>
                         </div>
                       )}
                     </div>
-                  </div>
+                  </AppCard>
                 )
               })}
             </div>
@@ -456,28 +458,27 @@ export default function TrainingScreen() {
                 </button>
               </div>
             )}
-            <button
-              className="btn-primary text-sm"
+            <AppButton
+              className="text-sm"
               onClick={() => openCertForm(
                 isLead && certMemberToggle === 'all' ? '' : (identity?.pub ?? '')
               )}
             >
               + Add Cert
-            </button>
+            </AppButton>
           </div>
 
           {/* Cert form */}
           {showCertForm && (
-            <div className="card mb-4 space-y-3">
+            <AppCard className="mb-4 space-y-3">
               <h3 className="text-sm font-semibold text-gray-200">
                 {editingCert ? 'Edit Certification' : 'Add Certification'}
               </h3>
 
               {isLead && certMemberToggle === 'all' && !editingCert && (
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Member</label>
-                  <select
-                    className="input w-full text-sm"
+                <AppField label="Member">
+                  <AppSelect
+                    className="text-sm"
                     value={certForMember}
                     onChange={e => setCertForMember(e.target.value)}
                   >
@@ -487,60 +488,55 @@ export default function TrainingScreen() {
                         {m.displayName}
                       </option>
                     ))}
-                  </select>
-                </div>
+                  </AppSelect>
+                </AppField>
               )}
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Certification Name *</label>
-                <input
-                  className="input w-full text-sm"
+              <AppField label="Certification Name *">
+                <AppInput
+                  className="text-sm"
                   value={cCertName}
                   onChange={e => setCCertName(e.target.value)}
                   placeholder="e.g. Wilderness First Responder"
                 />
-              </div>
+              </AppField>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Issuing Body</label>
-                <input
-                  className="input w-full text-sm"
+              <AppField label="Issuing Body">
+                <AppInput
+                  className="text-sm"
                   value={cIssuingBody}
                   onChange={e => setCIssuingBody(e.target.value)}
                   placeholder="e.g. NOLS, Red Cross"
                 />
-              </div>
+              </AppField>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">License / Certificate #</label>
-                <input
-                  className="input w-full text-sm"
+              <AppField label="License / Certificate #">
+                <AppInput
+                  className="text-sm"
                   value={cLicenseNumber}
                   onChange={e => setCLicenseNumber(e.target.value)}
                   placeholder="Optional"
                 />
-              </div>
+              </AppField>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Issued Date</label>
-                  <input
+                <AppField label="Issued Date">
+                  <AppInput
                     type="date"
-                    className="input w-full text-sm"
+                    className="text-sm"
                     value={cIssuedAt}
                     onChange={e => setCIssuedAt(e.target.value)}
                   />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Expiry Date</label>
-                  <input
+                </AppField>
+                <AppField label="Expiry Date">
+                  <AppInput
                     type="date"
-                    className="input w-full text-sm"
+                    className="text-sm"
                     value={cExpiresAt}
                     onChange={e => setCExpiresAt(e.target.value)}
                     disabled={cNoExpiry}
                   />
-                </div>
+                </AppField>
               </div>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -553,10 +549,9 @@ export default function TrainingScreen() {
                 <span className="text-xs text-gray-400">No expiry</span>
               </label>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Linked Role (optional)</label>
-                <select
-                  className="input w-full text-sm"
+              <AppField label="Linked Role (optional)">
+                <AppSelect
+                  className="text-sm"
                   value={cLinkedRole}
                   onChange={e => setCLinkedRole(e.target.value as SkillRole | '')}
                 >
@@ -565,34 +560,35 @@ export default function TrainingScreen() {
                     const spec = ROLE_BY_KEY[role]
                     return (
                       <option key={role} value={role}>
-                        {spec.icon} {spec.label}
+                        {spec.label}
                       </option>
                     )
                   })}
-                </select>
+                </AppSelect>
                 {cLinkedRole && (
                   <p className="text-xs text-forest-400 mt-1">
                     Verification will elevate this role to Verified Expert.
                   </p>
                 )}
-              </div>
+              </AppField>
 
               <div className="flex gap-2">
-                <button
-                  className="btn-primary flex-1 text-sm"
+                <AppButton
+                  className="flex-1 text-sm"
                   onClick={handleSaveCert}
                   disabled={cSaving || !cCertName.trim()}
                 >
                   {cSaving ? 'Saving...' : 'Save'}
-                </button>
-                <button
-                  className="btn-secondary flex-1 text-sm"
+                </AppButton>
+                <AppButton
+                  variant="secondary"
+                  className="flex-1 text-sm"
                   onClick={() => setShowCertForm(false)}
                 >
                   Cancel
-                </button>
+                </AppButton>
               </div>
-            </div>
+            </AppCard>
           )}
 
           {/* Verify confirm modal */}
@@ -600,7 +596,7 @@ export default function TrainingScreen() {
             const cert = certs.find(c => c.id === verifyConfirmId)
             if (!cert) return null
             return (
-              <div className="card mb-4 border-warning-700/50 space-y-3">
+              <AppCard className="mb-4 border-warning-700/50 space-y-3">
                 <p className="text-sm text-gray-200">
                   Verify <span className="font-semibold">{cert.certName}</span>?
                   {cert.linkedRole && (
@@ -610,20 +606,21 @@ export default function TrainingScreen() {
                   )}
                 </p>
                 <div className="flex gap-2">
-                  <button
-                    className="btn-primary flex-1 text-sm"
+                  <AppButton
+                    className="flex-1 text-sm"
                     onClick={() => handleVerify(cert)}
                   >
                     Confirm Verify
-                  </button>
-                  <button
-                    className="btn-secondary flex-1 text-sm"
+                  </AppButton>
+                  <AppButton
+                    variant="secondary"
+                    className="flex-1 text-sm"
                     onClick={() => setVerifyConfirmId(null)}
                   >
                     Cancel
-                  </button>
+                  </AppButton>
                 </div>
-              </div>
+              </AppCard>
             )
           })()}
 
@@ -631,9 +628,9 @@ export default function TrainingScreen() {
           {certsLoading ? (
             <div className="text-center py-8 text-gray-500 text-sm animate-pulse">Loading certifications...</div>
           ) : displayedCerts.length === 0 ? (
-            <div className="card text-center py-8">
+            <AppCard className="text-center py-8">
               <p className="text-gray-500 text-sm">No certifications added yet.</p>
-            </div>
+            </AppCard>
           ) : (
             <div className="space-y-2">
               {displayedCerts.map(cert => {
@@ -642,7 +639,7 @@ export default function TrainingScreen() {
                 const isOwn = cert.memberId === identity?.pub
 
                 return (
-                  <div key={cert.id} className="card">
+                  <AppCard key={cert.id}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         {!isOwn && ownerMember && (
@@ -679,32 +676,36 @@ export default function TrainingScreen() {
                       </div>
                       <div className="flex flex-col gap-1 flex-shrink-0 items-end">
                         {isLead && !cert.verifiedBy && (
-                          <button
-                            className="text-xs text-warning-400 hover:text-warning-300 px-2 py-1 border border-warning-700/50 rounded"
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setVerifyConfirmId(cert.id)}
                           >
                             Verify
-                          </button>
+                          </AppButton>
                         )}
                         {(isOwn || isLead) && (
-                          <button
-                            className="text-xs text-forest-400 hover:text-forest-300 px-2 py-1"
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
                             onClick={() => openCertForm(cert.memberId, cert)}
                           >
                             Edit
-                          </button>
+                          </AppButton>
                         )}
                         {(isOwn || isLead) && (
-                          <button
-                            className="text-xs text-danger-400 hover:text-danger-300 px-2 py-1"
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
+                            className="!text-danger-400 hover:!text-danger-300"
                             onClick={() => deleteCertification(tribeId, cert.id, cert.memberId)}
                           >
                             Delete
-                          </button>
+                          </AppButton>
                         )}
                       </div>
                     </div>
-                  </div>
+                  </AppCard>
                 )
               })}
             </div>
@@ -719,21 +720,21 @@ export default function TrainingScreen() {
             Members eligible for promotion based on training hours and vouches.
           </p>
           {levelUpQueue.length === 0 ? (
-            <div className="card text-center py-8">
+            <AppCard className="text-center py-8">
               <p className="text-gray-500 text-sm">No members currently eligible for level-up.</p>
-            </div>
+            </AppCard>
           ) : (
             <div className="space-y-2">
               {levelUpQueue.map(item => {
                 const roleSpec = ROLE_BY_KEY[item.role]
                 const { eligibility } = item
                 return (
-                  <div key={`${item.memberId}:${item.role}`} className="card">
+                  <AppCard key={`${item.memberId}:${item.role}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-gray-100">{item.memberName}</div>
                         <div className="text-xs text-gray-400 mt-0.5">
-                          {roleSpec.icon} {roleSpec.label}
+                          <AppIcon name={ROLE_APP_ICONS[roleSpec.role]} size={16} /> {roleSpec.label}
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5">
                           {item.skill.proficiency} → {eligibility.nextLevel}
@@ -755,17 +756,17 @@ export default function TrainingScreen() {
                           </span>
                         </div>
                       </div>
-                      <button
-                        className="btn-primary text-xs flex-shrink-0"
+                      <AppButton
+                        className="text-xs flex-shrink-0"
                         onClick={() => {
                           if (!identity || !eligibility.nextLevel) return
                           approveLevelUp(tribeId, item.memberId, item.role, eligibility.nextLevel, identity.pub)
                         }}
                       >
                         Approve
-                      </button>
+                      </AppButton>
                     </div>
-                  </div>
+                  </AppCard>
                 )
               })}
             </div>

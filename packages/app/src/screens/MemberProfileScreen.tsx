@@ -13,6 +13,10 @@ import type { TribeMember, MemberSkill, AuthorityRole, Tribe, PsychArchetype, He
 import { fetchTribeMeta, setAuthorityRole } from '../lib/tribes'
 import { usePsychProfile } from '../hooks/usePsychProfile'
 import { hasRatedThisWeek, submitPeerRating } from '../lib/psych'
+import { copyText } from '../lib/platform/share'
+import AppIcon, { type AppIconName } from '../components/AppIcon'
+import { AppButton, AppCard, AppField, AppInput, AppTextarea, AppSelect } from '../components/ui'
+import { ROLE_APP_ICONS, AUTHORITY_APP_ICONS } from '../components/registry-icons'
 
 const PROFICIENCY_COLORS: Record<string, string> = {
   basic: 'bg-gray-700 text-gray-300',
@@ -21,18 +25,22 @@ const PROFICIENCY_COLORS: Record<string, string> = {
   verified_expert: 'bg-yellow-900/50 text-yellow-300',
 }
 
-const AVAILABILITY_LABELS: Record<string, string> = {
-  full_time: '🕐 Full-time',
-  part_time: '🕑 Part-time',
-  on_call: '📟 On-call',
+const AVAILABILITY_LABELS: Record<string, { label: string; icon: AppIconName }> = {
+  full_time: { label: 'Full-time', icon: 'clock' },
+  part_time: { label: 'Part-time', icon: 'clock' },
+  on_call: { label: 'On-call', icon: 'radio' },
 }
 
-const HEALTH_STATUS_META: Record<HealthStatus, { label: string; color: string; icon: string }> = {
-  well:          { label: 'Well',          color: 'text-forest-400', icon: '✓' },
-  minor_injury:  { label: 'Minor Injury',  color: 'text-yellow-400', icon: '⚠' },
-  major_injury:  { label: 'Major Injury',  color: 'text-orange-400', icon: '🩹' },
-  critical:      { label: 'Critical',      color: 'text-red-400',    icon: '🚨' },
-  deceased:      { label: 'Deceased',      color: 'text-gray-500',   icon: '✝' },
+const HEALTH_STATUS_META: Record<HealthStatus, { label: string; color: string; icon: AppIconName }> = {
+  well:          { label: 'Well',          color: 'text-forest-400', icon: 'check' },
+  minor_injury:  { label: 'Minor Injury',  color: 'text-yellow-400', icon: 'warning' },
+  major_injury:  { label: 'Major Injury',  color: 'text-orange-400', icon: 'cross' },
+  critical:      { label: 'Critical',      color: 'text-red-400',    icon: 'siren' },
+  deceased:      { label: 'Deceased',      color: 'text-gray-500',   icon: 'cross' },
+}
+
+function HealthStatusGlyph({ meta, size = 16 }: { meta: { icon: AppIconName }; size?: number }) {
+  return <AppIcon name={meta.icon} size={size} />
 }
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'unknown'] as const
@@ -49,6 +57,7 @@ export default function MemberProfileScreen() {
   const [editBio, setEditBio] = useState('')
   const [editAvailability, setEditAvailability] = useState<string>('')
   const [editLimitations, setEditLimitations] = useState('')
+  const [editNotes, setEditNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
   // Health edit state
@@ -110,6 +119,7 @@ export default function MemberProfileScreen() {
     setEditBio(member.bio ?? '')
     setEditAvailability(member.availability ?? '')
     setEditLimitations(member.physicalLimitations ?? '')
+    setEditNotes(member.notes ?? '')
     setEditBloodType(member.bloodType ?? '')
     setEditAllergies(member.allergies ?? [])
     setEditMedications(member.medications ?? [])
@@ -125,6 +135,7 @@ export default function MemberProfileScreen() {
         bio: editBio.trim() || undefined,
         availability: (editAvailability as TribeMember['availability']) || undefined,
         physicalLimitations: editLimitations.trim() || undefined,
+        notes: editNotes.trim() || undefined,
       })
       await updateMemberHealth(tribeId, identity.pub, {
         bloodType: editBloodType || undefined,
@@ -187,12 +198,12 @@ export default function MemberProfileScreen() {
     return (
       <div className="max-w-md mx-auto px-4 py-8">
         <Link to="/tribe/$tribeId" params={{ tribeId }} className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300">
-          ← Back to Dashboard
+          <AppIcon name="back" size={16} /> Back to Dashboard
         </Link>
-        <div className="card text-center py-12">
-          <div className="text-4xl mb-3">👤</div>
+        <AppCard className="text-center py-12">
+          <div className="mb-3"><AppIcon name="user" size={48} /></div>
           <p className="text-gray-400 text-sm">Member not found</p>
-        </div>
+        </AppCard>
       </div>
     )
   }
@@ -200,16 +211,16 @@ export default function MemberProfileScreen() {
   return (
     <div className="max-w-md mx-auto px-4 py-8 pb-24">
       <Link to="/tribe/$tribeId" params={{ tribeId }} className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300">
-        ← Back to Dashboard
+        <AppIcon name="back" size={16} /> Back to Dashboard
       </Link>
 
       {/* Profile header */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <div className="flex items-center gap-4 mb-4">
           {member.photo ? (
             <img src={member.photo} alt={member.displayName} className="w-16 h-16 rounded-full object-cover border-2 border-forest-600" />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-forest-800 flex items-center justify-center text-gray-500 text-2xl">👤</div>
+            <div className="w-16 h-16 rounded-full bg-forest-800 flex items-center justify-center text-gray-500"><AppIcon name="user" size={24} /></div>
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -219,7 +230,7 @@ export default function MemberProfileScreen() {
               )}
               {member.currentHealthStatus && member.currentHealthStatus !== 'well' && (
                 <span className={`text-xs px-1.5 py-0.5 rounded bg-black/30 ${HEALTH_STATUS_META[member.currentHealthStatus].color}`}>
-                  {HEALTH_STATUS_META[member.currentHealthStatus].icon} {HEALTH_STATUS_META[member.currentHealthStatus].label}
+                  <HealthStatusGlyph meta={HEALTH_STATUS_META[member.currentHealthStatus]} /> {HEALTH_STATUS_META[member.currentHealthStatus].label}
                 </span>
               )}
             </div>
@@ -231,7 +242,7 @@ export default function MemberProfileScreen() {
                 auth === 'restricted' ? 'bg-gray-800 text-gray-400' :
                 'bg-forest-800 text-forest-300'
               }`}>
-                {authMeta.icon} {authMeta.label}
+                <AppIcon name={AUTHORITY_APP_ICONS[auth]} size={16} /> {authMeta.label}
               </span>
               <span className="text-xs text-gray-500 capitalize">{member.memberType}</span>
             </div>
@@ -246,11 +257,17 @@ export default function MemberProfileScreen() {
         {/* Details */}
         {!editing && (
           <div className="flex flex-wrap gap-3 text-xs text-gray-400">
-            {member.availability && (
-              <span>{AVAILABILITY_LABELS[member.availability] ?? member.availability}</span>
+            {member.availability && AVAILABILITY_LABELS[member.availability] && (
+              <span className="inline-flex items-center gap-1"><AppIcon name={AVAILABILITY_LABELS[member.availability].icon} size={16} />{AVAILABILITY_LABELS[member.availability].label}</span>
+            )}
+            {member.availability && !AVAILABILITY_LABELS[member.availability] && (
+              <span>{member.availability}</span>
             )}
             {member.physicalLimitations && (
-              <span>⚠ {member.physicalLimitations}</span>
+              <span className="inline-flex items-center gap-1"><AppIcon name="warning" size={16} />{member.physicalLimitations}</span>
+            )}
+            {member.notes && (
+              <span className="inline-flex items-center gap-1"><AppIcon name="note" size={16} />{member.notes}</span>
             )}
           </div>
         )}
@@ -317,7 +334,7 @@ export default function MemberProfileScreen() {
                     onClick={() => !isCurrent && handleUpdateStatus(s)}
                     disabled={isCurrent || updatingStatus}
                   >
-                    {meta.icon} {meta.label}
+                    <HealthStatusGlyph meta={meta} /> {meta.label}
                   </button>
                 )
               })}
@@ -328,18 +345,16 @@ export default function MemberProfileScreen() {
         {/* Edit form (own profile only) */}
         {editing && (
           <div className="space-y-3 mt-2">
-            <div>
-              <label className="label">Bio</label>
-              <textarea
-                className="input"
+            <AppField label="Bio">
+              <AppTextarea
                 rows={3}
                 placeholder="Tell the tribe about yourself..."
                 value={editBio}
                 onChange={e => setEditBio(e.target.value)}
               />
-            </div>
+            </AppField>
             <div>
-              <label className="label">Availability</label>
+              <AppField label="Availability">
               <div className="flex gap-2">
                 {(['full_time', 'part_time', 'on_call'] as const).map(val => (
                   <button
@@ -351,30 +366,36 @@ export default function MemberProfileScreen() {
                         : 'bg-forest-950 text-gray-400 border border-forest-800 hover:border-forest-700'
                     }`}
                   >
-                    {AVAILABILITY_LABELS[val]}
+                    <span className="inline-flex items-center gap-1.5"><AppIcon name={AVAILABILITY_LABELS[val].icon} size={16} />{AVAILABILITY_LABELS[val].label}</span>
                   </button>
                 ))}
               </div>
+              </AppField>
             </div>
-            <div>
-              <label className="label">Physical Limitations</label>
-              <input
+            <AppField label="Physical Limitations">
+              <AppInput
                 type="text"
-                className="input"
                 placeholder="e.g. bad knee, limited vision..."
                 value={editLimitations}
                 onChange={e => setEditLimitations(e.target.value)}
               />
-            </div>
+            </AppField>
+            <AppField label="Anything Else">
+              <AppTextarea
+                rows={2}
+                placeholder="Anything else the tribe should know..."
+                value={editNotes}
+                onChange={e => setEditNotes(e.target.value)}
+              />
+            </AppField>
 
             {/* Medical Info section */}
             <div className="pt-2 border-t border-forest-800">
               <div className="text-xs text-gray-400 uppercase tracking-widest mb-3">Medical Info</div>
 
+              <AppField label="Blood Type">
               <div className="mb-3">
-                <label className="label">Blood Type</label>
-                <select
-                  className="input"
+                <AppSelect
                   value={editBloodType}
                   onChange={e => setEditBloodType(e.target.value as TribeMember['bloodType'] | '')}
                 >
@@ -382,11 +403,12 @@ export default function MemberProfileScreen() {
                   {BLOOD_TYPES.map(t => (
                     <option key={t} value={t}>{t === 'unknown' ? 'Unknown' : t}</option>
                   ))}
-                </select>
+                </AppSelect>
               </div>
+              </AppField>
 
               <div className="mb-3">
-                <label className="label">Allergies</label>
+              <AppField label="Allergies">
                 <TagInput
                   tags={editAllergies}
                   input={allergyInput}
@@ -395,10 +417,11 @@ export default function MemberProfileScreen() {
                   onRemove={tag => setEditAllergies(prev => prev.filter(t => t !== tag))}
                   placeholder="Type and press Enter..."
                 />
+              </AppField>
               </div>
 
               <div className="mb-3">
-                <label className="label">Critical Medications</label>
+              <AppField label="Critical Medications">
                 <TagInput
                   tags={editMedications}
                   input={medInput}
@@ -407,10 +430,11 @@ export default function MemberProfileScreen() {
                   onRemove={tag => setEditMedications(prev => prev.filter(t => t !== tag))}
                   placeholder="Type and press Enter..."
                 />
+              </AppField>
               </div>
 
               <div>
-                <label className="label">Medical Conditions</label>
+              <AppField label="Medical Conditions">
                 <TagInput
                   tags={editConditions}
                   input={conditionInput}
@@ -419,16 +443,17 @@ export default function MemberProfileScreen() {
                   onRemove={tag => setEditConditions(prev => prev.filter(t => t !== tag))}
                   placeholder="Type and press Enter..."
                 />
+              </AppField>
               </div>
             </div>
 
             <div className="flex gap-2">
-              <button className="btn-primary flex-1" onClick={saveProfile} disabled={saving}>
+              <AppButton className="flex-1" onClick={saveProfile} disabled={saving}>
                 {saving ? 'Saving...' : 'Save'}
-              </button>
-              <button className="btn-secondary flex-1" onClick={() => setEditing(false)}>
+              </AppButton>
+              <AppButton variant="secondary" className="flex-1" onClick={() => setEditing(false)}>
                 Cancel
-              </button>
+              </AppButton>
             </div>
           </div>
         )}
@@ -437,9 +462,9 @@ export default function MemberProfileScreen() {
         {!editing && (
           <div className="flex gap-2 mt-4">
             {isYou && (
-              <button className="btn-secondary flex-1 text-sm" onClick={startEditing}>
-                ✏️ Edit Profile
-              </button>
+              <AppButton variant="secondary" className="flex-1 text-sm" onClick={startEditing}>
+                <AppIcon name="edit" size={16} /> Edit Profile
+              </AppButton>
             )}
             {!isYou && (
               <Link
@@ -447,16 +472,17 @@ export default function MemberProfileScreen() {
                 params={{ tribeId, memberPub }}
                 className="btn-primary flex-1 text-sm text-center"
               >
-                💬 Message
+                <AppIcon name="chat" size={16} /> Message
               </Link>
             )}
             {canManage && availableRoles.length > 0 && (
-              <button
-                className="btn-secondary text-sm"
+              <AppButton
+                variant="secondary"
+                className="text-sm"
                 onClick={() => setShowRoles(prev => !prev)}
               >
-                ⚙️ Role
-              </button>
+                <AppIcon name="settings" size={16} /> Role
+              </AppButton>
             )}
           </div>
         )}
@@ -480,7 +506,7 @@ export default function MemberProfileScreen() {
                     onClick={() => handleSetRole(role)}
                     disabled={isActive}
                   >
-                    <span>{meta.icon}</span>
+                    <span><AppIcon name={AUTHORITY_APP_ICONS[role]} size={16} /></span>
                     <span>{meta.label}</span>
                   </button>
                 )
@@ -488,7 +514,7 @@ export default function MemberProfileScreen() {
             </div>
           </div>
         )}
-      </div>
+      </AppCard>
 
       {/* Tab switcher */}
       <div className="flex gap-2 mb-4">
@@ -544,9 +570,9 @@ export default function MemberProfileScreen() {
           Skills ({memberSkills.length})
         </h3>
         {memberSkills.length === 0 ? (
-          <div className="card text-center py-4">
+          <AppCard className="text-center py-4">
             <p className="text-gray-500 text-sm">No skills declared yet</p>
-          </div>
+          </AppCard>
         ) : (
           <div className="space-y-2">
             {memberSkills.map(skill => {
@@ -558,9 +584,9 @@ export default function MemberProfileScreen() {
               const roleSpecs = roleSpecEntry?.specializations
 
               return (
-                <div key={skill.role} className="card">
+                <AppCard key={skill.role}>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-base">{spec.icon}</span>
+                    <span className="text-base"><AppIcon name={ROLE_APP_ICONS[skill.role]} size={16} /></span>
                     <span className="text-sm font-semibold text-gray-200">{spec.label}</span>
                     <span className={`text-xs px-1.5 py-0.5 rounded capitalize ${PROFICIENCY_COLORS[skill.proficiency] ?? ''}`}>
                       {skill.proficiency.replace('_', ' ')}
@@ -594,7 +620,7 @@ export default function MemberProfileScreen() {
                   {/* Vouch section */}
                   <div className="flex items-center gap-2 mt-2 ml-7">
                     {vouchCount > 0 && (
-                      <span className="text-xs text-forest-400">✓ {vouchCount} vouch{vouchCount !== 1 ? 'es' : ''}</span>
+                      <span className="text-xs text-forest-400 inline-flex items-center gap-1"><AppIcon name="check" size={16} /> {vouchCount} vouch{vouchCount !== 1 ? 'es' : ''}</span>
                     )}
                     {!isYou && identity && (
                       <button
@@ -606,11 +632,11 @@ export default function MemberProfileScreen() {
                         onClick={() => !alreadyVouched && handleVouch(skill)}
                         disabled={alreadyVouched || vouchingRole === skill.role}
                       >
-                        {vouchingRole === skill.role ? '...' : alreadyVouched ? '✓ Vouched' : '👍 Vouch'}
+                        {vouchingRole === skill.role ? '...' : alreadyVouched ? (<span className="inline-flex items-center gap-1"><AppIcon name="check" size={16} /> Vouched</span>) : '👍 Vouch'}
                       </button>
                     )}
                   </div>
-                </div>
+                </AppCard>
               )
             })}
           </div>
@@ -625,7 +651,7 @@ export default function MemberProfileScreen() {
             params={{ tribeId }}
             className="card flex items-center gap-3 hover:border-forest-600 transition-colors"
           >
-            <span className="text-xl">🎯</span>
+            <span className="text-xl"><AppIcon name="target" size={20} /></span>
             <div className="flex-1">
               <div className="text-sm font-semibold text-gray-200">Edit My Skills</div>
               <div className="text-xs text-gray-500">Update roles and proficiency</div>
@@ -634,16 +660,16 @@ export default function MemberProfileScreen() {
           </Link>
 
           {/* Emergency Card */}
-          <div className="card">
+          <AppCard>
             <button
               className="w-full flex items-center justify-between"
               onClick={() => setShowEmergencyCard(prev => !prev)}
             >
               <div className="flex items-center gap-2">
-                <span className="text-lg">🩺</span>
+                <span className="text-lg"><AppIcon name="stethoscope" size={16} /></span>
                 <span className="text-sm font-semibold text-gray-200">Emergency Card</span>
               </div>
-              <span className="text-xs text-forest-400">{showEmergencyCard ? '▲' : '▼'}</span>
+              <span className="text-xs text-forest-400">{showEmergencyCard ? <AppIcon name="caretUp" size={16} /> : <AppIcon name="caretDown" size={16} />}</span>
             </button>
             {showEmergencyCard && (
               <div className="mt-3 pt-3 border-t border-forest-800">
@@ -663,8 +689,10 @@ export default function MemberProfileScreen() {
                     <div>Limitations: {member.physicalLimitations}</div>
                   )}
                 </div>
-                <button
-                  className="btn-secondary w-full text-xs mt-2"
+                <AppButton
+                  variant="secondary"
+                  fullWidth
+                  className="text-xs mt-2"
                   onClick={() => {
                     const lines = [
                       `Name: ${member.displayName}`,
@@ -674,14 +702,14 @@ export default function MemberProfileScreen() {
                       member.medicalConditions?.length ? `Conditions: ${member.medicalConditions.join(', ')}` : null,
                       member.physicalLimitations ? `Limitations: ${member.physicalLimitations}` : null,
                     ].filter(Boolean).join('\n')
-                    navigator.clipboard.writeText(lines)
+                    void copyText(lines)
                   }}
                 >
                   Copy as Text
-                </button>
+                </AppButton>
               </div>
             )}
-          </div>
+          </AppCard>
         </div>
       )}
       </>
@@ -813,7 +841,7 @@ function PsychTab({
   if (!psychProfile) {
     if (isYou) {
       return (
-        <div className="card mb-4 text-center py-6">
+        <AppCard className="mb-4 text-center py-6">
           <p className="text-gray-400 text-sm mb-3">You haven't completed a psychological assessment yet.</p>
           <Link
             to="/tribe/$tribeId/psych/assessment"
@@ -822,14 +850,14 @@ function PsychTab({
           >
             Take Assessment
           </Link>
-        </div>
+        </AppCard>
       )
     }
     return (
-      <div className="card mb-4 text-center py-6">
+      <AppCard className="mb-4 text-center py-6">
         <p className="text-gray-500 text-sm">No psychological profile yet.</p>
         <p className="text-xs text-gray-600 mt-1">You can still rate this member to help build their profile.</p>
-      </div>
+      </AppCard>
     )
   }
 
@@ -862,7 +890,7 @@ function PsychTab({
 
       {/* Archetype view */}
       {psychTab === 'archetype' && (
-        <div className="card">
+        <AppCard>
           <div className={`text-2xl font-bold mb-1 ${ARCHETYPE_COLORS[psychProfile.archetype]}`}>
             {psychProfile.archetype}
           </div>
@@ -871,19 +899,19 @@ function PsychTab({
           {psychProfile.peerRatingCount > 0 && (
             <p className="text-xs text-gray-500 mt-2">{psychProfile.peerRatingCount} peer rating{psychProfile.peerRatingCount !== 1 ? 's' : ''}</p>
           )}
-        </div>
+        </AppCard>
       )}
 
       {/* Radar view */}
       {psychTab === 'radar' && (
-        <div className="card">
+        <AppCard>
           <RadarChart dims={psychProfile.dimensions as unknown as Record<string, number>} />
-        </div>
+        </AppCard>
       )}
 
       {/* Big Five view */}
       {psychTab === 'bigfive' && (
-        <div className="card space-y-3">
+        <AppCard className="space-y-3">
           {BIG_FIVE_LABELS.map(({ key, label }) => {
             const val = bigFive[key]
             return (
@@ -898,12 +926,12 @@ function PsychTab({
               </div>
             )
           })}
-        </div>
+        </AppCard>
       )}
 
       {/* Peer rating (other members only) */}
       {!isYou && (
-        <div className="card">
+        <AppCard>
           <h4 className="text-xs text-gray-400 uppercase tracking-widest mb-3">Rate Anonymously</h4>
           {ratingSubmitted ? (
             <p className="text-xs text-forest-400 text-center py-2">Rating submitted — thank you</p>
@@ -914,16 +942,17 @@ function PsychTab({
               <RatingSlider label="Stress Tolerance" low="Reactive" high="Resilient" value={peerStress} onChange={setPeerStress} />
               <RatingSlider label="Leadership" low="Directive" high="Collaborative" value={peerLeader} onChange={setPeerLeader} />
               <RatingSlider label="Conflict Approach" low="Avoidant" high="Assertive" value={peerConflict} onChange={setPeerConflict} />
-              <button
-                className="btn-primary w-full text-sm"
+              <AppButton
+                fullWidth
+                className="text-sm"
                 onClick={onSubmitRating}
                 disabled={submittingRating}
               >
                 {submittingRating ? 'Submitting...' : 'Submit Anonymous Rating'}
-              </button>
+              </AppButton>
             </div>
           )}
-        </div>
+        </AppCard>
       )}
 
       {/* Own profile: link to assessment */}
@@ -962,13 +991,12 @@ function TagInput({
         {tags.map(t => (
           <span key={t} className="flex items-center gap-1 text-xs bg-forest-900 text-forest-300 border border-forest-700 px-1.5 py-0.5 rounded">
             {t}
-            <button className="text-gray-500 hover:text-gray-300 leading-none" onClick={() => onRemove(t)}>×</button>
+            <button className="text-gray-500 hover:text-gray-300 leading-none" onClick={() => onRemove(t)}><AppIcon name="close" size={16} /></button>
           </span>
         ))}
       </div>
-      <input
+      <AppInput
         type="text"
-        className="input"
         placeholder={placeholder}
         value={input}
         onChange={e => onInputChange(e.target.value)}

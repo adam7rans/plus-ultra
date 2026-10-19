@@ -12,6 +12,10 @@
  */
 
 import { startWifiDirectMode, connectToWifiDirectPeer } from './wifi-direct'
+import { isNative as isCapacitorNative } from './platform/types'
+
+// Tracks which runtime owns the session (Tauri Kotlin plugin vs Capacitor).
+let _nativeMode = false
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,7 +70,26 @@ export async function startBleDiscovery(
   tribeId: string,
   autoConnect = true
 ): Promise<void> {
-  if (!isTauriAvailable() || _active) return
+  if (_active) return
+
+  // Capacitor shell (Phase 4): central-scan via @capacitor-community/bluetooth-le.
+  // Scan hits flow through the same `ble-peers-changed` events (see platform/ble).
+  if (isCapacitorNative()) {
+    try {
+      const { startNativeBleScan } = await import('./platform/ble')
+      await startNativeBleScan(tribeId)
+      _tribeId = tribeId
+      _autoConnectEnabled = autoConnect
+      _nativeMode = true
+      _active = true
+      console.info('[ble] native discovery started for tribe:', tribeId)
+    } catch (err) {
+      console.warn('[ble] native startBleDiscovery failed:', err)
+    }
+    return
+  }
+
+  if (!isTauriAvailable()) return
 
   _tribeId = tribeId
   _autoConnectEnabled = autoConnect
@@ -116,7 +139,26 @@ export async function startBleDiscovery(
  * Stop BLE advertising and scanning.
  */
 export async function stopBleDiscovery(): Promise<void> {
-  if (!isTauriAvailable() || !_active) return
+  if (!_active) return
+
+  // Capacitor shell: stop the native scan (mirrors Tauri cleanup below).
+  if (_nativeMode) {
+    try {
+      const { stopNativeBleScan } = await import('./platform/ble')
+      await stopNativeBleScan()
+    } catch {
+      // Already stopped
+    }
+    _nativeMode = false
+    _unlistenPeerFound?.()
+    _unlistenPeerFound = null
+    _blePeers.clear()
+    _active = false
+    _tribeId = null
+    return
+  }
+
+  if (!isTauriAvailable()) return
 
   try {
     await tauriInvoke('stopBle')

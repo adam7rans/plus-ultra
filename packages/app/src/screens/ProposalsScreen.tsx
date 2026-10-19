@@ -5,7 +5,7 @@ import { useIdentity } from '../contexts/IdentityContext'
 import { fetchTribeMeta } from '../lib/tribes'
 import { useProposals } from '../hooks/useProposals'
 import { closeProposal } from '../lib/proposals'
-import { getDB } from '../lib/db'
+import { getDB } from '../lib/platform/storage'
 import {
   getAuthority, eligibleVoters, computeOutcome,
 } from '@plus-ultra/core'
@@ -13,6 +13,8 @@ import type { Tribe, TribeMember, Proposal, Vote } from '@plus-ultra/core'
 import { subscribeToMembers } from '../lib/tribes'
 import { useOfflineStage } from '../hooks/useOfflineStage'
 import OfflineStageBanner from '../components/OfflineStageBanner'
+import AppIcon from '../components/AppIcon'
+import { AppBadge, AppCard, AppEmptyState, AppSegmented } from '../components/ui'
 
 type FilterTab = 'open' | 'closed' | 'all'
 
@@ -92,7 +94,7 @@ export default function ProposalsScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← {tribeName || 'Dashboard'}
+        <AppIcon name="back" size={16} /> {tribeName || 'Dashboard'}
       </Link>
 
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
@@ -111,45 +113,38 @@ export default function ProposalsScreen() {
       </div>
 
       {tribe && (
-        <div className="card bg-forest-950 py-2 text-xs text-forest-300 mb-4">
+        <AppCard className="!bg-forest-950 !py-2 text-xs text-forest-300 mb-4">
           {governanceBanner(tribe)}
-        </div>
+        </AppCard>
       )}
 
       {/* Filter tabs */}
-      <div className="flex gap-1 mb-4 bg-forest-900/50 rounded-lg p-1">
-        {(['open', 'closed', 'all'] as FilterTab[]).map(tab => (
-          <button
-            key={tab}
-            className={`flex-1 py-1.5 rounded-md text-xs font-medium capitalize transition-colors ${
-              filter === tab
-                ? 'bg-forest-700 text-white'
-                : 'text-gray-400 hover:text-gray-300'
-            }`}
-            onClick={() => setFilter(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="mb-4">
+        <AppSegmented
+          options={['open', 'closed', 'all'] as FilterTab[]}
+          value={filter}
+          onChange={setFilter}
+        />
       </div>
 
       {loading ? (
         <div className="text-center py-12 text-gray-400 text-sm animate-pulse">Loading...</div>
       ) : filtered.length === 0 ? (
-        <div className="card text-center py-8">
-          <p className="text-gray-400 text-sm">
-            {filter === 'open' ? 'No open proposals' : 'No proposals yet'}
-          </p>
-          {canCreate && filter === 'open' && (
-            <Link
-              to="/tribe/$tribeId/proposals/new"
-              params={{ tribeId }}
-              className="mt-3 inline-block text-forest-400 text-sm hover:text-forest-300"
-            >
-              Create the first one →
-            </Link>
-          )}
-        </div>
+        <AppEmptyState
+          icon="checkSquare"
+          title={filter === 'open' ? 'No open proposals' : 'No proposals yet'}
+          action={
+            canCreate && filter === 'open' ? (
+              <Link
+                to="/tribe/$tribeId/proposals/new"
+                params={{ tribeId }}
+                className="mt-3 inline-flex items-center gap-1 text-forest-400 text-sm hover:text-forest-300"
+              >
+                Create the first one <AppIcon name="forward" size={16} />
+              </Link>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="space-y-2">
           {filtered.map(p => (
@@ -205,15 +200,15 @@ function ProposalCard({
 
 function StatusBadge({ proposal }: { proposal: Proposal }) {
   if (proposal.status === 'open') {
-    return <span className="text-xs px-1.5 py-0.5 rounded-full bg-forest-900 text-forest-300 flex-shrink-0">Open</span>
+    return <AppBadge tone="neutral" className="flex-shrink-0">Open</AppBadge>
   }
   if (proposal.outcome === 'passed') {
-    return <span className="text-xs px-1.5 py-0.5 rounded-full bg-forest-900/80 text-forest-400 flex-shrink-0">Passed</span>
+    return <AppBadge tone="green" className="flex-shrink-0">Passed</AppBadge>
   }
   if (proposal.outcome === 'failed') {
-    return <span className="text-xs px-1.5 py-0.5 rounded-full bg-danger-900/50 text-danger-400 flex-shrink-0">Failed</span>
+    return <AppBadge tone="red" className="flex-shrink-0">Failed</AppBadge>
   }
-  return <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-800 text-gray-400 flex-shrink-0">Withdrawn</span>
+  return <AppBadge tone="gray" className="flex-shrink-0">Withdrawn</AppBadge>
 }
 
 function outcomeLabel(outcome: Proposal['outcome']): string {

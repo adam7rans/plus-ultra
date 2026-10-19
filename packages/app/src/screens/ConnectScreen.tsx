@@ -3,7 +3,8 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useTribe } from '../contexts/TribeContext'
 import { addFederationContact, getLocalTribeEpub } from '../lib/federation'
-import { getDB } from '../lib/db'
+import { getDB } from '../lib/platform/storage'
+import { AppButton, AppCard, AppField, AppSelect } from '../components/ui'
 
 function parseContactCard(): {
   tribeId: string
@@ -38,9 +39,9 @@ export default function ConnectScreen() {
         <Link to="/" className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300">
           ← Home
         </Link>
-        <div className="card text-center py-8">
+        <AppCard className="text-center py-8">
           <p className="text-gray-400 text-sm">Invalid or missing contact card.</p>
-        </div>
+        </AppCard>
       </div>
     )
   }
@@ -96,7 +97,7 @@ export default function ConnectScreen() {
       </p>
 
       {/* Contact info */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <div className="text-xs text-gray-500 uppercase tracking-widest mb-2">Contact</div>
         <div className="text-lg font-bold text-gray-100">{card.name || 'Unknown Tribe'}</div>
         {card.location && <div className="text-sm text-gray-400 mt-0.5">{card.location}</div>}
@@ -106,44 +107,45 @@ export default function ConnectScreen() {
             <span className="text-xs text-forest-400">Encryption key present</span>
           </div>
         )}
-      </div>
+      </AppCard>
 
       {/* Tribe selector */}
       {myTribes.length > 1 && (
         <div className="mb-4">
-          <label className="block text-xs text-gray-400 mb-1">Connect from which tribe?</label>
-          <select
-            value={selectedTribeId}
-            onChange={e => setSelectedTribeId(e.target.value)}
-            className="w-full text-sm bg-forest-900 border border-forest-800 rounded-lg px-3 py-2 text-gray-200 focus:outline-none focus:border-forest-600"
-          >
-            {myTribes.map(t => (
-              <option key={t.tribeId} value={t.tribeId}>{t.name}</option>
-            ))}
-          </select>
+          <AppField label="Connect from which tribe?">
+            <AppSelect
+              value={selectedTribeId}
+              onChange={e => setSelectedTribeId(e.target.value)}
+              className="text-sm"
+            >
+              {myTribes.map(t => (
+                <option key={t.tribeId} value={t.tribeId}>{t.name}</option>
+              ))}
+            </AppSelect>
+          </AppField>
         </div>
       )}
 
       {myTribes.length === 0 && (
-        <div className="card text-center py-6 mb-4">
+        <AppCard className="text-center py-6 mb-4">
           <p className="text-gray-400 text-sm">You need to be in a tribe before adding federation contacts.</p>
-        </div>
+        </AppCard>
       )}
 
       {error && (
-        <div className="card border-danger-700 bg-danger-900/20 mb-4">
+        <AppCard className="border-danger-700 bg-danger-900/20 mb-4">
           <p className="text-danger-400 text-sm">{error}</p>
-        </div>
+        </AppCard>
       )}
 
       {myTribes.length > 0 && (
-        <button
-          className="btn-primary w-full"
+        <AppButton
+          fullWidth
           onClick={handleAdd}
           disabled={adding || !selectedTribeId}
         >
           {adding ? 'Adding...' : 'Add as Federation Contact'}
-        </button>
+        </AppButton>
       )}
     </div>
   )

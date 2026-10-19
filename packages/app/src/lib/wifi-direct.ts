@@ -7,7 +7,7 @@
  * ws://<groupOwnerAddress>:8766/gun automatically.
  */
 
-import { gun } from './gun-init'
+import { gun } from './gun'
 
 // ---------------------------------------------------------------------------
 // Types

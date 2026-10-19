@@ -8,6 +8,8 @@ import { proposalDuration } from '@plus-ultra/core'
 import type { Tribe } from '@plus-ultra/core'
 import type { ProposalScope } from '@plus-ultra/core'
 import { useEffect } from 'react'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard, AppField, AppInput, AppTextarea } from '../components/ui'
 
 export default function CreateProposalScreen() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId/proposals/new' })
@@ -67,34 +69,31 @@ export default function CreateProposalScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Proposals
+        <AppIcon name="back" size={16} /> Proposals
       </Link>
 
       <h2 className="text-xl font-bold text-gray-100 mb-1">New Proposal</h2>
       {tribeName && <p className="text-gray-400 text-sm mb-6">{tribeName}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Title</label>
-          <input
-            className="input w-full"
+        <AppField label="Title" required>
+          <AppInput
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder="Short, clear title"
             maxLength={120}
             required
           />
-        </div>
+        </AppField>
 
-        <div>
-          <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Details</label>
-          <textarea
-            className="input w-full min-h-[100px] resize-y"
+        <AppField label="Details">
+          <AppTextarea
+            className="min-h-[100px] resize-y"
             value={body}
             onChange={e => setBody(e.target.value)}
             placeholder="Describe the proposal, context, and what a 'yes' vote means"
           />
-        </div>
+        </AppField>
 
         {isHybrid && (
           <div>
@@ -129,20 +128,20 @@ export default function CreateProposalScreen() {
         )}
 
         {tribe && (
-          <div className="card bg-forest-950 py-2 text-xs text-gray-400">
+          <AppCard className="!bg-forest-950 py-2 text-xs text-gray-400">
             Voting closes in <span className="text-forest-300 font-semibold">{deadlineLabel()}</span> after submission
-          </div>
+          </AppCard>
         )}
 
         {error && <p className="text-danger-400 text-sm">{error}</p>}
 
-        <button
+        <AppButton
           type="submit"
-          className="btn-primary w-full"
+          fullWidth
           disabled={submitting || !title.trim()}
         >
           {submitting ? 'Submitting...' : 'Submit Proposal'}
-        </button>
+        </AppButton>
       </form>
     </div>
   )

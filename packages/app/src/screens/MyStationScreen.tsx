@@ -9,6 +9,9 @@ import {
   bucketScore,
 } from '@plus-ultra/core'
 import type { SkillRole, SkillDomain } from '@plus-ultra/core'
+import AppIcon from '../components/AppIcon'
+import { ASSET_APP_ICONS } from '../components/registry-icons'
+import { AppButton, AppCard, AppEmptyState } from '../components/ui'
 
 export default function MyStationScreen() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId/station' })
@@ -89,19 +92,21 @@ export default function MyStationScreen() {
           params={{ tribeId }}
           className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
         >
-          ← Back to Dashboard
+          <AppIcon name="back" size={16} /> Back to Dashboard
         </Link>
 
-        <div className="card text-center py-12">
-          <div className="text-4xl mb-3">🪖</div>
-          <h2 className="text-lg font-bold text-gray-100 mb-2">No Station Assigned</h2>
-          <p className="text-gray-500 text-sm mb-4">
-            Declare your skills first to see your personalized station view.
-          </p>
-          <Link to="/tribe/$tribeId/skills" params={{ tribeId }}>
-            <button className="btn-primary">Declare Skills →</button>
-          </Link>
-        </div>
+        <AppCard className="text-center">
+          <AppEmptyState
+            icon="hardHat"
+            title="No Station Assigned"
+            body="Declare your skills first to see your personalized station view."
+            action={
+              <Link to="/tribe/$tribeId/skills" params={{ tribeId }}>
+                <AppButton>Declare Skills <AppIcon name="forward" size={16} /></AppButton>
+              </Link>
+            }
+          />
+        </AppCard>
       </div>
     )
   }
@@ -113,7 +118,7 @@ export default function MyStationScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Back to Dashboard
+        <AppIcon name="back" size={16} /> Back to Dashboard
       </Link>
 
       <h2 className="text-xl font-bold text-gray-100 mb-1">My Station</h2>
@@ -129,13 +134,13 @@ export default function MyStationScreen() {
             const spec = ROLE_BY_KEY[role]
             if (!spec) return null
             return (
-              <div key={role} className="card flex items-center gap-2 px-3 py-2">
+              <AppCard key={role} className="flex items-center gap-2 !px-3 !py-2">
                 <span className="text-base">{spec.icon}</span>
                 <span className="text-sm font-semibold text-gray-200">{spec.label}</span>
-              </div>
-            )
-          })}
-        </div>
+              </AppCard>
+              )
+            })}
+          </div>
       </div>
 
       {/* My Team */}
@@ -144,9 +149,9 @@ export default function MyStationScreen() {
           My Team ({teamMembers.length})
         </h3>
         {teamMembers.length === 0 ? (
-          <div className="card text-center py-4">
+          <AppCard className="text-center py-4">
             <p className="text-gray-500 text-sm">No team members in your domain yet</p>
-          </div>
+          </AppCard>
         ) : (
           <div className="space-y-1.5">
             {teamMembers.map(member => {
@@ -156,7 +161,7 @@ export default function MyStationScreen() {
                 .filter(Boolean)
 
               return (
-                <div key={member.pubkey} className="card flex items-center gap-3 py-2.5">
+                <AppCard key={member.pubkey} className="flex items-center gap-3 !py-2.5">
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     member.status === 'active' ? 'bg-forest-400' :
                     member.status === 'away_declared' ? 'bg-warning-500' :
@@ -179,9 +184,9 @@ export default function MyStationScreen() {
                     params={{ tribeId, memberPub: member.pubkey }}
                     className="text-gray-600 hover:text-forest-400 flex-shrink-0"
                   >
-                    <span className="text-base">💬</span>
+                    <span className="text-base"><AppIcon name="chat" size={16} /></span>
                   </Link>
-                </div>
+                </AppCard>
               )
             })}
           </div>
@@ -191,10 +196,10 @@ export default function MyStationScreen() {
       {/* My Domain Gaps */}
       {myGaps.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-xs text-gray-300 uppercase tracking-widest mb-2">
-            ⚠ Vacancies in My Domain
+          <h3 className="text-xs text-gray-300 uppercase tracking-widest mb-2 flex items-center gap-1">
+            <AppIcon name="warning" size={16} /> Vacancies in My Domain
           </h3>
-          <div className="card border-warning-700/50 space-y-1.5">
+          <AppCard className="border-warning-700/50 space-y-1.5">
             {myGaps.map(({ role, needed, have }) => {
               const spec = ROLE_BY_KEY[role]
               return (
@@ -207,7 +212,7 @@ export default function MyStationScreen() {
                 </div>
               )
             })}
-          </div>
+          </AppCard>
         </div>
       )}
 
@@ -217,7 +222,7 @@ export default function MyStationScreen() {
           <h3 className="text-xs text-gray-300 uppercase tracking-widest mb-2">
             Cross-Training Opportunities
           </h3>
-          <div className="card space-y-2">
+          <AppCard className="space-y-2">
             {crossTrainRecs.map(({ role, slotsNeeded: slots }) => {
               const spec = ROLE_BY_KEY[role]
               return (
@@ -230,14 +235,14 @@ export default function MyStationScreen() {
                   <Link
                     to="/tribe/$tribeId/training"
                     params={{ tribeId }}
-                    className="text-xs text-forest-400 hover:text-forest-300 flex-shrink-0"
+                    className="text-xs text-forest-400 hover:text-forest-300 flex-shrink-0 flex items-center gap-1"
                   >
-                    Learn →
+                    Learn <AppIcon name="forward" size={16} />
                   </Link>
                 </div>
               )
             })}
-          </div>
+          </AppCard>
         </div>
       )}
 
@@ -246,7 +251,7 @@ export default function MyStationScreen() {
         <h3 className="text-xs text-gray-300 uppercase tracking-widest mb-2">
           My Inventory
         </h3>
-        <div className="card space-y-1.5">
+        <AppCard className="space-y-1.5">
           {affinityAssets.length === 0 ? (
             <p className="text-gray-500 text-sm text-center py-2">No assets mapped to your roles</p>
           ) : (
@@ -258,7 +263,7 @@ export default function MyStationScreen() {
               const unitLabel = spec.unit === 'days_supply' ? 'days' : spec.unit
               return (
                 <div key={assetKey} className="flex items-center gap-2">
-                  <span className="text-sm">{spec.icon}</span>
+                  <span className="text-sm"><AppIcon name={ASSET_APP_ICONS[spec.asset]} size={16} /></span>
                   <span className="text-xs text-gray-300 flex-1">{spec.label}</span>
                   {(() => {
                     const have = inventoryMap.get(assetKey)?.quantity ?? 0
@@ -272,18 +277,18 @@ export default function MyStationScreen() {
                       </span>
                     )
                   })()}
-                  {spec.critical && <span className="text-warning-400 text-xs">★</span>}
+                  {spec.critical && <AppIcon name="star" size={16} className="text-warning-400" />}
                 </div>
               )
             })
           )}
-        </div>
+        </AppCard>
         <Link
           to="/tribe/$tribeId/inventory"
           params={{ tribeId }}
-          className="text-xs text-forest-400 hover:text-forest-300 mt-2 inline-block"
+          className="text-xs text-forest-400 hover:text-forest-300 mt-2 inline-flex items-center gap-1"
         >
-          Full inventory →
+          Full inventory <AppIcon name="forward" size={16} />
         </Link>
       </div>
 
@@ -294,24 +299,24 @@ export default function MyStationScreen() {
           params={{ tribeId }}
           className="card flex items-center gap-3 hover:border-forest-600 transition-colors"
         >
-          <span className="text-xl">🎯</span>
+          <AppIcon name="target" size={20} />
           <div className="flex-1">
             <div className="text-sm font-semibold text-gray-200">Edit My Skills</div>
             <div className="text-xs text-gray-500">Update roles and proficiency</div>
           </div>
-          <span className="text-forest-400">→</span>
+          <AppIcon name="forward" size={16} className="text-forest-400" />
         </Link>
         <Link
           to="/tribe/$tribeId/people"
           params={{ tribeId }}
           className="card flex items-center gap-3 hover:border-forest-600 transition-colors"
         >
-          <span className="text-xl">👨‍👩‍👧</span>
+          <AppIcon name="people" size={20} />
           <div className="flex-1">
             <div className="text-sm font-semibold text-gray-200">My People</div>
             <div className="text-xs text-gray-500">Family and friends</div>
           </div>
-          <span className="text-forest-400">→</span>
+          <AppIcon name="forward" size={16} className="text-forest-400" />
         </Link>
       </div>
     </div>

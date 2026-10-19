@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { saveQuizResult } from '../lib/psych'
 import type { PsychProfile, PsychArchetype } from '@plus-ultra/core'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard } from '../components/ui'
 
 // ─── Quiz definitions ─────────────────────────────────────────────────────────
 
@@ -285,10 +287,10 @@ export default function PsychAssessmentScreen() {
           params={{ tribeId }}
           className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
         >
-          ← Psychology
+          <AppIcon name="back" size={16} /> Psychology
         </Link>
 
-        <div className="card mb-4">
+        <AppCard className="mb-4">
           <div className="text-center mb-6">
             <div className={`text-4xl font-bold mb-1 ${meta.color}`}>{result.archetype}</div>
             <div className="text-gray-400 text-sm">{meta.tagline}</div>
@@ -315,14 +317,14 @@ export default function PsychAssessmentScreen() {
               )
             })}
           </div>
-        </div>
+        </AppCard>
 
-        <button
-          className="btn-primary w-full"
+        <AppButton
+          fullWidth
           onClick={() => navigate({ to: '/tribe/$tribeId/psych', params: { tribeId } })}
         >
           View Tribe Psychology
-        </button>
+        </AppButton>
       </div>
     )
   }
@@ -336,7 +338,7 @@ export default function PsychAssessmentScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Psychology
+        <AppIcon name="back" size={16} /> Psychology
       </Link>
 
       {/* Step dots */}
@@ -361,7 +363,7 @@ export default function PsychAssessmentScreen() {
       </div>
 
       {/* Question */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <p className="text-sm font-medium text-gray-200 leading-relaxed mb-4">
           {question.prompt}
         </p>
@@ -401,33 +403,34 @@ export default function PsychAssessmentScreen() {
             ))}
           </div>
         )}
-      </div>
+      </AppCard>
 
       {/* Navigation */}
       <div className="flex gap-2">
-        <button
-          className="btn-secondary flex-1"
+        <AppButton
+          variant="secondary"
+          className="flex-1"
           onClick={goBack}
           disabled={currentQ === 0}
         >
           Back
-        </button>
+        </AppButton>
         {isLast ? (
-          <button
-            className="btn-primary flex-1"
+          <AppButton
+            className="flex-1"
             onClick={handleSave}
             disabled={!answered || saving}
           >
             {saving ? 'Saving...' : 'See Results'}
-          </button>
+          </AppButton>
         ) : (
-          <button
-            className="btn-primary flex-1"
+          <AppButton
+            className="flex-1"
             onClick={goNext}
             disabled={!answered}
           >
             Next
-          </button>
+          </AppButton>
         )}
       </div>
     </div>

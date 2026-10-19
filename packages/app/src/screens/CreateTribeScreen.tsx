@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { createTribe } from '../lib/tribes'
+import { getCurrentCoords, isGeolocationAvailable, reverseGeocode, formatLocality } from '../lib/platform/geo'
+import LocationAutocomplete from '../components/LocationAutocomplete'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard, AppField, AppInput } from '../components/ui'
 import type { Tribe } from '@plus-ultra/core'
 
 const CONSTITUTION_OPTIONS: { value: Tribe['constitutionTemplate']; label: string; description: string }[] = [
@@ -39,19 +43,34 @@ export default function CreateTribeScreen() {
   const [lng, setLng] = useState('')
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
+  const [geoLabel, setGeoLabel] = useState<string | null>(null)
+  const [geoResolving, setGeoResolving] = useState(false)
 
   function handleUseCurrentLocation() {
-    if (!navigator.geolocation) {
+    if (!isGeolocationAvailable()) {
       setGeoError('Geolocation not supported by this browser')
       return
     }
     setGeoLoading(true)
     setGeoError(null)
-    navigator.geolocation.getCurrentPosition(
+    setGeoLabel(null)
+    getCurrentCoords().then(
       pos => {
-        setLat(pos.coords.latitude.toFixed(6))
-        setLng(pos.coords.longitude.toFixed(6))
+        const latStr = pos.latitude.toFixed(6)
+        const lngStr = pos.longitude.toFixed(6)
+        setLat(latStr)
+        setLng(lngStr)
         setGeoLoading(false)
+        // Grid-up: resolve city/region/country and offer them as the
+        // location fields. Grid-down: lookup fails silently, coords stand.
+        setGeoResolving(true)
+        void reverseGeocode(pos.latitude, pos.longitude).then(info => {
+          setGeoResolving(false)
+          if (!info) return
+          setGeoLabel(formatLocality(info))
+          setLocation(prev => (prev.trim() ? prev : (info.city ?? '')))
+          setRegion(prev => (prev.trim() ? prev : (info.region ?? info.country ?? '')))
+        })
       },
       () => {
         setGeoError('Could not get location — enter coordinates manually')
@@ -112,44 +131,43 @@ export default function CreateTribeScreen() {
 
       <div className="space-y-5">
         {/* Tribe name */}
-        <div>
-          <label className="label">Tribe name <span className="text-danger-400">*</span></label>
-          <input
-            className="input"
+        <AppField label="Tribe name" required>
+          <AppInput
             type="text"
             placeholder="e.g. Austin North Tribe"
             value={name}
             onChange={e => setName(e.target.value)}
             maxLength={60}
           />
-        </div>
+        </AppField>
 
-        {/* Location */}
-        <div>
-          <label className="label">Location <span className="text-danger-400">*</span></label>
-          <input
-            className="input"
-            type="text"
-            placeholder="City or neighborhood (no exact addresses)"
+        {/* Location — type-ahead search or GPS fix */}
+        <AppField label="Location" required hint="General area only — exact location stays private.">
+          <LocationAutocomplete
             value={location}
-            onChange={e => setLocation(e.target.value)}
-            maxLength={80}
+            onChange={setLocation}
+            onPick={(place) => {
+              setLocation(place.location)
+              setRegion((prev) => (prev.trim() ? prev : place.region))
+            }}
+            onCoords={(lat, lng) => {
+              setLat(lat.toFixed(6))
+              setLng(lng.toFixed(6))
+            }}
+            onLocality={setGeoLabel}
           />
-          <p className="text-xs text-gray-600 mt-1">General area only — exact location stays private.</p>
-        </div>
+        </AppField>
 
         {/* Region */}
-        <div>
-          <label className="label">Region <span className="text-danger-400">*</span></label>
-          <input
-            className="input"
+        <AppField label="Region" required>
+          <AppInput
             type="text"
             placeholder="e.g. Texas, California, Scotland"
             value={region}
             onChange={e => setRegion(e.target.value)}
             maxLength={40}
           />
-        </div>
+        </AppField>
 
         {/* Coordinates (optional) */}
         <div>
@@ -162,39 +180,39 @@ export default function CreateTribeScreen() {
             Set Coordinates (optional)
           </button>
           {showCoords && (
-            <div className="card bg-forest-950/50 space-y-3">
-              <button
+            <AppCard className="!bg-forest-950/50 space-y-3">
+              <AppButton
                 type="button"
-                className="btn-secondary w-full text-sm"
+                variant="secondary"
+                fullWidth
+                className="text-sm"
                 onClick={handleUseCurrentLocation}
                 disabled={geoLoading}
               >
                 {geoLoading ? 'Getting location...' : 'Use My Current Location'}
-              </button>
+              </AppButton>
               {geoError && <p className="text-xs text-danger-400">{geoError}</p>}
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="label text-xs">Latitude</label>
-                  <input
+                <AppField label="Latitude">
+                  <AppInput
                     type="number"
                     step="0.0001"
-                    className="input text-sm"
+                    className="text-sm"
                     placeholder="48.8584"
                     value={lat}
                     onChange={e => setLat(e.target.value)}
                   />
-                </div>
-                <div>
-                  <label className="label text-xs">Longitude</label>
-                  <input
+                </AppField>
+                <AppField label="Longitude">
+                  <AppInput
                     type="number"
                     step="0.0001"
-                    className="input text-sm"
+                    className="text-sm"
                     placeholder="2.2945"
                     value={lng}
                     onChange={e => setLng(e.target.value)}
                   />
-                </div>
+                </AppField>
               </div>
               {lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng)) && (
                 <p className="text-xs text-gray-500">
@@ -202,13 +220,18 @@ export default function CreateTribeScreen() {
                   {Math.abs(parseFloat(lng)).toFixed(4)}° {parseFloat(lng) >= 0 ? 'E' : 'W'}
                 </p>
               )}
-            </div>
+              {geoResolving && (
+                <p className="text-xs text-gray-500 animate-pulse">Looking up area…</p>
+              )}
+              {geoLabel && (
+                <p className="text-xs text-forest-300"><AppIcon name="pin" size={16} className="inline" /> {geoLabel}</p>
+              )}
+            </AppCard>
           )}
         </div>
 
         {/* Constitution */}
-        <div>
-          <label className="label">Governance model</label>
+        <AppField label="Governance model">
           <div className="space-y-2">
             {CONSTITUTION_OPTIONS.map(opt => (
               <button
@@ -229,21 +252,21 @@ export default function CreateTribeScreen() {
               </button>
             ))}
           </div>
-        </div>
+        </AppField>
 
         {error && (
-          <div className="card border-danger-700 bg-danger-900/20">
+          <AppCard className="border-danger-700 bg-danger-900/20">
             <p className="text-danger-400 text-sm">{error}</p>
-          </div>
+          </AppCard>
         )}
 
-        <button
-          className="btn-primary w-full"
+        <AppButton
+          fullWidth
           onClick={handleCreate}
           disabled={loading || !name.trim() || !location.trim() || !region.trim()}
         >
           {loading ? 'Creating...' : 'Found This Tribe'}
-        </button>
+        </AppButton>
       </div>
     </div>
   )

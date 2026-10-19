@@ -123,6 +123,7 @@ export const updateProfile = mutation({
       ),
     ),
     physicalLimitations: v.optional(v.string()),
+    notes: v.optional(v.string()),
     memberType: v.optional(
       v.union(
         v.literal("adult"),

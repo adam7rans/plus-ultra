@@ -12,6 +12,8 @@ import {
 import type { Tribe, TribeMember, VoteChoice, PsychArchetype } from '@plus-ultra/core'
 import { subscribeToMembers } from '../lib/tribes'
 import { useTribePsychProfiles } from '../hooks/useTribePsychProfiles'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard, AppInput } from '../components/ui'
 
 const ARCHETYPE_BADGE_COLORS: Record<PsychArchetype, string> = {
   Commander: 'bg-red-900/50 text-red-300 border-red-800',
@@ -78,9 +80,9 @@ export default function ProposalDetailScreen() {
     return (
       <div className="max-w-md mx-auto px-4 py-8">
         <Link to="/tribe/$tribeId/proposals" params={{ tribeId }} className="text-forest-400 text-sm mb-4 flex items-center gap-2">
-          ← Proposals
+          <AppIcon name="back" size={16} /> Proposals
         </Link>
-        <div className="card text-center py-8 text-gray-400 text-sm">Proposal not found</div>
+        <AppCard className="text-center py-8 text-gray-400 text-sm">Proposal not found</AppCard>
       </div>
     )
   }
@@ -153,7 +155,7 @@ export default function ProposalDetailScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Proposals
+        <AppIcon name="back" size={16} /> Proposals
       </Link>
 
       {/* Proposal header */}
@@ -178,7 +180,7 @@ export default function ProposalDetailScreen() {
 
       {/* Status badge */}
       {!isOpen && (
-        <div className={`card py-2 text-center text-sm font-semibold mb-4 ${
+        <AppCard className={`py-2 text-center text-sm font-semibold mb-4 ${
           proposal.outcome === 'passed'
             ? 'border-forest-600 bg-forest-900/30 text-forest-300'
             : proposal.outcome === 'failed'
@@ -188,12 +190,12 @@ export default function ProposalDetailScreen() {
           {proposal.outcome === 'passed' && 'Passed'}
           {proposal.outcome === 'failed' && 'Failed — quorum not reached'}
           {proposal.outcome === 'withdrawn' && 'Withdrawn'}
-        </div>
+        </AppCard>
       )}
 
       {/* Proposal → Goal bridge */}
       {proposal.outcome === 'passed' && canCreateGoal && !goalCreated && (
-        <div className="card border-forest-700/40 bg-forest-950/40 mb-4">
+        <AppCard className="border-forest-700/40 !bg-forest-950/40 mb-4">
           <p className="text-xs text-gray-400 mb-2">This proposal passed — create a goal to track execution.</p>
           <button
             className="text-sm text-forest-400 hover:text-forest-300 font-semibold"
@@ -201,23 +203,23 @@ export default function ProposalDetailScreen() {
           >
             + Create Goal from this Proposal
           </button>
-        </div>
+        </AppCard>
       )}
       {goalCreated && (
-        <div className="card border-forest-600/40 mb-4">
+        <AppCard className="border-forest-600/40 mb-4">
           <p className="text-xs text-forest-400">Goal created</p>
-        </div>
+        </AppCard>
       )}
 
       {/* Body */}
       {proposal.body && (
-        <div className="card mb-4 text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+        <AppCard className="mb-4 text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
           {proposal.body}
-        </div>
+        </AppCard>
       )}
 
       {/* Tally */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-gray-400 uppercase tracking-widest">Tally</span>
           <span className="text-xs text-gray-500">
@@ -239,7 +241,7 @@ export default function ProposalDetailScreen() {
         <div className="text-[10px] text-gray-500 mt-1">
           {yesCt}/{quorum} yes needed
         </div>
-      </div>
+      </AppCard>
 
       {/* Voter list */}
       {votes.length > 0 && (
@@ -274,7 +276,7 @@ export default function ProposalDetailScreen() {
 
       {/* Vote buttons */}
       {isOpen && (
-        <div className="card mb-4">
+        <AppCard className="mb-4">
           {iAmEligible ? (
             <>
               <div className="text-xs text-gray-400 mb-2">
@@ -308,18 +310,20 @@ export default function ProposalDetailScreen() {
                 : 'You are not eligible to vote on this proposal'}
             </p>
           )}
-        </div>
+        </AppCard>
       )}
 
       {/* Withdraw button */}
       {isOpen && isCreator && (
         <div className="mb-4">
-          <button
-            className="btn-secondary w-full text-sm text-danger-400 border-danger-800 hover:border-danger-600"
+          <AppButton
+            variant="secondary"
+            fullWidth
+            className="text-sm !text-danger-400 !border-danger-800 hover:!border-danger-600"
             onClick={handleWithdraw}
           >
             Withdraw Proposal
-          </button>
+          </AppButton>
         </div>
       )}
 
@@ -333,13 +337,13 @@ export default function ProposalDetailScreen() {
         ) : (
           <div className="space-y-2 mb-3">
             {sortedComments.map(c => (
-              <div key={c.id} className="card py-2">
+              <AppCard key={c.id} className="py-2">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-semibold text-gray-300">{memberName(c.authorPub)}</span>
                   <span className="text-[10px] text-gray-500">{formatDate(c.postedAt)}</span>
                 </div>
                 <p className="text-sm text-gray-300 whitespace-pre-wrap">{c.body}</p>
-              </div>
+              </AppCard>
             ))}
           </div>
         )}
@@ -347,20 +351,20 @@ export default function ProposalDetailScreen() {
         {/* Comment input — available on open and closed proposals */}
         {identity && (
           <form onSubmit={handleComment} className="flex gap-2">
-            <input
-              className="input flex-1 text-sm"
+            <AppInput
+              className="flex-1 text-sm"
               value={commentBody}
               onChange={e => setCommentBody(e.target.value)}
               placeholder="Add a comment..."
               maxLength={500}
             />
-            <button
+            <AppButton
               type="submit"
-              className="btn-primary text-sm px-3 py-1.5 flex-shrink-0"
+              className="text-sm !px-3 !py-1.5 flex-shrink-0"
               disabled={posting || !commentBody.trim()}
             >
               {posting ? '...' : 'Post'}
-            </button>
+            </AppButton>
           </form>
         )}
       </div>

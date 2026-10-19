@@ -273,7 +273,9 @@ export async function getMyTribes(): Promise<Array<{ tribeId: string; name: stri
 
 // ─── Member management ───────────────────────────────────────────────────────
 
-async function writeMember(tribeId: string, member: TribeMember): Promise<void> {
+// Exported for the dev-only demo seeder (src/lib/demo-seed.ts). Same path as
+// founder/join writes: IDB first, Convex + Gun fire-and-forget.
+export async function writeMember(tribeId: string, member: TribeMember): Promise<void> {
   // Write to IDB first (source of truth, survives process restarts)
   const db = await getDB()
   await db.put('members', member, `${tribeId}:${member.pubkey}`)
@@ -394,6 +396,7 @@ export async function updateMemberProfile(
     photo?: string          // base64 — IDB only, not synced via Gun (too large)
     availability?: 'full_time' | 'part_time' | 'on_call'
     physicalLimitations?: string
+    notes?: string
     memberType?: TribeMember['memberType']
   }
 ): Promise<void> {
@@ -408,6 +411,7 @@ export async function updateMemberProfile(
     ...(profile.photo !== undefined ? { photo: profile.photo } : {}),
     ...(profile.availability !== undefined ? { availability: profile.availability } : {}),
     ...(profile.physicalLimitations !== undefined ? { physicalLimitations: profile.physicalLimitations } : {}),
+    ...(profile.notes !== undefined ? { notes: profile.notes } : {}),
     ...(profile.memberType !== undefined ? { memberType: profile.memberType } : {}),
   }
 
@@ -415,7 +419,7 @@ export async function updateMemberProfile(
   await db.put('members', updated, key)
 
   // Sync to Convex (grid-up) — photo excluded, only profile fields
-  void convexWrite('members.updateProfile', { tribeId, pubkey, bio: profile.bio, availability: profile.availability, physicalLimitations: profile.physicalLimitations, memberType: profile.memberType })
+  void convexWrite('members.updateProfile', { tribeId, pubkey, bio: profile.bio, availability: profile.availability, physicalLimitations: profile.physicalLimitations, notes: profile.notes, memberType: profile.memberType })
 
   // Sync to Gun — exclude photo (too large for P2P mesh)
   const { photo: _photo, ...gunFields } = updated
@@ -429,7 +433,7 @@ export async function updateMemberProfile(
       gunStore: 'members', tribeId, recordKey: pubkey,
       payload: profilePayload,
       convexMutation: 'members.updateProfile',
-      convexArgs: { tribeId, pubkey, bio: profile.bio, availability: profile.availability, physicalLimitations: profile.physicalLimitations, memberType: profile.memberType },
+      convexArgs: { tribeId, pubkey, bio: profile.bio, availability: profile.availability, physicalLimitations: profile.physicalLimitations, notes: profile.notes, memberType: profile.memberType },
       queuedAt: Date.now(),
     })
   }

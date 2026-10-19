@@ -4,11 +4,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Survival-themed dark green palette
+        // Neutral dark-gray scale (page surfaces, borders, muted text).
+        // Every `forest-*` usage across the app resolves through here, so the
+        // whole UI re-themes from this one map. Green is reserved for the
+        // `accent` scale (CTAs, key highlights) below.
         forest: {
-          950: '#0D1F16',
-          900: '#1A3A2A',
-          800: '#1F4731',
+          950: '#111417',
+          900: '#1A1F24',
+          800: '#262D34',
+          700: '#333C45',
+          600: '#4A5560',
+          500: '#6B7784',
+          400: '#9AA4B0',
+          300: '#C7CED6',
+        },
+        // Action green — the previous forest greens, kept for primary
+        // buttons and deliberate highlights only.
+        accent: {
           700: '#245438',
           600: '#2D6B45',
           500: '#3A8A58',

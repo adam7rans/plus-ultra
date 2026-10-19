@@ -1,6 +1,19 @@
 import { useState } from 'react'
 import { sendAlert, ALERT_META } from '../lib/notifications'
 import type { AlertType } from '../lib/notifications'
+import AppIcon, { type AppIconName } from './AppIcon'
+import AppModal from './ui/AppModal'
+import AppButton from './ui/AppButton'
+import { AppTextarea } from './ui/AppField'
+
+const ALERT_ICONS: Record<AlertType, AppIconName> = {
+  emergency: 'siren',
+  perimeter_breach: 'shieldAlert',
+  medical: 'firstAid',
+  rally_point: 'pin',
+  all_clear: 'check',
+  bug_out: 'navigate',
+}
 
 const ALERT_TYPES: AlertType[] = ['emergency', 'perimeter_breach', 'medical', 'rally_point', 'all_clear']
 
@@ -28,13 +41,7 @@ export default function SendAlertModal({ tribeId, senderPub, senderName, onClose
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="max-w-sm w-full mx-4 card border-danger-500/50">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-danger-400">🚨 Send Alert</h3>
-          <button className="text-gray-500 hover:text-gray-300 text-sm" onClick={onClose}>✕</button>
-        </div>
-
+    <AppModal title="Send Alert" icon="siren" tone="danger" onClose={onClose}>
         <div className="space-y-2 mb-4">
           {ALERT_TYPES.map(type => {
             const meta = ALERT_META[type]
@@ -49,7 +56,7 @@ export default function SendAlertModal({ tribeId, senderPub, senderName, onClose
                     : 'border-forest-800 bg-forest-950 text-gray-400 hover:border-forest-700'
                 }`}
               >
-                <span className="text-2xl">{meta.icon}</span>
+                <span className="text-2xl"><AppIcon name={ALERT_ICONS[type]} size={24} /></span>
                 <span className="text-sm font-semibold">{meta.label}</span>
               </button>
             )
@@ -57,8 +64,7 @@ export default function SendAlertModal({ tribeId, senderPub, senderName, onClose
         </div>
 
         <div className="mb-4">
-          <textarea
-            className="input"
+          <AppTextarea
             rows={2}
             placeholder="Optional message..."
             value={message}
@@ -67,16 +73,17 @@ export default function SendAlertModal({ tribeId, senderPub, senderName, onClose
         </div>
 
         <div className="flex gap-2">
-          <button className="btn-secondary flex-1" onClick={onClose}>Cancel</button>
-          <button
-            className="flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm bg-danger-600 text-white hover:bg-danger-500 disabled:opacity-50 transition-colors"
+          <AppButton variant="secondary" fullWidth onClick={onClose}>Cancel</AppButton>
+          <AppButton
+            variant="danger"
+            fullWidth
             onClick={handleSend}
             disabled={!alertType || sending}
+            loading={sending}
           >
             {sending ? 'Sending...' : 'Send Alert'}
-          </button>
+          </AppButton>
         </div>
-      </div>
-    </div>
+    </AppModal>
   )
 }

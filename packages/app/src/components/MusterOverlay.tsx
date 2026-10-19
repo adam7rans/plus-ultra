@@ -1,6 +1,8 @@
 import { useNavigate } from '@tanstack/react-router'
 import { MUSTER_REASON_META } from '@plus-ultra/core'
 import type { MusterCall } from '@plus-ultra/core'
+import AppIcon from './AppIcon'
+import { MUSTER_REASON_APP_ICONS } from './registry-icons'
 
 interface Props {
   muster: MusterCall
@@ -28,10 +30,10 @@ export default function MusterOverlay({ muster, tribeId, onLater }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm">
       <div className="max-w-sm w-full mx-4 rounded-2xl p-6 text-center bg-warning-900/80 border border-warning-500/40">
-        <div className="text-6xl mb-3">📣</div>
+        <div className="mb-3"><AppIcon name="megaphone" size={48} /></div>
         <h2 className="text-2xl font-black text-white mb-1">MUSTER CALLED</h2>
         <div className="flex items-center justify-center gap-2 mb-3">
-          <span>{meta.icon}</span>
+          <AppIcon name={MUSTER_REASON_APP_ICONS[muster.reason]} size={16} />
           <span className="text-warning-300 font-semibold text-sm">{meta.label}</span>
         </div>
         {muster.message && (

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Message } from '@plus-ultra/core'
+import AppIcon from './AppIcon'
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '⚠️', '✅']
 
@@ -54,7 +55,7 @@ function AudioPlayer({ base64, mimeType }: { base64: string; mimeType: string })
     <audio
       controls
       src={srcUrl}
-      className="max-w-[220px] h-8"
+      className="block w-full h-8 min-w-0"
       onError={() => setDecodeError(`Format not supported (${mimeType})`)}
     />
   )
@@ -75,10 +76,34 @@ function PhotoMessage({ base64 }: { base64: string }) {
   return (
     <img
       src={src}
-      className="max-w-[200px] rounded-lg cursor-pointer"
+      className="block w-full h-auto rounded-xl cursor-pointer"
       onClick={() => setExpanded(true)}
       alt="Photo"
     />
+  )
+}
+
+function VideoMessage({ base64, mimeType }: { base64: string; mimeType: string }) {
+  const [failed, setFailed] = useState(false)
+  if (!base64 || base64.startsWith('[') || base64.startsWith('SEA{')) {
+    return <span className="text-xs text-red-400">Video not yet available</span>
+  }
+  const clean = base64.replace(/\s+/g, '')
+  return (
+    <div className="w-[220px] max-w-full">
+      {failed ? (
+        <span className="text-xs text-red-400">Format not supported ({mimeType})</span>
+      ) : (
+        <video
+          controls
+          playsInline
+          preload="metadata"
+          className="block w-full h-auto rounded-xl"
+          src={`data:${mimeType};base64,${clean}`}
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
   )
 }
 
@@ -140,43 +165,56 @@ export default function MessageBubble({
         <span className="text-xs text-gray-500 mb-1 ml-1">{senderName}</span>
       )}
 
-      <div className="relative">
-        {/* Long-press target wrapping the bubble */}
+      {/* min-w-0 + max-w-full: the nowrap reply quote has huge min-content
+          that would otherwise size this flex item past the screen width. */}
+      <div className="relative min-w-0 max-w-full">
+        {/* Long-press target: reply quote + bubble share one width-capped
+            box, so the quote can never stick out past the message below it. */}
         <div
-          onMouseDown={startLongPress}
-          onMouseUp={cancelLongPress}
-          onMouseLeave={cancelLongPress}
-          onTouchStart={startLongPress}
-          onTouchEnd={cancelLongPress}
-          onTouchMove={cancelLongPress}
-          className="select-none"
-        >
-          {/* Reply quote */}
-          {replyToContent !== undefined && (
-            <div className={`mb-1 px-2 py-1 rounded text-xs border-l-2 border-forest-500 bg-forest-900/60 max-w-[75vw] truncate ${isMe ? 'mr-0' : 'ml-0'}`}>
-              <span className="text-forest-400 font-medium mr-1">{replyToSenderName ?? 'Unknown'}</span>
-              <span className="text-gray-400">{replyToContent}</span>
-            </div>
-          )}
-
-          <div
-            className={`max-w-[75%] rounded-2xl px-3 py-2 ${
-              isMe
-                ? 'bg-forest-700 text-white rounded-br-sm'
-                : 'bg-forest-900 border border-forest-800 text-gray-100 rounded-bl-sm'
-            }`}
+            onMouseDown={startLongPress}
+            onMouseUp={cancelLongPress}
+            onMouseLeave={cancelLongPress}
+            onTouchStart={startLongPress}
+            onTouchEnd={cancelLongPress}
+            onTouchMove={cancelLongPress}
+            className={`flex flex-col select-none ${isMe ? 'items-end' : 'items-start'}`}
           >
-            {message.type === 'text' && (
-              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{content}</p>
-            )}
-            {message.type === 'voice' && (
-              <AudioPlayer base64={content} mimeType={message.mimeType ?? 'audio/webm'} />
-            )}
-            {message.type === 'photo' && (
-              <PhotoMessage base64={content} />
-            )}
+            <div className="max-w-[75%] min-w-0">
+              {replyToContent !== undefined && (
+                <div className="mb-1 px-2 py-1 rounded-lg text-xs bg-black/25 border-l-2 border-forest-500 truncate">
+                  <span className="text-forest-400 font-medium mr-1">{replyToSenderName ?? 'Unknown'}</span>
+                  <span className="text-gray-400">{replyToContent}</span>
+                </div>
+              )}
+
+              <div
+                className={`rounded-2xl ${
+                  message.type === 'text'
+                    ? 'px-3 py-2'
+                    : 'p-1.5 overflow-hidden'
+                } ${
+                  isMe
+                    ? 'bg-forest-700 text-white rounded-br-sm'
+                    : 'bg-forest-900 border border-forest-800 text-gray-100 rounded-bl-sm'
+                }`}
+              >
+                {message.type === 'text' && (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{content}</p>
+                )}
+                {message.type === 'voice' && (
+                  <div className="w-[200px] max-w-full">
+                    <AudioPlayer base64={content} mimeType={message.mimeType ?? 'audio/webm'} />
+                  </div>
+                )}
+                {message.type === 'photo' && (
+                  <PhotoMessage base64={content} />
+                )}
+                {message.type === 'video' && (
+                  <VideoMessage base64={content} mimeType={message.mimeType ?? 'video/webm'} />
+                )}
+              </div>
+            </div>
           </div>
-        </div>
 
         {/* Reaction picker (appears on long press) */}
         {showPicker && (
@@ -199,7 +237,7 @@ export default function MessageBubble({
                 onClick={handleReply}
                 title="Reply"
               >
-                ↩
+                <AppIcon name="reply" size={16} />
               </button>
             )}
           </div>
@@ -229,7 +267,7 @@ export default function MessageBubble({
       <span className={`flex items-center gap-1 text-xs text-gray-600 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
         {formatTime(message.sentAt)}
         {syncStatus === 'pending' && (
-          <span className="text-gray-400" title="Pending relay sync">⏱</span>
+          <span className="text-gray-400 inline-flex" title="Pending relay sync"><AppIcon name="clock" size={14} /></span>
         )}
       </span>
     </div>

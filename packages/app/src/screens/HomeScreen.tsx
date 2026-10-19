@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useTribe } from '../contexts/TribeContext'
-import { shortId } from '../lib/identity'
+import { shortId } from '../lib/platform/identity'
 import { Link } from '@tanstack/react-router'
 import CameraQrScanner from '../components/CameraQrScanner'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard, AppEmptyState, AppInput } from '../components/ui'
 
 export default function HomeScreen() {
-  const { identity, loading: identityLoading } = useIdentity()
+  const { identity, loading: identityLoading, initStep, initError } = useIdentity()
   const { myTribes, loadingTribes } = useTribe()
   const [scanning, setScanning] = useState(false)
   const [pastingLink, setPastingLink] = useState(false)
@@ -44,6 +46,19 @@ export default function HomeScreen() {
     )
   }
 
+  if (initError) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-8">
+        <h2 className="text-xl font-bold text-gray-100 mb-2">Couldn't start</h2>
+        <p className="text-gray-400 text-sm mb-1">Identity init failed at step: {initStep}</p>
+        <p className="text-danger-400 text-xs font-mono mb-4" style={{ wordBreak: 'break-all' }}>{initError}</p>
+        <AppButton variant="secondary" fullWidth onClick={() => window.location.reload()}>
+          Retry
+        </AppButton>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-md mx-auto px-4 py-8">
       {/* Header */}
@@ -53,24 +68,24 @@ export default function HomeScreen() {
           <p className="text-gray-300 text-sm mt-0.5">Tribal Operating System</p>
         </div>
         <Link to="/identity">
-          <div className="card py-2 px-3 cursor-pointer hover:border-forest-600 transition-colors">
+          <AppCard className="!py-2 !px-3 cursor-pointer hover:border-forest-600 transition-colors">
             <div className="text-xs text-gray-300 mb-0.5">ID</div>
             <div className="font-mono text-forest-300 text-sm tracking-wider">
               {identity ? shortId(identity.pub) : '—'}
             </div>
-          </div>
+          </AppCard>
         </Link>
       </div>
 
       {/* Backup warning */}
       {identity && !identity.backedUp && (
         <Link to="/identity">
-          <div className="card border-warning-700 bg-warning-700/10 mb-4 cursor-pointer hover:border-warning-500 transition-colors">
-            <p className="text-warning-400 text-sm font-semibold">⚠ Back up your identity</p>
+          <AppCard className="border-warning-700 bg-warning-700/10 mb-4 cursor-pointer hover:border-warning-500 transition-colors">
+            <p className="text-warning-400 text-sm font-semibold"><AppIcon name="warning" size={16} className="inline" /> Back up your identity</p>
             <p className="text-gray-300 text-xs mt-0.5">
               Losing your phone without a backup means losing tribe access forever.
             </p>
-          </div>
+          </AppCard>
         </Link>
       )}
 
@@ -81,20 +96,18 @@ export default function HomeScreen() {
         </div>
 
         {loadingTribes ? (
-          <div className="card">
+          <AppCard>
             <div className="text-gray-600 text-sm animate-pulse">Loading...</div>
-          </div>
+          </AppCard>
         ) : myTribes.length === 0 ? (
-          <div className="card border-dashed border-2 border-forest-800 text-center py-8">
-            <div className="text-4xl mb-3">🏕</div>
-            <p className="text-gray-400 text-sm font-medium mb-1">No tribe yet</p>
-            <p className="text-gray-600 text-xs">Create one or join via invite link</p>
-          </div>
+          <AppCard className="border-dashed border-2 border-forest-800 text-center">
+            <AppEmptyState icon="tent" title="No tribe yet" body="Create one or join via invite link" />
+          </AppCard>
         ) : (
           <div className="space-y-2">
             {myTribes.map(tribe => (
               <Link key={tribe.tribeId} to="/tribe/$tribeId" params={{ tribeId: tribe.tribeId }}>
-                <div className="card hover:border-forest-600 transition-colors cursor-pointer">
+                <AppCard className="hover:border-forest-600 transition-colors cursor-pointer">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-semibold text-gray-100">{tribe.name}</div>
@@ -102,7 +115,7 @@ export default function HomeScreen() {
                     </div>
                     <span className="text-forest-500 text-lg">→</span>
                   </div>
-                </div>
+                </AppCard>
               </Link>
             ))}
           </div>
@@ -119,25 +132,26 @@ export default function HomeScreen() {
       {/* Actions */}
       <div className="space-y-3">
         <Link to="/create-tribe" className="block">
-          <button className="btn-primary w-full">+ Create New Tribe</button>
+          <AppButton fullWidth>+ Create New Tribe</AppButton>
         </Link>
-        <button
-          className="btn-secondary w-full"
+        <AppButton
+          variant="secondary"
+          fullWidth
           onClick={() => { setScanning(prev => !prev); setPastingLink(false) }}
         >
-          {scanning ? 'Cancel Scan' : '📷 Scan QR to Join'}
-        </button>
-        <button
-          className="btn-secondary w-full"
+          {scanning ? 'Cancel Scan' : (<><AppIcon name="camera" size={16} className="inline" /> Scan QR to Join</>)}
+        </AppButton>
+        <AppButton
+          variant="secondary"
+          fullWidth
           onClick={() => { setPastingLink(prev => !prev); setScanning(false); setPasteError(null) }}
         >
-          {pastingLink ? 'Cancel' : '🔗 Paste Invite Link'}
-        </button>
+          {pastingLink ? 'Cancel' : (<><AppIcon name="link" size={16} className="inline" /> Paste Invite Link</>)}
+        </AppButton>
         {pastingLink && (
           <div className="space-y-2">
-            <input
+            <AppInput
               type="url"
-              className="input w-full"
               placeholder="Paste invite link here..."
               value={pastedLink}
               onChange={e => { setPastedLink(e.target.value); setPasteError(null) }}
@@ -145,9 +159,9 @@ export default function HomeScreen() {
               autoFocus
             />
             {pasteError && <p className="text-xs text-danger-400">{pasteError}</p>}
-            <button className="btn-primary w-full" onClick={handlePasteSubmit}>
+            <AppButton fullWidth onClick={handlePasteSubmit}>
               Go →
-            </button>
+            </AppButton>
           </div>
         )}
       </div>

@@ -5,6 +5,9 @@ export default defineConfig({
   timeout: 30_000,
   retries: 0,
   reporter: 'list',
+  // Serial: specs share one dev server and local-first stores; the full
+  // core file runs in ~10s single-worker, parallel workers flake.
+  workers: 1,
 
   projects: [
     {
@@ -12,6 +15,25 @@ export default defineConfig({
       use: {
         baseURL: 'http://localhost:5175',
         browserName: 'chromium',
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+        userAgent:
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        screenshot: 'only-on-failure',
+        video: 'off',
+        trace: 'off',
+      },
+    },
+    {
+      // Same emulation, but drives the system-installed Chrome instead of
+      // the downloaded Playwright bundle (no `playwright install` needed).
+      name: 'chrome-mobile',
+      use: {
+        baseURL: 'http://localhost:5174',
+        browserName: 'chromium',
+        channel: 'chrome',
         viewport: { width: 390, height: 844 },
         deviceScaleFactor: 3,
         isMobile: true,

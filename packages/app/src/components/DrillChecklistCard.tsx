@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import AppIcon from './AppIcon'
+import { AppCard } from './ui'
 
 interface Props {
   tribeId: string
@@ -34,12 +36,12 @@ export default function DrillChecklistCard({ tribeId }: Props) {
   const allChecked = checked.every(Boolean)
 
   return (
-    <div className="card border-warning-500 bg-warning-900/20 mb-4">
+    <AppCard className="border-warning-500 bg-warning-900/20 mb-4">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-warning-300 font-bold text-sm">⚡ Grid-Down Drill Checklist</span>
+        <span className="text-warning-300 font-bold text-sm"><AppIcon name="bolt" size={16} className="inline" /> Grid-Down Drill Checklist</span>
       </div>
       {allChecked ? (
-        <p className="text-sm text-forest-400 font-semibold">Drill checklist complete ✓</p>
+        <p className="text-sm text-forest-400 font-semibold">Drill checklist complete <AppIcon name="check" size={16} className="inline" /></p>
       ) : (
         <ul className="space-y-2">
           {CHECKLIST.map((item, i) => (
@@ -52,7 +54,7 @@ export default function DrillChecklistCard({ tribeId }: Props) {
                     : 'border-warning-600 bg-transparent'
                 }`}
               >
-                {checked[i] ? '✓' : ''}
+                {checked[i] && <AppIcon name="check" size={16} />}
               </button>
               <Link
                 to={item.to}
@@ -67,6 +69,6 @@ export default function DrillChecklistCard({ tribeId }: Props) {
           ))}
         </ul>
       )}
-    </div>
+    </AppCard>
   )
 }

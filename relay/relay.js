@@ -37,6 +37,14 @@ if (!RELAY_PUSH_SECRET) {
 const SUBS_FILE = path.join(__dirname, 'push-subscriptions.json')
 let subscriptions = new Map() // key: `${tribeId}:${memberPub}`, value: PushSubscription
 
+// ── Native device tokens (FCM/APNs) ─────────────────────────────────
+// Registered by Capacitor clients via POST /push/register-device.
+// Server-side fan-out needs FCM/APNs credentials (FCM_SERVER_KEY / APNS_* env);
+// until configured, /push/send counts matching native targets in the response
+// (`nativeTargets`) without delivering. Web Push flow is unaffected.
+const DEVICES_FILE = path.join(__dirname, 'push-devices.json')
+let deviceTokens = new Map() // key: `${tribeId}:${memberPub}`, value: { token, platform, updatedAt }
+
 try {
   const data = JSON.parse(fs.readFileSync(SUBS_FILE, 'utf8'))
   for (const [k, v] of Object.entries(data)) subscriptions.set(k, v)
@@ -46,6 +54,17 @@ try {
 function persistSubs() {
   const obj = Object.fromEntries(subscriptions)
   fs.writeFileSync(SUBS_FILE, JSON.stringify(obj, null, 2))
+}
+
+try {
+  const data = JSON.parse(fs.readFileSync(DEVICES_FILE, 'utf8'))
+  for (const [k, v] of Object.entries(data)) deviceTokens.set(k, v)
+  console.log(`[push] Loaded ${deviceTokens.size} native device tokens`)
+} catch { /* no file yet */ }
+
+function persistDevices() {
+  const obj = Object.fromEntries(deviceTokens)
+  fs.writeFileSync(DEVICES_FILE, JSON.stringify(obj, null, 2))
 }
 
 function checkPushAuth(req, res) {
@@ -130,6 +149,32 @@ const server = http.createServer((req, res) => {
     return
   }
 
+  // POST /push/register-device — register a native (FCM/APNs) device token
+  if (req.method === 'POST' && req.url === '/push/register-device') {
+    if (!checkPushAuth(req, res)) return
+    let body = ''
+    req.on('data', c => body += c)
+    req.on('end', () => {
+      try {
+        const { tribeId, memberPub, token, platform } = JSON.parse(body)
+        if (!tribeId || !memberPub || !token) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Missing tribeId, memberPub, or token' }))
+          return
+        }
+        deviceTokens.set(`${tribeId}:${memberPub}`, { token, platform: platform || 'unknown', updatedAt: Date.now() })
+        persistDevices()
+        console.log(`[push] Device registered: ${memberPub.slice(0, 8)}… (${platform || 'unknown'}) in tribe ${tribeId.slice(0, 8)}…`)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: true }))
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Invalid JSON' }))
+      }
+    })
+    return
+  }
+
   // POST /push/send — send a push to specific member(s) or entire tribe
   if (req.method === 'POST' && req.url === '/push/send') {
     if (!checkPushAuth(req, res)) return
@@ -152,6 +197,17 @@ const server = http.createServer((req, res) => {
         const payload = JSON.stringify({ title, body: msgBody || '', icon: icon || '/pwa-192x192.png', data: data || {} })
         let sent = 0
         let failed = 0
+        let nativeTargets = 0
+
+        // Native targets: counted for now; delivery needs FCM/APNs credentials.
+        for (const [key] of deviceTokens) {
+          if (!key.startsWith(`${tribeId}:`)) continue
+          if (targetPub && targetPub !== '*' && key !== `${tribeId}:${targetPub}`) continue
+          nativeTargets++
+        }
+        if (nativeTargets > 0) {
+          console.log(`[push] ${nativeTargets} native target(s) — FCM/APNs not configured, skipping delivery`)
+        }
 
         for (const [key, sub] of subscriptions) {
           if (!key.startsWith(`${tribeId}:`)) continue
@@ -173,7 +229,7 @@ const server = http.createServer((req, res) => {
 
         if (failed > 0) persistSubs()
         res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ sent, failed }))
+        res.end(JSON.stringify({ sent, failed, nativeTargets }))
       } catch {
         res.writeHead(400, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Invalid JSON' }))

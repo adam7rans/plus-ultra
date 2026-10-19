@@ -15,7 +15,7 @@ export default function QrDisplay({ value, onShown }: Props) {
     QRCode.toCanvas(canvasRef.current, value, {
       width: 280,
       margin: 2,
-      color: { dark: '#1A3A2A', light: '#F9FAF8' }
+      color: { dark: '#1A1F24', light: '#F9FAF8' }
     }).then(() => {
       onShown?.()
     }).catch(err => {

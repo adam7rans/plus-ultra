@@ -16,6 +16,8 @@ import { saveTerritory, addPin, deletePin, addPatrolRoute, deletePatrolRoute } f
 import { fetchTribeMeta } from '../lib/tribes'
 import { getAuthority, hasAuthority, PINNABLE_ASSET_TYPES } from '@plus-ultra/core'
 import type { Tribe, PinAssetType, LatLng, ContactCategory } from '@plus-ultra/core'
+import AppIcon, { type AppIconName } from '../components/AppIcon'
+import { AppButton, AppInput } from '../components/ui'
 
 // ─── Leaflet marker icon fix (known Vite issue) ───────────────────────────────
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
@@ -36,6 +38,19 @@ const CONTACT_CATEGORY_ICONS: Record<ContactCategory, string> = {
   mutual_aid: '🤝',
   authority:  '🚔',
   other:      '👤',
+}
+
+// AppIcon names for the React-rendered contact list rows. CONTACT_CATEGORY_ICONS
+// above stays as-is: it is interpolated into Leaflet DivIcon HTML strings, which
+// cannot host React components.
+const CONTACT_APP_ICONS: Record<ContactCategory, AppIconName> = {
+  medical:    'firstAid',
+  legal:      'scales',
+  comms:      'radio',
+  supply:     'cart',
+  mutual_aid: 'handshake',
+  authority:  'detective',
+  other:      'user',
 }
 
 function contactIcon(category: ContactCategory): L.DivIcon {
@@ -366,27 +381,31 @@ export default function MapScreen() {
         <Link
           to="/tribe/$tribeId"
           params={{ tribeId }}
-          className="text-forest-400 text-sm hover:text-forest-300"
+          className="text-forest-400 text-sm hover:text-forest-300 flex items-center gap-1"
         >
-          ← Back
+          <AppIcon name="back" size={16} /> Back
         </Link>
         <span className="text-gray-100 font-semibold text-sm">
           {tribe?.name ? `${tribe.name} — Map` : 'Map'}
         </span>
         <div className="flex items-center gap-2">
-          <button
-            className="text-xs text-forest-400 hover:text-forest-300 px-2 py-1 border border-forest-800 rounded"
+          <AppButton
+            variant="secondary"
+            size="sm"
+            icon="download"
+            iconSize={16}
+            className="!border-forest-800 !text-forest-400 hover:!text-forest-300 !px-2 !py-1"
             onClick={() => setShowDownloadModal(true)}
           >
-            ↓ Offline
-          </button>
+            Offline
+          </AppButton>
           {canEdit && (
             <div className="relative">
               <button
-                className="text-xs bg-forest-700 text-gray-100 px-3 py-1.5 rounded hover:bg-forest-600 transition-colors"
+                className="text-xs bg-forest-700 text-gray-100 px-3 py-1.5 rounded hover:bg-forest-600 transition-colors flex items-center gap-1"
                 onClick={() => setShowEditMenu(prev => !prev)}
               >
-                Edit ▾
+                Edit <AppIcon name="caretDown" size={16} />
               </button>
               {showEditMenu && (
                 <div className="absolute right-0 top-full mt-1 bg-forest-900 border border-forest-700 rounded shadow-lg z-[1000] min-w-[160px]">
@@ -426,7 +445,7 @@ export default function MapScreen() {
             center={mapCenter}
             zoom={mapZoom}
             className="w-full h-full"
-            style={{ background: '#1a2e20' }}
+            style={{ background: '#111417' }}
             zoomControl={true}
           >
             <OfflineTileLayerComp onLayerReady={handleLayerReady} />
@@ -522,9 +541,9 @@ export default function MapScreen() {
       {mode !== 'view' && mode !== 'edit-pin' && mode !== 'edit-route' && (
         <div className="flex items-center justify-between px-4 py-2 bg-forest-900 border-t border-forest-800 flex-shrink-0">
           <span className="text-xs text-forest-300">{modeInstructions[mode]}</span>
-          <button className="text-xs text-danger-400 hover:text-danger-300 ml-4" onClick={cancelMode}>
+          <AppButton variant="ghost" size="sm" className="!text-danger-400 hover:!text-danger-300 ml-4" onClick={cancelMode}>
             Cancel
-          </button>
+          </AppButton>
         </div>
       )}
 
@@ -535,9 +554,9 @@ export default function MapScreen() {
             <p className="text-xs text-gray-400">
               New Pin{tempPinPos ? ` — ${tempPinPos.lat.toFixed(4)}, ${tempPinPos.lng.toFixed(4)}` : ''}
             </p>
-            <button className="text-xs text-danger-400 hover:text-danger-300" onClick={cancelMode}>
+            <AppButton variant="ghost" size="sm" className="!text-danger-400 hover:!text-danger-300" onClick={cancelMode}>
               Cancel
-            </button>
+            </AppButton>
           </div>
           <div className="flex flex-wrap gap-1.5 mb-3">
             {PINNABLE_ASSET_TYPES.map(type => (
@@ -557,25 +576,26 @@ export default function MapScreen() {
               </button>
             ))}
           </div>
-          <input
-            className="input text-sm mb-2"
+          <AppInput
+            className="text-sm mb-2"
             placeholder="Label (optional)"
             value={pinLabel}
             onChange={e => setPinLabel(e.target.value)}
           />
-          <input
-            className="input text-sm mb-3"
+          <AppInput
+            className="text-sm mb-3"
             placeholder="Notes"
             value={pinNotes}
             onChange={e => setPinNotes(e.target.value)}
           />
-          <button
-            className="btn-primary w-full text-sm"
+          <AppButton
+            fullWidth
+            className="text-sm"
             onClick={handleSavePin}
             disabled={savingPin}
           >
             {savingPin ? 'Saving...' : 'Save Pin'}
-          </button>
+          </AppButton>
         </div>
       )}
 
@@ -584,18 +604,18 @@ export default function MapScreen() {
         <div className="bg-forest-950 border-t border-forest-800 px-4 py-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-gray-400">{pendingWaypoints.length} waypoints</p>
-            <button className="text-xs text-danger-400 hover:text-danger-300" onClick={cancelMode}>
+            <AppButton variant="ghost" size="sm" className="!text-danger-400 hover:!text-danger-300" onClick={cancelMode}>
               Cancel
-            </button>
+            </AppButton>
           </div>
-          <input
-            className="input text-sm mb-2"
+          <AppInput
+            className="text-sm mb-2"
             placeholder="Route name *"
             value={routeName}
             onChange={e => setRouteName(e.target.value)}
           />
-          <input
-            className="input text-sm mb-2"
+          <AppInput
+            className="text-sm mb-2"
             placeholder="Notes"
             value={routeNotes}
             onChange={e => setRouteNotes(e.target.value)}
@@ -610,13 +630,14 @@ export default function MapScreen() {
               <option key={m.pubkey} value={m.pubkey}>{m.displayName}</option>
             ))}
           </select>
-          <button
-            className="btn-primary w-full text-sm"
+          <AppButton
+            fullWidth
+            className="text-sm"
             onClick={handleSaveRoute}
             disabled={savingRoute || !routeName.trim()}
           >
             {savingRoute ? 'Saving...' : 'Save Route'}
-          </button>
+          </AppButton>
         </div>
       )}
 
@@ -672,12 +693,14 @@ export default function MapScreen() {
                       </p>
                     </div>
                     {canEdit && (
-                      <button
-                        className="text-base text-danger-400 hover:text-danger-300 flex-shrink-0 px-1"
+                      <AppButton
+                        variant="icon"
+                        icon="close"
+                        iconSize={16}
+                        className="!text-danger-400 hover:!text-danger-300 flex-shrink-0 !px-1"
                         onClick={e => { e.stopPropagation(); void deletePin(tribeId, pin.id) }}
-                      >
-                        ×
-                      </button>
+                        aria-label="Delete pin"
+                      />
                     )}
                   </div>
                 ))
@@ -710,12 +733,14 @@ export default function MapScreen() {
                         </p>
                       </div>
                       {canEdit && (
-                        <button
-                          className="text-base text-danger-400 hover:text-danger-300 flex-shrink-0 px-1"
+                        <AppButton
+                          variant="icon"
+                          icon="close"
+                          iconSize={16}
+                          className="!text-danger-400 hover:!text-danger-300 flex-shrink-0 !px-1"
                           onClick={e => { e.stopPropagation(); void deletePatrolRoute(tribeId, route.id) }}
-                        >
-                          ×
-                        </button>
+                          aria-label="Delete route"
+                        />
                       )}
                     </div>
                   )
@@ -744,7 +769,7 @@ export default function MapScreen() {
                         }`}
                         onClick={() => setSelectedContactId(prev => prev === c.id ? null : c.id)}
                       >
-                        <span className="text-base flex-shrink-0">{CONTACT_CATEGORY_ICONS[c.category]}</span>
+                        <span className="flex-shrink-0"><AppIcon name={CONTACT_APP_ICONS[c.category]} size={16} /></span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-gray-200 font-medium truncate">{c.name}</p>
                           <p className="text-xs text-gray-500 truncate">

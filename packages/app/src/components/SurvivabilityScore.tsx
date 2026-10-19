@@ -1,3 +1,6 @@
+import AppIcon from './AppIcon'
+import { AppCard } from './ui'
+
 interface Props {
   score: number
   hasCriticalGap: boolean
@@ -29,7 +32,7 @@ function scoreLabel(score: number, hasCriticalGap: boolean): string {
 
 export default function SurvivabilityScore({ score, hasCriticalGap }: Props) {
   return (
-    <div className={`card border ${scoreBg(score, hasCriticalGap)}`}>
+    <AppCard className={`border ${scoreBg(score, hasCriticalGap)}`}>
       <div className="flex items-end justify-between mb-2">
         <div>
           <div className="text-xs text-gray-300 uppercase tracking-widest mb-1">
@@ -41,12 +44,12 @@ export default function SurvivabilityScore({ score, hasCriticalGap }: Props) {
           </div>
         </div>
         {hasCriticalGap && (
-          <div className="text-2xl animate-pulse">⚠</div>
+          <div className="text-2xl animate-pulse"><AppIcon name="warning" size={24} /></div>
         )}
       </div>
       <p className={`text-xs mt-2 ${scoreColor(score, hasCriticalGap)}`}>
         {scoreLabel(score, hasCriticalGap)}
       </p>
-    </div>
+    </AppCard>
   )
 }

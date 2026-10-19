@@ -12,5 +12,12 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./src/test-setup.ts'],
+    // tests/ holds Playwright screenshot specs (capture-*.spec.ts) — they use
+    // Playwright's test() and must run under `playwright test`, never vitest.
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      'tests/**',
+    ],
   },
 })

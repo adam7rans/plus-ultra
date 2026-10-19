@@ -24,8 +24,8 @@ export default defineConfig(({ mode }) => {
         name: 'Plus Ultra — Tribal OS',
         short_name: 'Plus Ultra',
         description: 'Decentralized tribal operating system for community coordination and survival.',
-        theme_color: '#1A3A2A',
-        background_color: '#0A1F14',
+        theme_color: '#1A1F24',
+        background_color: '#111417',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
@@ -38,6 +38,10 @@ export default defineConfig(({ mode }) => {
       workbox: {
         importScripts: ['sw-push.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Icon set (Phosphor embeds all weights per glyph) pushes the main
+        // chunk past the 2MB default. Native shells load from local assets so
+        // this only affects PWA precache size.
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
           {
             // Cache Gun.js relay connections are WebSocket — not cacheable.

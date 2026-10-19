@@ -2,17 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Phase 5: notch / home-indicator padding for bottom-anchored bars.
+   env() is 0 on desktop browsers and PWA without insets — zero web impact. */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
 @layer base {
   html {
     @apply bg-forest-950 text-gray-100;
     font-family: system-ui, -apple-system, sans-serif;
   }
 
+  html,
+  body {
+    /* No pinch-zoom (see viewport meta) and no horizontal panning anywhere:
+       any over-wide child gets clipped instead of creating a sideways scrollbar. */
+    overflow-x: clip;
+  }
+
   body {
     @apply min-h-screen;
-    /* Safe area for notched phones */
+    /* Top safe area only (status bar / notch). Bottom is handled by the
+       tribe tab bar's own insets — a body bottom pad would add dead scroll. */
     padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
   }
 
   * {
@@ -28,11 +46,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2a3a2a;
+    background: #2e353d;
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3a5a3a;
+    background: #4a5560;
   }
   /* Viewer uses zinc palette */
   .bg-zinc-950 ::-webkit-scrollbar-thumb,
@@ -47,7 +65,7 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-forest-500 hover:bg-forest-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none;
+    @apply bg-accent-500 hover:bg-accent-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none;
   }
 
   .btn-secondary {

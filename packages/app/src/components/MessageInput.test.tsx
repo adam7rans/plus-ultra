@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MessageInput from './MessageInput'
 
-vi.mock('../lib/media', () => ({
+vi.mock('../lib/platform/media', () => ({
   createVoiceRecorder: vi.fn(() => ({
     start: vi.fn().mockResolvedValue(false),
     stop: vi.fn(),
@@ -18,7 +18,7 @@ describe('MessageInput', () => {
     expect(screen.getByPlaceholderText('Message tribe...')).toBeTruthy()
   })
 
-  it('shows send button (↑) when text is entered', async () => {
+  it('shows send button when text is entered', async () => {
     const user = userEvent.setup()
     render(
       <MessageInput
@@ -29,7 +29,7 @@ describe('MessageInput', () => {
     )
     const textarea = screen.getByPlaceholderText('Message tribe...')
     await user.type(textarea, 'hello')
-    expect(screen.getByRole('button', { name: '↑' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy()
   })
 
   it('calls onSendText with trimmed text on button click', async () => {
@@ -44,7 +44,7 @@ describe('MessageInput', () => {
     )
     const textarea = screen.getByPlaceholderText('Message tribe...')
     await user.type(textarea, '  hello world  ')
-    await user.click(screen.getByRole('button', { name: '↑' }))
+    await user.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect(onSendText).toHaveBeenCalledWith('hello world'))
   })
 
@@ -60,7 +60,7 @@ describe('MessageInput', () => {
     )
     const textarea = screen.getByPlaceholderText('Message tribe...')
     await user.type(textarea, 'hello')
-    await user.click(screen.getByRole('button', { name: '↑' }))
+    await user.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect((textarea as HTMLTextAreaElement).value).toBe(''))
   })
 

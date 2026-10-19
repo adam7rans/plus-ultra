@@ -7,6 +7,9 @@ import { usePendingSyncIds } from '../hooks/usePendingSyncIds'
 import type { SkillRole, ProficiencyLevel } from '@plus-ultra/core'
 import { useOfflineStage } from '../hooks/useOfflineStage'
 import OfflineStageBanner from '../components/OfflineStageBanner'
+import AppIcon from '../components/AppIcon'
+import { AppButton } from '../components/ui'
+import { DOMAIN_APP_ICONS, ROLE_APP_ICONS } from '../components/registry-icons'
 
 const PROFICIENCY_OPTIONS: { value: ProficiencyLevel; label: string; description: string }[] = [
   { value: 'basic', label: 'Basic', description: 'Some knowledge, learning' },
@@ -93,7 +96,7 @@ export default function SkillsDeclarationScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Back to Tribe
+        <AppIcon name="back" size={16} /> Back to Tribe
       </Link>
 
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
@@ -110,10 +113,10 @@ export default function SkillsDeclarationScreen() {
               {TIER_LABELS[tier - 1]}
             </h3>
             <div className="space-y-5">
-              {domains.map(({ domain, label, icon, roles }) => (
+              {domains.map(({ domain, label, roles }) => (
                 <div key={domain}>
                   <div className="flex items-center gap-1.5 mb-2">
-                    <span className="text-sm">{icon}</span>
+                    <span className="text-sm"><AppIcon name={DOMAIN_APP_ICONS[domain]} size={16} /></span>
                     <span className="text-xs font-semibold text-gray-400">{label}</span>
                   </div>
                   <div className="space-y-2">
@@ -135,7 +138,7 @@ export default function SkillsDeclarationScreen() {
                             className="w-full text-left p-3 flex items-center gap-3"
                             onClick={() => toggleRole(roleSpec.role)}
                           >
-                            <span className="text-xl leading-none">{roleSpec.icon}</span>
+                            <span className="text-xl leading-none"><AppIcon name={ROLE_APP_ICONS[roleSpec.role]} size={20} /></span>
                             <div className="flex-1 min-w-0">
                               <div className="font-semibold text-sm text-gray-100">{roleSpec.label}</div>
                               <div className="text-xs text-gray-500 truncate">{roleSpec.description}</div>
@@ -147,12 +150,12 @@ export default function SkillsDeclarationScreen() {
                                 </span>
                               )}
                               {isSelected && identity && pendingSyncIds.has(`skills:${tribeId}:${skillKey(identity.pub, roleSpec.role)}`) && (
-                                <span className="text-gray-400 text-xs" title="Pending relay sync">⏱</span>
+                                <span className="text-gray-400 text-xs" title="Pending relay sync"><AppIcon name="timer" size={16} /></span>
                               )}
                               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                                 isSelected ? 'border-forest-400 bg-forest-400' : 'border-gray-600'
                               }`}>
-                                {isSelected && <span className="text-forest-950 text-xs font-bold">✓</span>}
+                                {isSelected && <span className="text-forest-950 text-xs font-bold"><AppIcon name="check" size={16} /></span>}
                               </div>
                             </div>
                           </button>
@@ -176,12 +179,14 @@ export default function SkillsDeclarationScreen() {
                                   </button>
                                 ))}
                               </div>
-                              <button
+                              <AppButton
+                                variant="ghost"
+                                size="sm"
+                                className="!text-danger-400 hover:!text-danger-300 mt-2"
                                 onClick={() => deselect(roleSpec.role)}
-                                className="text-xs text-danger-400 hover:text-danger-300 mt-2"
                               >
                                 Remove this skill
-                              </button>
+                              </AppButton>
                             </div>
                           )}
                         </div>
@@ -202,13 +207,13 @@ export default function SkillsDeclarationScreen() {
               {selected.size} skill{selected.size !== 1 ? 's' : ''} selected
             </span>
           </div>
-          <button
-            className="btn-primary w-full"
+          <AppButton
+            fullWidth
             onClick={handleSave}
             disabled={saving}
           >
             {saving ? 'Saving...' : 'Save Skills'}
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>

@@ -12,6 +12,8 @@ import { TASK_STATUS_META, TASK_PRIORITY_META, GOAL_STATUS_META } from '@plus-ul
 import { fetchTribeMeta } from '../lib/tribes'
 import { useEffect } from 'react'
 import type { Tribe } from '@plus-ultra/core'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard, AppEmptyState, AppInput, AppSelect, AppTextarea } from '../components/ui'
 
 const HORIZON_LABEL: Record<GoalHorizon, string> = {
   immediate: 'Immediate',
@@ -137,7 +139,7 @@ export default function GoalsScreen() {
   return (
     <div className="max-w-md mx-auto px-4 py-8">
       <Link to="/tribe/$tribeId" params={{ tribeId }} className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300">
-        ← Dashboard
+        <AppIcon name="back" size={16} /> Dashboard
       </Link>
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
       <h2 className="text-xl font-bold text-gray-100 mb-4">Goals &amp; Tasks</h2>
@@ -161,47 +163,48 @@ export default function GoalsScreen() {
       {activeTab === 'goals' && (
         <div className="space-y-3">
           {canCreateGoal && !showGoalForm && (
-            <button
-              className="btn-primary w-full text-sm"
+            <AppButton
+              fullWidth
+              className="text-sm"
               onClick={() => setShowGoalForm(true)}
             >
               + New Goal
-            </button>
+            </AppButton>
           )}
 
           {showGoalForm && (
             <form onSubmit={handleCreateGoal} className="card space-y-3">
               <h3 className="text-sm font-semibold text-gray-200">New Goal</h3>
-              <input
-                className="input text-sm"
+              <AppInput
+                className="text-sm"
                 placeholder="Title *"
                 value={goalTitle}
                 onChange={e => setGoalTitle(e.target.value)}
                 required
               />
-              <textarea
-                className="input text-sm"
+              <AppTextarea
+                className="text-sm"
                 placeholder="Description"
                 value={goalDesc}
                 onChange={e => setGoalDesc(e.target.value)}
                 rows={2}
               />
-              <select
-                className="input text-sm"
+              <AppSelect
+                className="text-sm"
                 value={goalHorizon}
                 onChange={e => setGoalHorizon(e.target.value as GoalHorizon)}
               >
                 <option value="immediate">Immediate</option>
                 <option value="short_term">Short Term</option>
                 <option value="long_term">Long Term</option>
-              </select>
+              </AppSelect>
               <div className="flex gap-2">
-                <button type="submit" className="btn-primary flex-1 text-sm" disabled={savingGoal || !goalTitle.trim()}>
+                <AppButton type="submit" className="flex-1 text-sm" disabled={savingGoal || !goalTitle.trim()}>
                   {savingGoal ? 'Saving...' : 'Create Goal'}
-                </button>
-                <button type="button" className="btn-secondary flex-1 text-sm" onClick={() => setShowGoalForm(false)}>
+                </AppButton>
+                <AppButton type="button" variant="secondary" className="flex-1 text-sm" onClick={() => setShowGoalForm(false)}>
                   Cancel
-                </button>
+                </AppButton>
               </div>
             </form>
           )}
@@ -209,7 +212,7 @@ export default function GoalsScreen() {
           {loading ? (
             <p className="text-xs text-gray-500 text-center py-8 animate-pulse">Loading goals...</p>
           ) : sortedGoals.length === 0 ? (
-            <p className="text-xs text-gray-500 text-center py-8">No goals yet</p>
+            <AppEmptyState icon="target" title="No goals yet" />
           ) : (
             sortedGoals.map(goal => {
               const goalTasks = getGoalTasks(goal.id)
@@ -217,7 +220,7 @@ export default function GoalsScreen() {
               const expanded = expandedGoalIds.has(goal.id)
               const meta = GOAL_STATUS_META[goal.status]
               return (
-                <div key={goal.id} className="card">
+                <AppCard key={goal.id}>
                   <button
                     className="w-full text-left"
                     onClick={() => toggleGoalExpand(goal.id)}
@@ -262,29 +265,29 @@ export default function GoalsScreen() {
                       {canManageTasks && goal.status === 'active' && (
                         taskFormGoalId === goal.id ? (
                           <form onSubmit={handleCreateTask} className="space-y-2 border border-forest-800 rounded-lg p-3">
-                            <input
-                              className="input text-sm"
+                            <AppInput
+                              className="text-sm"
                               placeholder="Task title *"
                               value={taskTitle}
                               onChange={e => setTaskTitle(e.target.value)}
                               required
                             />
-                            <textarea
-                              className="input text-sm"
+                            <AppTextarea
+                              className="text-sm"
                               placeholder="Description"
                               value={taskDesc}
                               onChange={e => setTaskDesc(e.target.value)}
                               rows={2}
                             />
-                            <select
-                              className="input text-sm"
+                            <AppSelect
+                              className="text-sm"
                               value={taskPriority}
                               onChange={e => setTaskPriority(e.target.value as TaskPriority)}
                             >
                               {(['low', 'normal', 'high', 'critical'] as TaskPriority[]).map(p => (
                                 <option key={p} value={p}>{TASK_PRIORITY_META[p].label}</option>
                               ))}
-                            </select>
+                            </AppSelect>
                             <div>
                               <p className="text-xs text-gray-400 mb-1">Assign to:</p>
                               <div className="flex flex-wrap gap-1">
@@ -305,26 +308,28 @@ export default function GoalsScreen() {
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <button type="submit" className="btn-primary flex-1 text-xs py-1.5" disabled={savingTask || !taskTitle.trim()}>
+                              <AppButton type="submit" size="sm" className="flex-1" disabled={savingTask || !taskTitle.trim()}>
                                 {savingTask ? '...' : 'Add Task'}
-                              </button>
-                              <button type="button" className="btn-secondary flex-1 text-xs py-1.5" onClick={() => setTaskFormGoalId(null)}>
+                              </AppButton>
+                              <AppButton type="button" variant="secondary" size="sm" className="flex-1" onClick={() => setTaskFormGoalId(null)}>
                                 Cancel
-                              </button>
+                              </AppButton>
                             </div>
                           </form>
                         ) : (
-                          <button
-                            className="text-xs text-forest-400 hover:text-forest-300"
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
+                            className="!text-forest-400 hover:!text-forest-300"
                             onClick={() => setTaskFormGoalId(goal.id)}
                           >
                             + New Task
-                          </button>
+                          </AppButton>
                         )
                       )}
                     </div>
                   )}
-                </div>
+                </AppCard>
               )
             })
           )}
@@ -335,7 +340,7 @@ export default function GoalsScreen() {
       {activeTab === 'my_tasks' && (
         <div className="space-y-4">
           {myTasks.length === 0 ? (
-            <p className="text-xs text-gray-500 text-center py-8">No tasks assigned to you</p>
+            <AppEmptyState icon="checkSquare" title="No tasks assigned to you" />
           ) : (
             (['in_progress', 'blocked', 'todo', 'done'] as TaskStatus[]).map(status => {
               const grouped = myTasksGrouped[status]
@@ -368,7 +373,7 @@ export default function GoalsScreen() {
       {activeTab === 'all_tasks' && (
         <div className="space-y-2">
           {tasks.length === 0 ? (
-            <p className="text-xs text-gray-500 text-center py-8">No tasks yet</p>
+            <AppEmptyState icon="checkSquare" title="No tasks yet" />
           ) : (
             tasks.map(task => (
               <TaskRow
@@ -409,7 +414,7 @@ function TaskRow({ task, members, canManage, isMyTask, onStatusChange }: TaskRow
   const canUpdateStatus = canManage || isMyTask
 
   return (
-    <div className="card py-2">
+    <AppCard className="!py-2">
       <button className="w-full text-left" onClick={() => setExpanded(prev => !prev)}>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-200 flex-1 truncate">{task.title}</span>
@@ -455,6 +460,6 @@ function TaskRow({ task, members, canManage, isMyTask, onStatusChange }: TaskRow
           )}
         </div>
       )}
-    </div>
+    </AppCard>
   )
 }

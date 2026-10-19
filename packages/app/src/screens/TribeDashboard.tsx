@@ -9,6 +9,7 @@ import { useNotifications } from '../hooks/useNotifications'
 import { assetReadiness, getAuthority, hasAuthority } from '@plus-ultra/core'
 import type { Tribe } from '@plus-ultra/core'
 import SurvivabilityScore from '../components/SurvivabilityScore'
+import AppIcon from '../components/AppIcon'
 import NowAndUpNext from '../components/NowAndUpNext'
 import { useEvents } from '../hooks/useEvents'
 import BucketGrid from '../components/BucketGrid'
@@ -23,7 +24,9 @@ import InitiateMusterModal from '../components/InitiateMusterModal'
 import { useRollCall } from '../hooks/useRollCall'
 import { subscribeToAlerts } from '../lib/notifications'
 import type { TribeAlert } from '../lib/notifications'
-import { pushSupported, subscribeToPush, unsubscribeFromPush, isPushSubscribed } from '../lib/push'
+import { pushSupported, subscribeToPush, unsubscribeFromPush, isPushSubscribed, isNativePushAvailable, subscribeToNativePush } from '../lib/platform/push'
+import { shareUrl, copyText, vibrate } from '../lib/platform/share'
+import { fireLocalAlert } from '../lib/platform/notify'
 import { useChannelUnread, useDMUnreadCounts } from '../hooks/useChannelUnread'
 import { useProposals } from '../hooks/useProposals'
 import { useConsumption } from '../hooks/useConsumption'
@@ -42,6 +45,7 @@ import OfflineStageBanner from '../components/OfflineStageBanner'
 import InfraChecklistCard from '../components/InfraChecklistCard'
 import BugOutCTA from '../components/BugOutCTA'
 import { INFRA_ITEMS } from '@plus-ultra/core'
+import { AppButton, AppCard } from '../components/ui'
 
 export default function TribeDashboard() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId' })
@@ -59,18 +63,11 @@ export default function TribeDashboard() {
   async function handleShare() {
     if (!inviteUrl) return
     const title = `Join ${tribe?.name ?? localRef?.name ?? 'my tribe'}`
-    if (navigator.share) {
-      try {
-        await navigator.share({ url: inviteUrl, title })
-        return
-      } catch {
-        // user cancelled or API failed — fall through to copy
-      }
+    const result = await shareUrl(inviteUrl, title)
+    if (result === 'copied') {
+      setShareSuccess(true)
+      setTimeout(() => setShareSuccess(false), 2000)
     }
-    // Desktop fallback: copy to clipboard
-    await navigator.clipboard.writeText(inviteUrl)
-    setShareSuccess(true)
-    setTimeout(() => setShareSuccess(false), 2000)
   }
   const [showBuckets, setShowBuckets] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -149,7 +146,7 @@ export default function TribeDashboard() {
     setActiveTribeId(tribeId)
     fetchTribeMeta(tribeId).then(t => { if (t) setTribe(t) })
     // Load tribePub from my-tribes for invite URL (needed even when tribe-cache is empty)
-    import('../lib/db').then(({ getDB }) =>
+    import('../lib/platform/storage').then(({ getDB }) =>
       getDB().then(db => db.get('my-tribes', tribeId).then(r => { if (r?.tribePub) setTribePub(r.tribePub) }))
     )
   }, [tribeId, setActiveTribeId])
@@ -166,6 +163,10 @@ export default function TribeDashboard() {
       if (pushEnabled) {
         await unsubscribeFromPush(tribeId, identity.pub)
         setPushEnabled(false)
+      } else if (isNativePushAvailable()) {
+        // Native shell: FCM/APNs token flow. Web: VAPID flow below.
+        const ok = await subscribeToNativePush(tribeId, identity.pub)
+        setPushEnabled(ok)
       } else {
         const ok = await subscribeToPush(tribeId, identity.pub)
         setPushEnabled(ok)
@@ -182,7 +183,13 @@ export default function TribeDashboard() {
       if (alert.senderPub === identity?.pub) return
       setActiveAlert(alert)
       // Vibrate if supported
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200])
+      vibrate([200, 100, 200, 100, 200])
+      // Native shell: heads-up notification (no-op on web)
+      void fireLocalAlert({
+        title: `Alert: ${alert.alertType}`,
+        body: alert.message,
+        path: `/tribe/${tribeId}`,
+      })
     })
     return unsub
   }, [tribeId, identity?.pub])
@@ -202,7 +209,7 @@ export default function TribeDashboard() {
 
   async function handleCopyInvite() {
     if (!inviteUrl) return
-    await navigator.clipboard.writeText(inviteUrl)
+    await copyText(inviteUrl)
     setCopySuccess(true)
     setTimeout(() => setCopySuccess(false), 2000)
   }
@@ -233,14 +240,14 @@ export default function TribeDashboard() {
                     onClick={() => setShowDeclareGridDown(true)}
                     title="Declare Grid-Down"
                   >
-                    ⚡
+                    <AppIcon name="bolt" size={20} />
                   </button>
                   <button
                     className="text-lg hover:scale-110 transition-transform"
                     onClick={() => setShowInitiateMuster(true)}
                     title="Call Muster"
                   >
-                    📣
+                    <AppIcon name="megaphone" size={20} />
                   </button>
                 </>
               )}
@@ -250,7 +257,7 @@ export default function TribeDashboard() {
                   onClick={() => setShowSendAlert(true)}
                   title="Send Alert"
                 >
-                  🚨
+                  <AppIcon name="siren" size={20} />
                 </button>
               )}
               <button
@@ -258,7 +265,7 @@ export default function TribeDashboard() {
                 onClick={() => setShowNotifications(prev => !prev)}
                 title="Notifications"
               >
-                🔔
+                <AppIcon name="bell" size={20} />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger-500 text-white text-[10px] font-bold flex items-center justify-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -271,7 +278,7 @@ export default function TribeDashboard() {
                 className="text-lg hover:scale-110 transition-transform"
                 title="Tribe Settings"
               >
-                ⚙️
+                <AppIcon name="settings" size={20} />
               </Link>
             </div>
           </div>
@@ -285,10 +292,10 @@ export default function TribeDashboard() {
                 onMarkAllRead={markAllRead}
                 onClose={() => setShowNotifications(false)}
               />
-              {pushSupported() && (
-                <div className="card flex items-center justify-between py-2">
+              {(pushSupported() || isNativePushAvailable()) && (
+                <AppCard className="flex items-center justify-between py-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">📲</span>
+                    <AppIcon name="share" size={16} />
                     <span className="text-xs text-gray-300">Push notifications</span>
                   </div>
                   <button
@@ -300,9 +307,9 @@ export default function TribeDashboard() {
                     onClick={handleTogglePush}
                     disabled={pushLoading}
                   >
-                    {pushLoading ? '...' : pushEnabled ? 'Enabled ✓' : 'Enable'}
+                    {pushLoading ? '...' : pushEnabled ? (<>Enabled <AppIcon name="check" size={16} className="inline" /></>) : 'Enable'}
                   </button>
-                </div>
+                </AppCard>
               )}
             </div>
           )}
@@ -362,7 +369,7 @@ export default function TribeDashboard() {
           {/* Readiness Report nav card */}
           <Link to="/tribe/$tribeId/readiness" params={{ tribeId }}
             className="card hover:border-forest-600 transition-colors mb-4 flex items-center gap-3">
-            <span className="text-2xl">🛡️</span>
+            <AppIcon name="shield" size={24} />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-gray-100 text-sm">Readiness Report</div>
               <div className="text-xs text-gray-400">Full 6-dimension operational readiness</div>
@@ -371,8 +378,8 @@ export default function TribeDashboard() {
           </Link>
 
           <div className="mb-4 flex items-center gap-3">
-            <div className="card flex-1 flex items-center gap-2 py-2">
-              <span className="text-sm">📦</span>
+            <AppCard className="flex-1 flex items-center gap-2 py-2">
+              <AppIcon name="box" size={16} />
               <span className="text-xs text-gray-400">Asset Readiness</span>
               <span className={`text-sm font-mono font-bold ml-auto ${
                 readiness >= 70 ? 'text-forest-400' : readiness >= 40 ? 'text-warning-400' : 'text-danger-400'
@@ -389,7 +396,7 @@ export default function TribeDashboard() {
                 )
                 return null
               })()}
-            </div>
+            </AppCard>
           </div>
 
           {/* Now + Up Next */}
@@ -421,7 +428,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="rollcall" to="/tribe/$tribeId/rollcall" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">👥</span>
+                    <AppIcon name="people" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Roll Call</div>
                       <div className="text-xs text-gray-400">
@@ -438,7 +445,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="comms" to="/tribe/$tribeId/comms" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">📻</span>
+                    <AppIcon name="radio" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Comms Plan</div>
                       <div className="text-xs text-gray-400">PACE, check-in schedules, rally points</div>
@@ -452,7 +459,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="inventory" to="/tribe/$tribeId/inventory" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">📦</span>
+                    <AppIcon name="box" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Inventory</div>
                       <div className="text-xs text-gray-400">Track assets and supplies</div>
@@ -466,7 +473,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="map" to="/tribe/$tribeId/map" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">🗺️</span>
+                    <AppIcon name="map" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Map</div>
                       <div className="text-xs text-gray-400">Territory, pins, and patrol routes</div>
@@ -481,7 +488,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="bugout" to="/tribe/$tribeId/bugout" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">🚗</span>
+                    <AppIcon name="moto" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Bug-Out Plan</div>
                       <div className="text-xs text-gray-400">Evacuation plans, vehicles, and load priorities</div>
@@ -495,7 +502,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="readiness" to="/tribe/$tribeId/readiness" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">🛡️</span>
+                    <AppIcon name="shield" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Readiness Report</div>
                       <div className="text-xs text-gray-400">6-dimension operational readiness check</div>
@@ -509,7 +516,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="station" to="/tribe/$tribeId/station" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">🪖</span>
+                    <AppIcon name="hardHat" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">My Station</div>
                       <div className="text-xs text-gray-400">Your team, inventory, and priorities</div>
@@ -523,7 +530,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="people" to="/tribe/$tribeId/people" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">👨‍👩‍👧</span>
+                    <AppIcon name="users" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">My People</div>
                       <div className="text-xs text-gray-400">Family and friends</div>
@@ -537,7 +544,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="production" to="/tribe/$tribeId/production" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">🌱</span>
+                    <AppIcon name="leaf" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Production</div>
                       <div className="text-xs text-gray-400">Track food, water, and energy output</div>
@@ -551,7 +558,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="goals" to="/tribe/$tribeId/goals" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">🎯</span>
+                    <AppIcon name="target" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Goals &amp; Tasks</div>
                       <div className="text-xs text-gray-400">Track tribe objectives and action items</div>
@@ -565,7 +572,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="schematic" to="/tribe/$tribeId/schematic" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">📋</span>
+                    <AppIcon name="clipboard" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Tribe Schematic</div>
                       <div className="text-xs text-gray-400">Bird's eye view — roles, resources, readiness</div>
@@ -579,7 +586,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="training" to="/tribe/$tribeId/training" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">🎓</span>
+                    <AppIcon name="graduation" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Training & Skills</div>
                       <div className="text-xs text-gray-400">Sessions, certifications, and level-ups</div>
@@ -593,7 +600,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="channel" to="/tribe/$tribeId/channel" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">📡</span>
+                    <AppIcon name="broadcast" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Tribe Channel</div>
                       <div className="text-xs text-gray-400">Tribe-wide messages</div>
@@ -612,7 +619,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="kb" to="/tribe/$tribeId/kb" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">📚</span>
+                    <AppIcon name="book" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Knowledge Base</div>
                       <div className="text-xs text-gray-400">SOPs, playbooks, and protocols</div>
@@ -626,7 +633,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="psych" to="/tribe/$tribeId/psych" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">🧠</span>
+                    <AppIcon name="brain" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Psychology</div>
                       <div className="text-xs text-gray-400">
@@ -647,7 +654,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="contacts" to="/tribe/$tribeId/contacts" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">👤</span>
+                    <AppIcon name="user" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Contacts</div>
                       <div className="text-xs text-gray-400">Doctors, HAM ops, vendors, and allies</div>
@@ -662,7 +669,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="proposals" to="/tribe/$tribeId/proposals" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">🗳️</span>
+                    <AppIcon name="checkSquare" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Proposals</div>
                       <div className="text-xs text-gray-400">Decisions and governance</div>
@@ -682,7 +689,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="finance" to="/tribe/$tribeId/finance" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">💰</span>
+                    <AppIcon name="money" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Finances</div>
                       <div className="text-xs text-gray-400">Shared expenses and fund tracking</div>
@@ -697,7 +704,7 @@ export default function TribeDashboard() {
                 node: (
                   <Link key="federation" to="/tribe/$tribeId/federation" params={{ tribeId }}
                     className="flex items-center gap-3 card hover:border-forest-600 transition-colors">
-                    <span className="text-2xl">🤝</span>
+                    <AppIcon name="handshake" size={24} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-100 text-sm">Federation</div>
                       <div className="text-xs text-gray-400">
@@ -746,15 +753,15 @@ export default function TribeDashboard() {
 
           {/* Declare skills CTA if user has none */}
           {mySkillCount === 0 && (
-            <div className="card border-forest-600 bg-forest-900/30 mb-4">
+            <AppCard className="border-forest-600 bg-forest-900/30 mb-4">
               <p className="text-forest-300 text-sm font-semibold mb-1">You haven't declared your skills</p>
               <p className="text-gray-400 text-xs mb-3">
                 Declaring skills updates the tribe's survivability score in real time.
               </p>
               <Link to="/tribe/$tribeId/skills" params={{ tribeId }}>
-                <button className="btn-primary w-full text-sm">Declare Skills →</button>
+                <AppButton fullWidth className="text-sm">Declare Skills →</AppButton>
               </Link>
-            </div>
+            </AppCard>
           )}
 
           {/* Critical gaps */}
@@ -796,9 +803,9 @@ export default function TribeDashboard() {
               )}
             </div>
             {members.length === 0 ? (
-              <div className="card text-center py-6">
+              <AppCard className="text-center py-6">
                 <p className="text-gray-400 text-sm">No members yet — invite some</p>
-              </div>
+              </AppCard>
             ) : (
               <div className="space-y-2">
                 {members.map(member => {
@@ -822,7 +829,7 @@ export default function TribeDashboard() {
           </div>
 
           {/* Invite section */}
-          <div className="card">
+          <AppCard>
             <h3 className="text-sm font-semibold text-gray-300 mb-3">Invite Members</h3>
             {inviteUrl ? (
               <div className="space-y-3">
@@ -848,36 +855,38 @@ export default function TribeDashboard() {
 
                 {/* Action buttons */}
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    className={`btn-primary ${copySuccess ? 'bg-forest-600' : ''}`}
+                  <AppButton
+                    className={copySuccess ? 'bg-forest-600' : ''}
                     onClick={handleCopyInvite}
                   >
-                    {copySuccess ? '✓ Copied!' : 'Copy Link'}
-                  </button>
-                  <button
-                    className={`btn-primary ${shareSuccess ? 'bg-forest-600' : ''}`}
+                    {copySuccess ? (<><AppIcon name="check" size={16} className="inline" /> Copied!</>) : 'Copy Link'}
+                  </AppButton>
+                  <AppButton
+                    className={shareSuccess ? 'bg-forest-600' : ''}
                     onClick={handleShare}
                   >
-                    {shareSuccess ? '✓ Copied!' : 'Share ↗'}
-                  </button>
+                    {shareSuccess ? (<><AppIcon name="check" size={16} className="inline" /> Copied!</>) : (<>Share <AppIcon name="share" size={16} className="inline" /></>)}
+                  </AppButton>
                 </div>
-                <button
-                  className="btn-secondary w-full text-sm"
+                <AppButton
+                  variant="secondary"
+                  fullWidth
+                  className="text-sm"
                   onClick={() => { setInviteUrl(null); setShowInviteQr(false) }}
                 >
                   Generate new link
-                </button>
+                </AppButton>
               </div>
             ) : (
-              <button
-                className="btn-primary w-full"
+              <AppButton
+                fullWidth
                 onClick={handleGenerateInvite}
                 disabled={loadingInvite}
               >
                 {loadingInvite ? 'Generating...' : 'Generate Invite Link'}
-              </button>
+              </AppButton>
             )}
-          </div>
+          </AppCard>
         </>
       ) : (
         <div className="flex items-center justify-center py-20">

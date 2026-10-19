@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import type { BugOutPlan } from '@plus-ultra/core'
+import AppIcon from './AppIcon'
+import { AppCard } from './ui'
 
 interface Props {
   tribeId: string
@@ -8,9 +10,9 @@ interface Props {
 
 export default function BugOutCTA({ tribeId, activePlan }: Props) {
   return (
-    <div className="card border-danger-500/80 bg-danger-900/40 mb-3">
+    <AppCard className="border-danger-500/80 bg-danger-900/40 mb-3">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-2xl">🚨</span>
+        <AppIcon name="siren" size={24} />
         <div>
           <p className="text-sm font-bold text-danger-200 uppercase tracking-wide">Bug Out Now</p>
           <p className="text-xs text-danger-300/80">All infrastructure down — execute bug-out plan</p>
@@ -40,6 +42,6 @@ export default function BugOutCTA({ tribeId, activePlan }: Props) {
           {activePlan ? 'View Bug-Out Plan →' : 'Set Up Bug-Out Plan →'}
         </button>
       </Link>
-    </div>
+    </AppCard>
   )
 }

@@ -6,8 +6,15 @@ import {
   isMeshActive,
   isWifiDirectUp,
   isBleUp,
-} from '../lib/mesh'
-import { getBlePeers } from '../lib/ble-discovery'
+} from '../lib/platform/mesh'
+import { getBlePeers } from '../lib/platform/mesh'
+// Phase 4: Tauri-side getBlePeers() stays empty on native, where scan totals
+// live in platform/ble instead. Modes are exclusive per session, so a sum is exact.
+import { getNativeBlePeers } from '../lib/platform/ble'
+
+function totalBlePeers(): number {
+  return getBlePeers().length + getNativeBlePeers().length
+}
 
 export interface MeshSyncState {
   // Phase A — mDNS relay
@@ -40,7 +47,7 @@ export function useMeshSync(): MeshSyncState {
   const [meshActive, setMeshActive] = useState(isMeshActive)
   const [wifiDirectActive, setWifiDirectActive] = useState(isWifiDirectUp)
   const [bleActive, setBleActive] = useState(isBleUp)
-  const [blePeerCount, setBlePeerCount] = useState(() => getBlePeers().length)
+  const [blePeerCount, setBlePeerCount] = useState(() => totalBlePeers())
 
   useEffect(() => {
     // Phase A — mDNS peer changes

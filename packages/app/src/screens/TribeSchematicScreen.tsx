@@ -9,6 +9,9 @@ import {
   assetReadiness,
 } from '@plus-ultra/core'
 import type { SkillDomain, AssetCategory } from '@plus-ultra/core'
+import AppIcon from '../components/AppIcon'
+import { AppCard } from '../components/ui'
+import { DOMAIN_APP_ICONS, ROLE_APP_ICONS, CATEGORY_APP_ICONS, SCALE_APP_ICONS, ASSET_APP_ICONS } from '../components/registry-icons'
 
 const TIER_LABELS = ['Tier 1 — Critical', 'Tier 2 — Essential', 'Tier 3 — Multipliers']
 
@@ -35,7 +38,7 @@ export default function TribeSchematicScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Back to Dashboard
+        <AppIcon name="back" size={16} /> Back to Dashboard
       </Link>
 
       <h2 className="text-xl font-bold text-gray-100 mb-1">Tribe Schematic</h2>
@@ -44,10 +47,10 @@ export default function TribeSchematicScreen() {
       </p>
 
       {/* Scale badge */}
-      <div className="card mb-6">
+      <AppCard className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{scale.icon}</span>
+            <span className="text-2xl"><AppIcon name={SCALE_APP_ICONS[scale.label] ?? 'shield'} size={24} /></span>
             <div>
               <div className="text-sm font-bold text-gray-100">{scale.label}</div>
               <div className="text-xs text-gray-500">{memberCount} member{memberCount !== 1 ? 's' : ''}</div>
@@ -62,7 +65,7 @@ export default function TribeSchematicScreen() {
         {nextScale && (
           <div>
             <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-              <span>Next: {nextScale.icon} {nextScale.label}</span>
+              <span>Next: <AppIcon name={SCALE_APP_ICONS[nextScale.label] ?? 'shield'} size={14} /> {nextScale.label}</span>
               <span>{nextScale.minPop - memberCount} more needed</span>
             </div>
             <div className="h-1.5 bg-forest-950 rounded-full overflow-hidden">
@@ -73,12 +76,12 @@ export default function TribeSchematicScreen() {
             </div>
           </div>
         )}
-      </div>
+      </AppCard>
 
       {/* ── PERSONNEL SECTION ─────────────────────────────────── */}
       <div className="mb-8">
         <h3 className="text-xs text-gray-300 uppercase tracking-widest mb-3 flex items-center gap-2">
-          👥 Personnel
+          <AppIcon name="people" size={16} /> Personnel
           <span className="text-gray-600 normal-case tracking-normal">
             ({skills.length} declared)
           </span>
@@ -116,7 +119,7 @@ export default function TribeSchematicScreen() {
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-base">{meta.icon}</span>
+                          <span className="text-base"><AppIcon name={DOMAIN_APP_ICONS[domain]} size={16} /></span>
                           <span className="text-sm font-semibold text-gray-200">{meta.label}</span>
                         </div>
                         <span className={`text-sm font-mono font-bold ${
@@ -146,7 +149,7 @@ export default function TribeSchematicScreen() {
                             <span className="text-forest-400">fully staffed</span>
                           )}
                         </span>
-                        <span className="text-gray-600">{isExpanded ? '▲' : '▼'}</span>
+                        <span className="text-gray-600">{isExpanded ? <AppIcon name="caretUp" size={16} /> : <AppIcon name="caretDown" size={16} />}</span>
                       </div>
 
                       {/* Expanded role slots */}
@@ -158,7 +161,7 @@ export default function TribeSchematicScreen() {
                             const filled = Math.min(have, needed)
                             return (
                               <div key={roleSpec.role} className="flex items-center gap-2">
-                                <span className="text-sm">{roleSpec.icon}</span>
+                                <span className="text-sm"><AppIcon name={ROLE_APP_ICONS[roleSpec.role]} size={16} /></span>
                                 <span className="text-xs text-gray-300 flex-1 truncate">{roleSpec.label}</span>
                                 <div className="flex gap-0.5">
                                   {Array.from({ length: needed }, (_, i) => (
@@ -190,7 +193,7 @@ export default function TribeSchematicScreen() {
       {/* ── RESOURCES SECTION ─────────────────────────────────── */}
       <div>
         <h3 className="text-xs text-gray-300 uppercase tracking-widest mb-3 flex items-center gap-2">
-          📦 Resources
+          <AppIcon name="box" size={16} /> Resources
           <span className={`text-sm font-mono font-bold ${
             readiness >= 70 ? 'text-forest-400' : readiness >= 40 ? 'text-warning-400' : 'text-danger-400'
           }`}>{readiness}%</span>
@@ -214,7 +217,7 @@ export default function TribeSchematicScreen() {
               >
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-base">{meta.icon}</span>
+                    <span className="text-base"><AppIcon name={CATEGORY_APP_ICONS[cat]} size={16} /></span>
                     <span className="text-sm font-semibold text-gray-200">{meta.label}</span>
                   </div>
                   <span className="text-xs text-gray-500">
@@ -245,7 +248,7 @@ export default function TribeSchematicScreen() {
                   <span className="text-gray-600">
                     Needed at {memberCount} members
                   </span>
-                  <span className="text-gray-600">{isExpanded ? '▲' : '▼'}</span>
+                  <span className="text-gray-600">{isExpanded ? <AppIcon name="caretUp" size={16} /> : <AppIcon name="caretDown" size={16} />}</span>
                 </div>
 
                 {/* Expanded asset list */}
@@ -256,7 +259,7 @@ export default function TribeSchematicScreen() {
                       const unitLabel = assetSpec.unit === 'days_supply' ? 'days' : assetSpec.unit
                       return (
                         <div key={assetSpec.asset} className="flex items-center gap-2">
-                          <span className="text-sm">{assetSpec.icon}</span>
+                          <AppIcon name={ASSET_APP_ICONS[assetSpec.asset]} size={16} />
                           <span className="text-xs text-gray-300 flex-1 truncate">{assetSpec.label}</span>
                           {(() => {
                             const have = inventoryMap.get(assetSpec.asset)?.quantity ?? 0
@@ -271,7 +274,7 @@ export default function TribeSchematicScreen() {
                             )
                           })()}
                           {assetSpec.critical && (
-                            <span className="text-warning-400 text-xs">★</span>
+                            <AppIcon name="star" size={16} className="text-warning-400" />
                           )}
                         </div>
                       )

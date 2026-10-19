@@ -6,14 +6,17 @@ import { updateMemberProfile } from '../lib/tribes'
 import { DOMAIN_META, ROLES_BY_DOMAIN } from '../lib/roles'
 import type { SkillDomain, SkillRole, ProficiencyLevel, MemberType } from '@plus-ultra/core'
 import { getSpecializationsForRole } from '@plus-ultra/core'
+import AppIcon, { type AppIconName } from '../components/AppIcon'
+import { AppButton, AppCard, AppField, AppInput, AppTextarea } from '../components/ui'
+import { DOMAIN_APP_ICONS, ROLE_APP_ICONS } from '../components/registry-icons'
 
 const ALL_DOMAINS = Object.keys(DOMAIN_META) as SkillDomain[]
 
-const MEMBER_TYPES: { value: MemberType; label: string; icon: string }[] = [
-  { value: 'adult', label: 'Adult', icon: '🧑' },
-  { value: 'elder', label: 'Elder', icon: '👴' },
-  { value: 'child', label: 'Child', icon: '👦' },
-  { value: 'dependent', label: 'Dependent', icon: '🤲' },
+const MEMBER_TYPES: { value: MemberType; label: string; icon: AppIconName }[] = [
+  { value: 'adult', label: 'Adult', icon: 'user' },
+  { value: 'elder', label: 'Elder', icon: 'user' },
+  { value: 'child', label: 'Child', icon: 'baby' },
+  { value: 'dependent', label: 'Dependent', icon: 'heart' },
 ]
 
 const PROFICIENCY_OPTIONS: { value: ProficiencyLevel; label: string }[] = [
@@ -25,10 +28,10 @@ const PROFICIENCY_OPTIONS: { value: ProficiencyLevel; label: string }[] = [
 
 const EXPERIENCE_OPTIONS = ['< 1 year', '1–3 years', '3–7 years', '7–15 years', '15+ years']
 
-const AVAILABILITY_OPTIONS = [
-  { value: 'full-time', label: 'Full-time', icon: '🕐' },
-  { value: 'part-time', label: 'Part-time', icon: '🕑' },
-  { value: 'on-call', label: 'On-call', icon: '📟' },
+const AVAILABILITY_OPTIONS: { value: string; label: string; icon: AppIconName }[] = [
+  { value: 'full-time', label: 'Full-time', icon: 'clock' },
+  { value: 'part-time', label: 'Part-time', icon: 'clock' },
+  { value: 'on-call', label: 'On-call', icon: 'radio' },
 ]
 
 interface RoleSelection {
@@ -212,6 +215,7 @@ export default function OnboardingScreen() {
         photo: photoPreview ?? undefined,
         availability: availability ? (availabilityMap[availability] ?? undefined) : undefined,
         physicalLimitations: limitations.trim() || undefined,
+        notes: notes.trim() || undefined,
         memberType: memberType ?? 'adult',
       })
 
@@ -262,19 +266,16 @@ export default function OnboardingScreen() {
           <p className="text-gray-500 text-sm">Tell us about yourself.</p>
         </div>
 
-        <div>
-          <label className="label">Display Name *</label>
-          <input
+        <AppField label="Display Name" required>
+          <AppInput
             type="text"
-            className="input"
             placeholder="Your name"
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
           />
-        </div>
+        </AppField>
 
-        <div>
-          <label className="label">Member Type *</label>
+        <AppField label="Member Type" required>
           <div className="grid grid-cols-2 gap-2">
             {MEMBER_TYPES.map(mt => (
               <button
@@ -286,12 +287,12 @@ export default function OnboardingScreen() {
                     : 'border-forest-800 bg-forest-950 text-gray-400 hover:border-forest-700'
                 }`}
               >
-                <div className="text-2xl mb-1">{mt.icon}</div>
+                <div className="mb-1"><AppIcon name={mt.icon} size={24} /></div>
                 <div className="text-sm font-semibold">{mt.label}</div>
               </button>
             ))}
           </div>
-        </div>
+        </AppField>
 
         <div>
           <label className="label">Photo (optional)</label>
@@ -299,8 +300,8 @@ export default function OnboardingScreen() {
             {photoPreview ? (
               <img src={photoPreview} alt="Preview" className="w-16 h-16 rounded-full object-cover border-2 border-forest-600" />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-forest-900 border-2 border-forest-800 flex items-center justify-center text-gray-600 text-xl">
-                👤
+              <div className="w-16 h-16 rounded-full bg-forest-900 border-2 border-forest-800 flex items-center justify-center text-gray-600">
+                <AppIcon name="user" size={20} />
               </div>
             )}
             <input
@@ -313,16 +314,14 @@ export default function OnboardingScreen() {
           {photoError && <p className="text-xs text-danger-400 mt-1">{photoError}</p>}
         </div>
 
-        <div>
-          <label className="label">Short Bio (optional)</label>
-          <textarea
-            className="input"
+        <AppField label="Short Bio (optional)">
+          <AppTextarea
             rows={2}
             placeholder="A few words about yourself..."
             value={bio}
             onChange={e => setBio(e.target.value)}
           />
-        </div>
+        </AppField>
       </div>
     )
   }
@@ -349,7 +348,7 @@ export default function OnboardingScreen() {
                     : 'border-forest-800 bg-forest-950 text-gray-400 hover:border-forest-700'
                 }`}
               >
-                <div className="text-2xl mb-1">{meta.icon}</div>
+                <div className="text-2xl mb-1"><AppIcon name={DOMAIN_APP_ICONS[domain]} size={24} /></div>
                 <div className="text-sm font-semibold">{meta.label}</div>
               </button>
             )
@@ -367,7 +366,7 @@ export default function OnboardingScreen() {
       <div className="space-y-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl">{meta.icon}</span>
+            <span className="text-2xl"><AppIcon name={DOMAIN_APP_ICONS[currentDomain]} size={24} /></span>
             <h2 className="text-xl font-bold text-gray-100">{meta.label}</h2>
           </div>
           {selectedDomains.length > 1 && (
@@ -406,7 +405,7 @@ export default function OnboardingScreen() {
                     }
                   }}
                 >
-                  <span className="text-xl leading-none">{roleSpec.icon}</span>
+                  <span className="text-xl leading-none"><AppIcon name={ROLE_APP_ICONS[roleSpec.role]} size={20} /></span>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm text-gray-100">{roleSpec.label}</div>
                     <div className="text-xs text-gray-500 truncate">{roleSpec.description}</div>
@@ -414,7 +413,7 @@ export default function OnboardingScreen() {
                   <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
                     isSelected ? 'border-forest-400 bg-forest-400' : 'border-gray-600'
                   }`}>
-                    {isSelected && <span className="text-forest-950 text-xs font-bold">✓</span>}
+                    {isSelected && <span className="text-forest-950 text-xs font-bold"><AppIcon name="check" size={16} /></span>}
                   </div>
                 </button>
 
@@ -482,12 +481,14 @@ export default function OnboardingScreen() {
                       </div>
                     </div>
 
-                    <button
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
+                      className="!text-danger-400 hover:!text-danger-300"
                       onClick={() => toggleRole(roleSpec.role)}
-                      className="text-xs text-danger-400 hover:text-danger-300"
                     >
                       Remove this role
-                    </button>
+                    </AppButton>
                   </div>
                 )}
               </div>
@@ -517,33 +518,29 @@ export default function OnboardingScreen() {
                   : 'border-forest-800 bg-forest-950 text-gray-400 hover:border-forest-700'
               }`}
             >
-              <span className="text-2xl">{opt.icon}</span>
+              <span className="text-2xl"><AppIcon name={opt.icon} size={24} /></span>
               <span className="text-sm font-semibold">{opt.label}</span>
             </button>
           ))}
         </div>
 
-        <div>
-          <label className="label">Physical Limitations (optional)</label>
-          <input
+        <AppField label="Physical Limitations (optional)">
+          <AppInput
             type="text"
-            className="input"
             placeholder="e.g. bad knee, limited vision..."
             value={limitations}
             onChange={e => setLimitations(e.target.value)}
           />
-        </div>
+        </AppField>
 
-        <div>
-          <label className="label">Anything else the tribe should know? (optional)</label>
-          <textarea
-            className="input"
+        <AppField label="Anything else the tribe should know? (optional)">
+          <AppTextarea
             rows={3}
             placeholder="Allergies, special needs, dependents..."
             value={notes}
             onChange={e => setNotes(e.target.value)}
           />
-        </div>
+        </AppField>
       </div>
     )
   }
@@ -556,19 +553,27 @@ export default function OnboardingScreen() {
           <p className="text-gray-500 text-sm">Make sure everything looks right.</p>
         </div>
 
-        <div className="card space-y-4">
+        <AppCard className="space-y-4">
           {/* Profile summary */}
           <div className="flex items-center gap-3">
             {photoPreview ? (
               <img src={photoPreview} alt="Photo" className="w-12 h-12 rounded-full object-cover border-2 border-forest-600" />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-forest-800 flex items-center justify-center text-gray-500 text-lg">👤</div>
+              <div className="w-12 h-12 rounded-full bg-forest-800 flex items-center justify-center text-gray-500"><AppIcon name="user" size={20} /></div>
             )}
             <div>
               <div className="font-semibold text-gray-100">{displayName}</div>
               <div className="text-xs text-gray-500 capitalize">{memberType}</div>
             </div>
           </div>
+
+          {/* Bio */}
+          {bio.trim() && (
+            <div className="border-t border-forest-800 pt-3">
+              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Bio</p>
+              <p className="text-sm text-gray-300">{bio.trim()}</p>
+            </div>
+          )}
 
           {/* Domains & roles */}
           {domainRoleCounts.length > 0 && (
@@ -580,20 +585,33 @@ export default function OnboardingScreen() {
                 return (
                   <div key={domain}>
                     <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-sm">{meta.icon}</span>
+                      <span className="text-sm"><AppIcon name={DOMAIN_APP_ICONS[domain]} size={16} /></span>
                       <span className="text-xs font-semibold text-gray-400">{meta.label}</span>
                       <span className="text-xs text-gray-600">({count})</span>
                     </div>
                     <div className="space-y-1 ml-6">
                       {domainRoles.map(r => {
                         const sel = roleSelections.get(r.role)
+                        const specLabels = (sel?.specializations ?? []).map(key => {
+                          const found = getSpecializationsForRole(r.role)?.specializations.find(
+                            s => s.key === key,
+                          )
+                          return found?.label ?? key
+                        })
                         return (
-                          <div key={r.role} className="flex items-center gap-2">
-                            <span className="text-xs text-gray-300">{r.label}</span>
-                            {sel && (
-                              <span className="text-xs bg-forest-800 text-forest-300 px-2 py-0.5 rounded-full capitalize">
-                                {sel.proficiency.replace('_', ' ')}
-                              </span>
+                          <div key={r.role}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-300">{r.label}</span>
+                              {sel && (
+                                <span className="text-xs bg-forest-800 text-forest-300 px-2 py-0.5 rounded-full capitalize">
+                                  {sel.proficiency.replace('_', ' ')}
+                                </span>
+                              )}
+                            </div>
+                            {(specLabels.length > 0 || sel?.experience) && (
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {[specLabels.join(', '), sel?.experience].filter(Boolean).join(' · ')}
+                              </p>
                             )}
                           </div>
                         )
@@ -612,7 +630,23 @@ export default function OnboardingScreen() {
               <p className="text-sm text-gray-300 capitalize">{availability}</p>
             </div>
           )}
-        </div>
+
+          {/* Physical limitations */}
+          {limitations.trim() && (
+            <div className="border-t border-forest-800 pt-3">
+              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Physical Limitations</p>
+              <p className="text-sm text-gray-300">{limitations.trim()}</p>
+            </div>
+          )}
+
+          {/* Anything else */}
+          {notes.trim() && (
+            <div className="border-t border-forest-800 pt-3">
+              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Anything Else</p>
+              <p className="text-sm text-gray-300">{notes.trim()}</p>
+            </div>
+          )}
+        </AppCard>
       </div>
     )
   }
@@ -632,30 +666,30 @@ export default function OnboardingScreen() {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-forest-950/95 backdrop-blur border-t border-forest-800">
         <div className="max-w-md mx-auto flex gap-3">
           {stepIndex > 0 && (
-            <button className="btn-secondary flex-1" onClick={goBack}>
-              ← Back
-            </button>
+            <AppButton variant="secondary" className="flex-1" onClick={goBack}>
+              <span className="inline-flex items-center gap-1.5"><AppIcon name="back" size={16} /> Back</span>
+            </AppButton>
           )}
           {currentStep === 'review' ? (
-            <button
-              className="btn-primary flex-1"
+            <AppButton
+              className="flex-1"
               onClick={handleSubmit}
               disabled={saving}
             >
               {saving ? 'Joining...' : 'Join Tribe'}
-            </button>
+            </AppButton>
           ) : currentStep === 'skills' && currentDomainIdx < selectedDomains.length - 1 ? (
-            <button className="btn-primary flex-1" onClick={goNext}>
+            <AppButton className="flex-1" onClick={goNext}>
               Next Domain →
-            </button>
+            </AppButton>
           ) : (
-            <button
-              className="btn-primary flex-1"
+            <AppButton
+              className="flex-1"
               onClick={goNext}
               disabled={!canGoNext()}
             >
               Next →
-            </button>
+            </AppButton>
           )}
         </div>
       </div>

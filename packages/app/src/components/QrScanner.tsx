@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react'
+import AppIcon from './AppIcon'
+import { AppButton, AppCard, AppField, AppTextarea } from './ui'
 
 interface Props {
   onScan: (data: string) => void
@@ -56,10 +58,13 @@ export default function QrScanner({ onScan }: Props) {
 
       {mode === 'upload' && (
         <div
-          className="card border-dashed border-2 border-forest-700 flex flex-col items-center justify-center py-8 cursor-pointer hover:border-forest-500 transition-colors"
+          className="cursor-pointer"
           onClick={() => fileRef.current?.click()}
         >
-          <div className="text-4xl mb-3">📷</div>
+        <AppCard
+          className="border-dashed border-2 border-forest-700 flex flex-col items-center justify-center py-8 hover:border-forest-500 transition-colors"
+        >
+          <div className="mb-3 text-gray-500"><AppIcon name="camera" size={32} /></div>
           <p className="text-gray-400 text-sm">Tap to select QR code image</p>
           <p className="text-gray-600 text-xs mt-1">PNG, JPG accepted</p>
           <input
@@ -72,25 +77,28 @@ export default function QrScanner({ onScan }: Props) {
               if (file) void handleFile(file)
             }}
           />
+        </AppCard>
         </div>
       )}
 
       {mode === 'manual' && (
         <div>
-          <label className="label">Paste backup JSON</label>
-          <textarea
-            className="input h-32 font-mono text-xs resize-none"
-            placeholder='{"pub":"...","priv":"...","epub":"...","epriv":"..."}'
-            value={manualInput}
-            onChange={e => setManualInput(e.target.value)}
-          />
-          <button
-            className="btn-primary w-full mt-3"
+          <AppField label="Paste backup JSON">
+            <AppTextarea
+              className="h-32 font-mono text-xs resize-none"
+              placeholder='{"pub":"...","priv":"...","epub":"...","epriv":"..."}'
+              value={manualInput}
+              onChange={e => setManualInput(e.target.value)}
+            />
+          </AppField>
+          <AppButton
+            fullWidth
+            className="mt-3"
             onClick={handleManualSubmit}
             disabled={!manualInput.trim()}
           >
             Restore Identity
-          </button>
+          </AppButton>
         </div>
       )}
     </div>

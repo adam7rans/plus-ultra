@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard, AppEmptyState } from '../components/ui'
+import { AUTHORITY_APP_ICONS } from '../components/registry-icons'
+import { EVENT_TYPE_APP_ICONS } from '../components/registry-icons'
 import { useIdentity } from '../contexts/IdentityContext'
 import { useEvents } from '../hooks/useEvents'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
@@ -160,7 +164,7 @@ export default function ScheduleScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Back to Dashboard
+        <AppIcon name="back" size={16} /> Back to Dashboard
       </Link>
 
       <div className="flex items-center justify-between mb-4">
@@ -168,28 +172,29 @@ export default function ScheduleScreen() {
         <div className="flex items-center gap-2">
           {me && tribe && (
             <span className="text-xs text-gray-500">
-              {AUTHORITY_META[myAuth].icon} {AUTHORITY_META[myAuth].label}
+              <AppIcon name={AUTHORITY_APP_ICONS[myAuth]} size={14} /> {AUTHORITY_META[myAuth].label}
             </span>
           )}
           {showCreateBtn && (
-            <button
-              className="btn-primary text-sm px-3 py-1.5"
+            <AppButton
+              size="sm"
+              className="!text-sm"
               onClick={() => {
                 if (editingEvent) cancelEdit()
                 else setShowCreate(prev => !prev)
               }}
             >
               {showCreate || editingEvent ? 'Cancel' : '+ Event'}
-            </button>
+            </AppButton>
           )}
         </div>
       </div>
 
       {/* Create / Edit form */}
       {(showCreate || editingEvent) && (
-        <div className={`card mb-4 space-y-3 ${editingEvent ? 'border-warning-600' : 'border-forest-600'}`}>
+        <AppCard className={`mb-4 space-y-3 ${editingEvent ? '!border-warning-600' : '!border-forest-600'}`}>
           {editingEvent && (
-            <div className="text-xs text-warning-400 font-semibold">✏️ Editing: {editingEvent.title}</div>
+            <div className="text-xs text-warning-400 font-semibold flex items-center gap-1"><AppIcon name="edit" size={16} /> Editing: {editingEvent.title}</div>
           )}
           <div>
             <label className="text-xs text-gray-400 block mb-1">Type</label>
@@ -210,7 +215,7 @@ export default function ScheduleScreen() {
                       setNewDuration(meta.defaultDurationMin)
                     }}
                   >
-                    <span>{meta.icon}</span>
+                    <AppIcon name={EVENT_TYPE_APP_ICONS[t]} size={16} />
                     <span>{meta.label}</span>
                   </button>
                 )
@@ -300,30 +305,31 @@ export default function ScheduleScreen() {
 
           {editingEvent ? (
             <div className="flex gap-2">
-              <button
-                className="btn-primary flex-1"
+              <AppButton
+                className="flex-1 text-sm"
                 onClick={handleUpdate}
                 disabled={!newTitle.trim()}
               >
                 Save Changes
-              </button>
-              <button
-                className="flex-1 border border-danger-600 text-danger-400 hover:bg-danger-900/30 rounded-lg py-2 text-sm font-medium"
+              </AppButton>
+              <AppButton
+                variant="danger"
+                className="flex-1 text-sm"
                 onClick={() => handleDelete(editingEvent.id)}
               >
                 Delete
-              </button>
+              </AppButton>
             </div>
           ) : (
-            <button
-              className="btn-primary w-full"
+            <AppButton
+              fullWidth
               onClick={handleCreate}
               disabled={!newTitle.trim()}
             >
               Create Event
-            </button>
+            </AppButton>
           )}
-        </div>
+        </AppCard>
       )}
 
       {/* View mode toggle */}
@@ -345,16 +351,18 @@ export default function ScheduleScreen() {
 
       {/* Date navigation */}
       <div className="flex items-center justify-between mb-3">
-        <button className="text-forest-400 text-sm px-2" onClick={() => navigate(-1)}>← Prev</button>
-        <button
-          className="text-sm text-gray-200 font-medium"
+        <AppButton variant="ghost" size="sm" icon="back" iconSize={16} className="!text-sm !text-forest-400 hover:!text-forest-300 !px-2" onClick={() => navigate(-1)}>Prev</AppButton>
+        <AppButton
+          variant="ghost"
+          size="sm"
+          className="!text-sm !font-medium !text-gray-200 hover:!text-white"
           onClick={() => setViewDate(new Date())}
         >
           {viewMode === 'day' && viewDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
           {viewMode === 'week' && `Week of ${new Date(bounds.start).toLocaleDateString([], { month: 'short', day: 'numeric' })}`}
           {viewMode === 'month' && viewDate.toLocaleDateString([], { month: 'long', year: 'numeric' })}
-        </button>
-        <button className="text-forest-400 text-sm px-2" onClick={() => navigate(1)}>Next →</button>
+        </AppButton>
+        <AppButton variant="ghost" size="sm" className="!text-sm !text-forest-400 hover:!text-forest-300 !px-2" onClick={() => navigate(1)}>Next <AppIcon name="forward" size={16} /></AppButton>
       </div>
 
       {/* Type filter */}
@@ -381,7 +389,7 @@ export default function ScheduleScreen() {
               }`}
               onClick={() => setFilterType(filterType === t ? 'all' : t)}
             >
-              <span>{meta.icon}</span>
+              <AppIcon name={EVENT_TYPE_APP_ICONS[t]} size={16} />
               <span>{meta.label}</span>
             </button>
           )
@@ -390,27 +398,24 @@ export default function ScheduleScreen() {
 
       {/* Event list */}
       {occurrences.length === 0 ? (
-        <div className="card text-center py-8">
-          <p className="text-gray-500 text-sm">No events in this {viewMode}</p>
-        </div>
+        <AppEmptyState icon="calendar" title={`No events in this ${viewMode}`} />
       ) : (
         <div className="space-y-2">
           {occurrences.map((occ, i) => {
-            const meta = EVENT_TYPE_META[occ.event.type]
             const now = Date.now()
             const isActive = occ.startAt <= now && occ.endAt > now
             const isPast = occ.endAt <= now
             const canCancel = me && tribe ? canEditEvent(me, occ.event, tribe, skillsList) : false
 
             return (
-              <div
+              <AppCard
                 key={`${occ.event.id}-${occ.startAt}-${i}`}
-                className={`card flex items-start gap-3 ${
-                  isActive ? 'border-forest-500 bg-forest-900/20' :
+                className={`flex items-start gap-3 ${
+                  isActive ? '!border-forest-500 !bg-forest-900/20' :
                   isPast ? 'opacity-50' : ''
                 }`}
               >
-                <span className="text-xl mt-0.5">{meta.icon}</span>
+                <span className="text-xl mt-0.5"><AppIcon name={EVENT_TYPE_APP_ICONS[occ.event.type]} size={20} /></span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-gray-100 truncate">
@@ -420,7 +425,7 @@ export default function ScheduleScreen() {
                       <span className="w-2 h-2 rounded-full bg-forest-400 animate-pulse flex-shrink-0" />
                     )}
                     {pendingSyncIds.has(`events:${tribeId}:${occ.event.id}`) && (
-                      <span className="text-gray-400 text-xs flex-shrink-0" title="Pending relay sync">⏱</span>
+                      <span className="text-gray-400 text-xs flex-shrink-0" title="Pending relay sync"><AppIcon name="clock" size={16} /></span>
                     )}
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">
@@ -431,39 +436,45 @@ export default function ScheduleScreen() {
                     <div className="text-xs text-gray-600 mt-1 truncate">{occ.event.description}</div>
                   )}
                   {occ.event.recurrence.frequency !== 'once' && (
-                    <div className="text-xs text-forest-600 mt-0.5">
-                      ↻ {occ.event.recurrence.frequency}
-                    </div>
+<div className="text-xs text-forest-600 mt-0.5 flex items-center gap-1">
+                        <AppIcon name="refresh" size={16} /> {occ.event.recurrence.frequency}
+                      </div>
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0 mt-0.5">
                   <span className="text-xs text-gray-600">{occ.event.durationMin}m</span>
                   {canCancel && !isPast && (
-                    <button
-                      className="text-xs text-forest-400 hover:text-forest-300"
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
+                      className="!text-forest-400 hover:!text-forest-300"
                       onClick={() => startEdit(occ.event)}
                     >
                       Edit
-                    </button>
+                    </AppButton>
                   )}
                   {canCancel && !isPast && (
-                    <button
-                      className="text-xs text-danger-400 hover:text-danger-300"
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
+                      className="!text-danger-400 hover:!text-danger-300"
                       onClick={() => cancelEvent(tribeId, occ.event.id)}
                     >
                       Cancel
-                    </button>
+                    </AppButton>
                   )}
                   {canCancel && (
-                    <button
-                      className="text-xs text-gray-600 hover:text-danger-400"
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
+                      className="!text-gray-600 hover:!text-danger-400"
                       onClick={() => handleDelete(occ.event.id)}
                     >
                       Delete
-                    </button>
+                    </AppButton>
                   )}
                 </div>
-              </div>
+              </AppCard>
             )
           })}
         </div>

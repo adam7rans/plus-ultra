@@ -62,12 +62,17 @@ Remaining modules:
 New deps: `@playwright/test` in `packages/app` devDependencies.
 Config: `packages/app/playwright.config.ts`
 
-- [ ] `packages/app/playwright.config.ts`
-- [ ] `e2e/onboarding.spec.ts` — identity auto-generated → tribe creation → founder has elder_council role
+- [x] `packages/app/playwright.config.ts` (+ `chrome-mobile` project driving system Chrome)
+- [x] `tests/e2e-core.spec.ts` — onboarding (identity → home), create-tribe + full wizard → dashboard, tribe channel message round-trip, invite link generation (4/4 green against Vite dev on :5174)
 - [ ] `e2e/join-tribe.spec.ts` — founder generates invite → new identity uses invite → member appears
 - [ ] `e2e/proposals.spec.ts` — create proposal → multiple votes → correct outcome
 - [ ] `e2e/rollcall.spec.ts` — initiate muster → members respond → 100% response rate
 - [ ] `e2e/offline-sync.spec.ts` — go offline → write → pending-syncs entry → restore → synced
+
+Note: `vitest.config.ts` excludes `tests/**` (Playwright specs must never run
+under vitest). `src/lib/mesh.ts` + `src/lib/wifi-direct.ts` import Gun via the
+`./gun` seam (never `./gun-init` directly) so test mocks hold — this fixed 22
+failing suites (398/398 green).
 
 ---
 

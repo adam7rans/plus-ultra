@@ -6,15 +6,18 @@ import { subscribeToMembers, updateMemberHealth } from '../lib/tribes'
 import { hasAuthority, getAuthority, MUSTER_STATUS_META, MUSTER_REASON_META } from '@plus-ultra/core'
 import type { TribeMember, MusterStatus, HealthStatus } from '@plus-ultra/core'
 import MusterResponseForm from '../components/MusterResponseForm'
+import AppIcon, { type AppIconName } from '../components/AppIcon'
+import { AppButton, AppCard } from '../components/ui'
+import { MUSTER_REASON_APP_ICONS, MUSTER_STATUS_APP_ICONS } from '../components/registry-icons'
 import { useOfflineStage } from '../hooks/useOfflineStage'
 import OfflineStageBanner from '../components/OfflineStageBanner'
 
-const HEALTH_BADGE: Record<HealthStatus, { icon: string; color: string }> = {
-  well:         { icon: '✓', color: 'text-forest-400' },
-  minor_injury: { icon: '⚠', color: 'text-yellow-400' },
-  major_injury: { icon: '🩹', color: 'text-orange-400' },
-  critical:     { icon: '🚨', color: 'text-red-400' },
-  deceased:     { icon: '✝', color: 'text-gray-500' },
+const HEALTH_BADGE: Record<HealthStatus, { icon: AppIconName; color: string }> = {
+  well:         { icon: 'check', color: 'text-forest-400' },
+  minor_injury: { icon: 'warning', color: 'text-yellow-400' },
+  major_injury: { icon: 'firstAid', color: 'text-orange-400' },
+  critical:     { icon: 'siren', color: 'text-red-400' },
+  deceased:     { icon: 'cross', color: 'text-gray-500' },
 }
 
 function timeAgo(ts: number): string {
@@ -88,7 +91,7 @@ export default function RollCallScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Dashboard
+        <AppIcon name="back" size={16} /> Dashboard
       </Link>
 
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
@@ -98,13 +101,13 @@ export default function RollCallScreen() {
       {activeMuster ? (
         <>
           {/* Active muster header */}
-          <div className="card border-warning-500/40 bg-warning-900/20 mb-4">
+          <AppCard className="!border-warning-500/40 !bg-warning-900/20 mb-4">
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 rounded-full bg-warning-400 animate-pulse" />
               <span className="text-xs font-bold text-warning-400 uppercase tracking-widest">Live</span>
             </div>
             <div className="flex items-center gap-2 mb-1">
-              <span>{MUSTER_REASON_META[activeMuster.reason].icon}</span>
+              <AppIcon name={MUSTER_REASON_APP_ICONS[activeMuster.reason]} size={16} />
               <span className="text-sm font-semibold text-gray-100">{MUSTER_REASON_META[activeMuster.reason].label}</span>
             </div>
             {activeMuster.message && (
@@ -113,57 +116,59 @@ export default function RollCallScreen() {
             <p className="text-xs text-gray-500">
               Called by {activeMuster.initiatedByName} · {timeAgo(activeMuster.initiatedAt)}
             </p>
-          </div>
+          </AppCard>
 
           {/* Count row */}
-          <div className="card mb-4">
+          <AppCard className="mb-4">
             <div className="flex items-center justify-around">
               {(['present', 'away_authorized', 'away_unplanned', 'injured', 'need_help', 'unknown'] as MusterStatus[]).map(s => {
                 const meta = MUSTER_STATUS_META[s]
                 return (
                   <div key={s} className="flex flex-col items-center gap-0.5">
-                    <span className="text-lg">{meta.icon}</span>
+                    <span className="text-lg"><AppIcon name={MUSTER_STATUS_APP_ICONS[s]} size={20} /></span>
                     <span className={`text-base font-bold ${meta.color}`}>{counts[s]}</span>
                   </div>
                 )
               })}
             </div>
-          </div>
+          </AppCard>
 
           {/* Your response */}
           <div className="mb-4">
             <h3 className="text-xs text-gray-300 uppercase tracking-widest mb-2">Your Response</h3>
             {myResponse ? (
-              <div className="card border-forest-700">
+              <AppCard className="!border-forest-700">
                 <div className="flex items-center gap-2 mb-2">
-                  <span>{MUSTER_STATUS_META[myResponse.status].icon}</span>
+                  <AppIcon name={MUSTER_STATUS_APP_ICONS[myResponse.status]} size={20} />
                   <span className={`text-sm font-semibold ${MUSTER_STATUS_META[myResponse.status].color}`}>
                     {MUSTER_STATUS_META[myResponse.status].label}
                   </span>
                   <span className="text-xs text-gray-500 ml-auto">{timeAgo(myResponse.respondedAt)}</span>
                 </div>
                 {myResponse.location && (
-                  <p className="text-xs text-gray-400">📍 {myResponse.location}</p>
+                  <p className="text-xs text-gray-400 flex items-center gap-1"><AppIcon name="pin" size={16} /> {myResponse.location}</p>
                 )}
                 {myResponse.note && (
                   <p className="text-xs text-gray-400 mt-0.5">"{myResponse.note}"</p>
                 )}
-                <button
-                  className="text-xs text-forest-400 hover:text-forest-300 mt-2"
+                <AppButton
+                  variant="ghost"
+                  size="sm"
+                  className="!text-forest-400 hover:!text-forest-300 mt-2"
                   onClick={() => setProxyTarget(myMember ?? null)}
                 >
                   Update response
-                </button>
-              </div>
+                </AppButton>
+              </AppCard>
             ) : (
-              <div className="card border-warning-600/40 bg-warning-900/10">
+              <AppCard className="!border-warning-600/40 !bg-warning-900/10">
                 <p className="text-sm text-warning-300 font-semibold mb-3">You haven't responded yet</p>
                 <MusterResponseForm
                   onSubmit={async (status, opts) => {
                     await respondToMuster(status, opts)
                   }}
                 />
-              </div>
+              </AppCard>
             )}
           </div>
 
@@ -184,9 +189,9 @@ export default function RollCallScreen() {
                 const showHealthPrompt = healthPromptPub === member.pubkey
 
                 return (
-                  <div key={member.pubkey} className="card py-2.5">
+                  <AppCard key={member.pubkey} className="!py-2.5">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg flex-shrink-0">{meta.icon}</span>
+                      <span className="text-lg flex-shrink-0"><AppIcon name={MUSTER_STATUS_APP_ICONS[status]} size={20} /></span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-gray-100 truncate">
@@ -196,13 +201,13 @@ export default function RollCallScreen() {
                           <span className={`text-xs flex-shrink-0 ${meta.color}`}>{meta.label}</span>
                           {healthBadge && (
                             <span className={`text-xs flex-shrink-0 ${healthBadge.color}`}>
-                              {healthBadge.icon}
+                              <AppIcon name={healthBadge.icon} size={16} />
                             </span>
                           )}
                         </div>
                         {resp && (
                           <div className="mt-0.5 space-y-0.5">
-                            {resp.location && <p className="text-xs text-gray-500">📍 {resp.location}</p>}
+                            {resp.location && <p className="text-xs text-gray-500 flex items-center gap-1"><AppIcon name="pin" size={16} /> {resp.location}</p>}
                             {resp.note && <p className="text-xs text-gray-500 truncate">"{resp.note}"</p>}
                             {resp.voiceNote && (
                               <audio
@@ -216,12 +221,14 @@ export default function RollCallScreen() {
                             )}
                             {/* Health status prompt for injured/need_help responses */}
                             {(status === 'injured' || status === 'need_help') && (isMe || canProxy) && (
-                              <button
-                                className="text-xs text-warning-400 hover:text-warning-300 mt-1"
+                              <AppButton
+                                variant="ghost"
+                                size="sm"
+                                className="!text-warning-400 hover:!text-warning-300 mt-1"
                                 onClick={() => setHealthPromptPub(prev => prev === member.pubkey ? null : member.pubkey)}
                               >
-                                {showHealthPrompt ? '▲ Close' : 'Update health status?'}
-                              </button>
+                                {showHealthPrompt ? <span className="inline-flex items-center gap-1"><AppIcon name="caretUp" size={16} /> Close</span> : 'Update health status?'}
+                              </AppButton>
                             )}
                           </div>
                         )}
@@ -248,7 +255,7 @@ export default function RollCallScreen() {
                                   }
                                 }}
                               >
-                                {HEALTH_BADGE[s].icon} {s.replace('_', ' ')}
+                                <AppIcon name={HEALTH_BADGE[s].icon} size={16} /> {s.replace('_', ' ')}
                               </button>
                             ))}
                           </div>
@@ -258,16 +265,17 @@ export default function RollCallScreen() {
                         <span className="text-xs text-gray-600 flex-shrink-0">{timeAgo(resp.respondedAt)}</span>
                       )}
                       {canProxy && !isMe && (
-                        <button
-                          className="text-xs text-gray-500 hover:text-forest-400 flex-shrink-0 ml-1"
+                        <AppButton
+                          variant="icon"
+                          icon="edit"
+                          iconSize={16}
+                          className="flex-shrink-0 ml-1"
                           onClick={() => setProxyTarget(member)}
                           title="Respond on behalf"
-                        >
-                          ✏️
-                        </button>
+                        />
                       )}
                     </div>
-                  </div>
+                  </AppCard>
                 )
               })}
             </div>
@@ -275,12 +283,14 @@ export default function RollCallScreen() {
 
           {/* Close muster */}
           {canClose(activeMuster) && (
-            <button
-              className="w-full py-2.5 px-4 rounded-xl border border-danger-700 text-danger-400 hover:bg-danger-900/20 text-sm font-semibold transition-colors mb-4"
+            <AppButton
+              variant="danger"
+              fullWidth
+              className="mb-4"
               onClick={closeMuster}
             >
               Close Muster
-            </button>
+            </AppButton>
           )}
         </>
       ) : (
@@ -289,7 +299,7 @@ export default function RollCallScreen() {
             <p className="text-gray-500 text-sm mb-6">No active muster. Only leads and above can initiate one.</p>
           )}
           {canInitiate && (
-            <p className="text-gray-500 text-sm mb-6">No active muster. Use the 📣 button on the dashboard to call one.</p>
+            <p className="text-gray-500 text-sm mb-6 flex items-center gap-1">No active muster. Use the <AppIcon name="megaphone" size={16} /> button on the dashboard to call one.</p>
           )}
         </>
       )}
@@ -303,7 +313,7 @@ export default function RollCallScreen() {
               const isExpanded = expandedHistory.has(m.id)
               const reasonMeta = MUSTER_REASON_META[m.reason]
               return (
-                <div key={m.id} className="card py-3">
+                <AppCard key={m.id} className="!py-3">
                   <button
                     className="w-full text-left"
                     onClick={() => setExpandedHistory(prev => {
@@ -314,7 +324,7 @@ export default function RollCallScreen() {
                     })}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm">{reasonMeta.icon}</span>
+                      <span className="text-sm"><AppIcon name={MUSTER_REASON_APP_ICONS[m.reason]} size={16} /></span>
                       <span className="text-sm font-semibold text-gray-200">{reasonMeta.label}</span>
                       <span className="text-xs text-gray-500 ml-auto">{formatDate(m.initiatedAt)}</span>
                     </div>
@@ -329,11 +339,11 @@ export default function RollCallScreen() {
                       <p>Muster ID: {m.id.slice(0, 8)}…</p>
                     </div>
                   )}
-                </div>
-              )
-            })}
+                </AppCard>
+                )
+              })}
+            </div>
           </div>
-        </div>
       )}
 
       {/* Proxy response modal */}
@@ -344,7 +354,7 @@ export default function RollCallScreen() {
               <h3 className="text-sm font-bold text-gray-200">
                 {proxyTarget.pubkey === identity?.pub ? 'Update Response' : `Respond for ${proxyTarget.displayName}`}
               </h3>
-              <button className="text-gray-500 hover:text-gray-300" onClick={() => setProxyTarget(null)}>✕</button>
+              <button className="text-gray-500 hover:text-gray-300" onClick={() => setProxyTarget(null)}><AppIcon name="close" size={16} /></button>
             </div>
             <MusterResponseForm
               proxyName={proxyTarget.pubkey !== identity?.pub ? proxyTarget.displayName : undefined}

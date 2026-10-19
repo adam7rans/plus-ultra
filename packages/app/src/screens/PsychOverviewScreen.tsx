@@ -4,6 +4,8 @@ import { useTribePsychProfiles } from '../hooks/useTribePsychProfiles'
 import { subscribeToMembers } from '../lib/tribes'
 import { compatibilityScore } from '@plus-ultra/core'
 import type { TribeMember, PsychArchetype, PsychProfile } from '@plus-ultra/core'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard } from '../components/ui'
 
 const ARCHETYPE_COLORS: Record<PsychArchetype, string> = {
   Commander: 'bg-red-900/50 text-red-300 border-red-800',
@@ -67,7 +69,7 @@ export default function PsychOverviewScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Dashboard
+        <AppIcon name="back" size={16} /> Dashboard
       </Link>
 
       <div className="mb-6 flex items-center justify-between">
@@ -75,14 +77,15 @@ export default function PsychOverviewScreen() {
         <Link
           to="/tribe/$tribeId/psych/assessment"
           params={{ tribeId }}
-          className="btn-primary text-sm px-3 py-1.5"
         >
-          Take Assessment
+          <AppButton size="sm" className="text-sm">
+            Take Assessment
+          </AppButton>
         </Link>
       </div>
 
       {/* Archetype distribution */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <h3 className="text-xs text-gray-400 uppercase tracking-widest mb-3">Archetype Distribution</h3>
         {profiles.size === 0 ? (
           <p className="text-gray-500 text-sm">No profiles yet — members need to complete the assessment.</p>
@@ -108,11 +111,11 @@ export default function PsychOverviewScreen() {
             {withoutProfile.length} member{withoutProfile.length !== 1 ? 's' : ''} without a profile
           </p>
         )}
-      </div>
+      </AppCard>
 
       {/* Leadership compatibility matrix */}
       {showCompatMatrix && (
-        <div className="card mb-4">
+        <AppCard className="mb-4">
           <h3 className="text-xs text-gray-400 uppercase tracking-widest mb-3">
             Leadership Compatibility
           </h3>
@@ -146,7 +149,7 @@ export default function PsychOverviewScreen() {
               </tbody>
             </table>
           </div>
-        </div>
+        </AppCard>
       )}
 
       {/* Member list sorted by archetype */}

@@ -19,6 +19,8 @@ import type { FederatedMessage, FederatedTradeProposal, TradeItem } from '@plus-
 import type { AssetType } from '@plus-ultra/core'
 import { useOfflineStage } from '../hooks/useOfflineStage'
 import OfflineStageBanner from '../components/OfflineStageBanner'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard } from '../components/ui'
 
 type Tab = 'messages' | 'trade' | 'intel'
 
@@ -65,7 +67,7 @@ export default function FederationChannelScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Federation
+        <AppIcon name="back" size={16} /> Federation
       </Link>
 
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
@@ -88,13 +90,13 @@ export default function FederationChannelScreen() {
       </div>
 
       {!hasKey && (
-        <div className="card border-warning-700 bg-warning-900/20 mb-4">
+        <AppCard className="!border-warning-700 !bg-warning-900/20 mb-4">
           <p className="text-warning-400 text-sm font-semibold">No encryption key</p>
           <p className="text-gray-400 text-xs mt-1">
             Your tribe's encryption key is not loaded. Only founders hold this key initially.
             A founder must distribute it to you before you can send or read encrypted messages.
           </p>
-        </div>
+        </AppCard>
       )}
 
       {/* Tabs */}
@@ -194,13 +196,15 @@ function RelationshipStatusBar({
         {rel.status === 'allied' ? 'Allied' : rel.status === 'distrusted' ? 'Distrusted' : 'Contact'}
       </span>
       {canDiplomat && rel.status !== 'distrusted' && (
-        <button
-          className="text-xs text-gray-500 hover:text-gray-300 underline disabled:opacity-40"
+        <AppButton
+          variant="ghost"
+          size="sm"
+          className="!text-gray-500 hover:!text-gray-300"
           onClick={toggleAlliance}
           disabled={changing}
         >
           {rel.status === 'allied' ? 'Revoke alliance' : 'Declare allied'}
-        </button>
+        </AppButton>
       )}
     </div>
   )
@@ -269,13 +273,13 @@ function MessagesTab({
             placeholder="Message..."
             className="flex-1 text-sm bg-forest-900 border border-forest-800 rounded-lg px-3 py-2 text-gray-200 placeholder:text-gray-700 focus:outline-none focus:border-forest-600"
           />
-          <button
+          <AppButton
             type="submit"
+            className="!px-4 text-sm"
             disabled={sending || !text.trim()}
-            className="btn-primary text-sm px-4 disabled:opacity-40"
           >
             Send
-          </button>
+          </AppButton>
         </form>
       )}
     </div>
@@ -352,16 +356,19 @@ function IntelTab({
   return (
     <div className="space-y-3">
       {canDiplomat && hasKey && (
-        <button
-          className="text-xs text-forest-400 hover:text-forest-300 transition-colors mb-2"
+        <AppButton
+          variant="ghost"
+          size="sm"
+          className="!text-forest-400 hover:!text-forest-300 mb-2"
           onClick={() => setShowForm(prev => !prev)}
         >
-          {showForm ? '▲ Cancel' : '+ Post Intel'}
-        </button>
+          {showForm ? <span className="inline-flex items-center gap-1"><AppIcon name="caretUp" size={16} /> Cancel</span> : '+ Post Intel'}
+        </AppButton>
       )}
 
       {showForm && (
-        <form onSubmit={handlePost} className="card mb-4 space-y-2">
+        <form onSubmit={handlePost}>
+          <AppCard className="mb-4 space-y-2">
           <div className="text-xs text-gray-400 font-semibold uppercase tracking-widest">New Intel Post</div>
           <textarea
             value={text}
@@ -370,9 +377,10 @@ function IntelTab({
             rows={3}
             className="w-full text-sm bg-forest-950 border border-forest-800 rounded-lg px-3 py-2 text-gray-200 placeholder:text-gray-700 focus:outline-none focus:border-forest-600 resize-none"
           />
-          <button type="submit" disabled={sending || !text.trim()} className="btn-primary w-full text-sm disabled:opacity-40">
+          <AppButton type="submit" fullWidth className="text-sm" disabled={sending || !text.trim()}>
             {sending ? 'Posting...' : 'Post Intel'}
-          </button>
+          </AppButton>
+          </AppCard>
         </form>
       )}
 
@@ -381,7 +389,7 @@ function IntelTab({
       )}
 
       {[...messages].sort((a, b) => b.sentAt - a.sentAt).map(msg => (
-        <div key={msg.id} className="card border-l-2 border-l-warning-600">
+        <AppCard key={msg.id} className="!border-l-2 !border-l-warning-600">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-warning-400 font-semibold uppercase tracking-wide">Intel</span>
             <span className="text-xs text-gray-500">
@@ -389,7 +397,7 @@ function IntelTab({
             </span>
           </div>
           <p className="text-sm text-gray-200">{msg.content}</p>
-        </div>
+        </AppCard>
       ))}
     </div>
   )
@@ -424,12 +432,14 @@ function TradeTab({
   return (
     <div className="space-y-3">
       {canDiplomat && (
-        <button
-          className="text-xs text-forest-400 hover:text-forest-300 transition-colors"
+        <AppButton
+          variant="ghost"
+          size="sm"
+          className="!text-forest-400 hover:!text-forest-300"
           onClick={() => setShowForm(prev => !prev)}
         >
-          {showForm ? '▲ Cancel' : '+ Propose Trade'}
-        </button>
+          {showForm ? <span className="inline-flex items-center gap-1"><AppIcon name="caretUp" size={16} /> Cancel</span> : '+ Propose Trade'}
+        </AppButton>
       )}
 
       {showForm && canDiplomat && (
@@ -548,13 +558,13 @@ function ProposeTradeForm({
               className="w-20 text-xs bg-forest-950 border border-forest-800 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:border-forest-600"
             />
             {offer.length > 1 && (
-              <button type="button" className="text-danger-400 text-xs" onClick={() => setOffer(offer.filter((_, j) => j !== i))}>✕</button>
+              <AppButton type="button" variant="ghost" size="sm" icon="close" iconSize={16} className="!text-danger-400 hover:!text-danger-300" onClick={() => setOffer(offer.filter((_, j) => j !== i))} aria-label="Remove item" />
             )}
           </div>
         ))}
-        <button type="button" className="text-xs text-gray-500 hover:text-gray-300" onClick={() => setOffer([...offer, { asset: 'food_reserve', amount: 0 }])}>
+        <AppButton type="button" variant="ghost" size="sm" className="!text-gray-500 hover:!text-gray-300" onClick={() => setOffer([...offer, { asset: 'food_reserve', amount: 0 }])}>
           + Add item
-        </button>
+        </AppButton>
       </div>
 
       <div>
@@ -580,13 +590,13 @@ function ProposeTradeForm({
               className="w-20 text-xs bg-forest-950 border border-forest-800 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:border-forest-600"
             />
             {request.length > 1 && (
-              <button type="button" className="text-danger-400 text-xs" onClick={() => setRequest(request.filter((_, j) => j !== i))}>✕</button>
+              <AppButton type="button" variant="ghost" size="sm" icon="close" iconSize={16} className="!text-danger-400 hover:!text-danger-300" onClick={() => setRequest(request.filter((_, j) => j !== i))} aria-label="Remove item" />
             )}
           </div>
         ))}
-        <button type="button" className="text-xs text-gray-500 hover:text-gray-300" onClick={() => setRequest([...request, { asset: 'fuel_reserve', amount: 0 }])}>
+        <AppButton type="button" variant="ghost" size="sm" className="!text-gray-500 hover:!text-gray-300" onClick={() => setRequest([...request, { asset: 'fuel_reserve', amount: 0 }])}>
           + Add item
-        </button>
+        </AppButton>
       </div>
 
       <input
@@ -598,10 +608,10 @@ function ProposeTradeForm({
       />
 
       <div className="flex gap-2">
-        <button type="submit" disabled={submitting} className="btn-primary flex-1 text-sm disabled:opacity-40">
+        <AppButton type="submit" className="flex-1 text-sm" disabled={submitting}>
           {submitting ? 'Proposing...' : 'Propose Trade'}
-        </button>
-        <button type="button" className="btn-secondary flex-1 text-sm" onClick={onDone}>Cancel</button>
+        </AppButton>
+        <AppButton type="button" variant="secondary" className="flex-1 text-sm" onClick={onDone}>Cancel</AppButton>
       </div>
     </form>
   )
@@ -684,7 +694,7 @@ function TradeCard({
   }
 
   return (
-    <div className="card">
+    <AppCard>
       <div className="flex items-center justify-between mb-2">
         <div className="text-xs text-gray-400">
           {isFrom ? `You → ${trade.toTribeName}` : `${trade.fromTribeName} → You`}
@@ -716,27 +726,33 @@ function TradeCard({
       {/* Actions */}
       {isMyTurn && !showCounter && (
         <div className="flex gap-2 mt-3 flex-wrap">
-          <button
-            className="text-xs px-3 py-1.5 rounded border border-forest-600 text-forest-400 hover:border-forest-400 disabled:opacity-40"
+          <AppButton
+            variant="ghost"
+            size="sm"
+            className="!border !border-forest-600 !text-forest-400 hover:!border-forest-400"
             onClick={() => respond('accepted')}
             disabled={responding}
           >
             Accept
-          </button>
-          <button
-            className="text-xs px-3 py-1.5 rounded border border-warning-700 text-warning-400 hover:border-warning-500 disabled:opacity-40"
+          </AppButton>
+          <AppButton
+            variant="ghost"
+            size="sm"
+            className="!border !border-warning-700 !text-warning-400 hover:!border-warning-500"
             onClick={() => setShowCounter(true)}
             disabled={responding}
           >
             Counter
-          </button>
-          <button
-            className="text-xs px-3 py-1.5 rounded border border-danger-800 text-danger-400 hover:border-danger-600 disabled:opacity-40"
+          </AppButton>
+          <AppButton
+            variant="ghost"
+            size="sm"
+            className="!border !border-danger-800 !text-danger-400 hover:!border-danger-600"
             onClick={() => respond('rejected')}
             disabled={responding}
           >
             Reject
-          </button>
+          </AppButton>
         </div>
       )}
 
@@ -784,10 +800,10 @@ function TradeCard({
             ))}
           </div>
           <div className="flex gap-2">
-            <button className="btn-primary flex-1 text-xs py-1.5 disabled:opacity-40" disabled={responding} onClick={() => respond('countered', counterOffer)}>
+            <AppButton size="sm" className="flex-1" disabled={responding} onClick={() => respond('countered', counterOffer)}>
               Send Counter
-            </button>
-            <button className="btn-secondary flex-1 text-xs py-1.5" onClick={() => setShowCounter(false)}>Cancel</button>
+            </AppButton>
+            <AppButton variant="secondary" size="sm" className="flex-1" onClick={() => setShowCounter(false)}>Cancel</AppButton>
           </div>
         </div>
       )}
@@ -797,19 +813,20 @@ function TradeCard({
           <p className="text-xs text-gray-400 mb-2">
             Trade accepted. Confirm you have {isFrom ? 'received the requested items' : 'delivered your offer'}.
           </p>
-          <button
-            className="btn-primary w-full text-sm disabled:opacity-40"
+          <AppButton
+            fullWidth
+            className="text-sm"
             disabled={confirming}
             onClick={handleConfirmFulfillment}
           >
             {confirming ? 'Confirming...' : 'Confirm Fulfillment'}
-          </button>
+          </AppButton>
         </div>
       )}
 
       {trade.status === 'pending_fulfillment' && myFulfilled && (
         <p className="text-xs text-gray-500 mt-2">Waiting for other tribe to confirm their side.</p>
       )}
-    </div>
+    </AppCard>
   )
 }

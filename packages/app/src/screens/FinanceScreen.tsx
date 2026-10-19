@@ -9,6 +9,8 @@ import { getAuthority, hasAuthority } from '@plus-ultra/core'
 import type { Tribe, TribeMember, ExpenseCategory } from '@plus-ultra/core'
 import { useOfflineStage } from '../hooks/useOfflineStage'
 import OfflineStageBanner from '../components/OfflineStageBanner'
+import AppIcon, { type AppIconName } from '../components/AppIcon'
+import { AppButton, AppCard, AppEmptyState, AppInput, AppSegmented, AppSelect } from '../components/ui'
 
 type Tab = 'summary' | 'expenses' | 'contributions'
 
@@ -20,6 +22,19 @@ const EXPENSE_ICONS: Record<ExpenseCategory, string> = {
   fuel: '⛽',
   training: '🎓',
   other: '💸',
+}
+
+// AppIcon names for the React-rendered expense rows. EXPENSE_ICONS above stays
+// as-is: it is also interpolated into native <select> <option> labels, which
+// cannot host React components.
+const EXPENSE_APP_ICONS: Record<ExpenseCategory, AppIconName> = {
+  supplies: 'box',
+  equipment: 'wrench',
+  land: 'tent',
+  services: 'hammer',
+  fuel: 'gas',
+  training: 'graduation',
+  other: 'money',
 }
 
 const EXPENSE_LABELS: Record<ExpenseCategory, string> = {
@@ -152,7 +167,7 @@ export default function FinanceScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Dashboard
+        <AppIcon name="back" size={16} /> Dashboard
       </Link>
 
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
@@ -162,25 +177,19 @@ export default function FinanceScreen() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-forest-900/50 p-1 rounded-lg">
-        {(['summary', 'expenses', 'contributions'] as Tab[]).map(t => (
-          <button
-            key={t}
-            className={`flex-1 text-xs py-1.5 rounded-md transition-colors capitalize ${
-              tab === t ? 'bg-forest-700 text-gray-100' : 'text-gray-400 hover:text-gray-300'
-            }`}
-            onClick={() => setTab(t)}
-          >
-            {t}
-          </button>
-        ))}
+      <div className="mb-4">
+        <AppSegmented
+          options={['summary', 'expenses', 'contributions'] as Tab[]}
+          value={tab}
+          onChange={setTab}
+        />
       </div>
 
       {/* Summary tab */}
       {tab === 'summary' && (
         <div className="space-y-4">
           {/* Fund balance */}
-          <div className="card text-center">
+          <AppCard className="text-center">
             <div className="text-xs text-gray-400 mb-1">Tribe Fund Balance</div>
             <div className={`text-3xl font-mono font-bold ${
               fundBalance >= 0 ? 'text-forest-400' : 'text-danger-400'
@@ -188,17 +197,15 @@ export default function FinanceScreen() {
               {formatCents(fundBalance)}
             </div>
             <div className="text-xs text-gray-500 mt-1">contributions minus expenses</div>
-          </div>
+          </AppCard>
 
           {/* Member balances */}
           {loading ? (
             <div className="text-center py-4 text-forest-400 text-sm animate-pulse">Loading...</div>
           ) : members.length === 0 ? (
-            <div className="card text-center py-6">
-              <p className="text-gray-400 text-sm">No members yet</p>
-            </div>
+            <AppEmptyState icon="users" title="No members yet" />
           ) : (
-            <div className="card space-y-2">
+            <AppCard className="space-y-2">
               <h3 className="text-xs text-gray-400 uppercase tracking-widest mb-3">Member Balances</h3>
               {memberBalances.map(({ member, balance }) => (
                 <div key={member.pubkey} className="flex items-center justify-between">
@@ -222,7 +229,7 @@ export default function FinanceScreen() {
               <p className="text-xs text-gray-600 pt-2 border-t border-forest-800">
                 Settlement is handled outside this app
               </p>
-            </div>
+            </AppCard>
           )}
         </div>
       )}
@@ -231,19 +238,18 @@ export default function FinanceScreen() {
       {tab === 'expenses' && (
         <div className="space-y-3">
           {(canCreate || canManage) && (
-            <button className="btn-primary w-full text-sm" onClick={openExpenseForm}>
+            <AppButton fullWidth className="text-sm" onClick={openExpenseForm}>
               + Log Expense
-            </button>
+            </AppButton>
           )}
 
           {/* Expense form */}
           {showExpenseForm && (
-            <div className="card space-y-3">
+            <AppCard className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-200">Log Expense</h3>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Description *</label>
-                <input
-                  className="input w-full"
+                <AppInput
                   placeholder="What was this expense for?"
                   value={expDescription}
                   onChange={e => setExpDescription(e.target.value)}
@@ -252,20 +258,18 @@ export default function FinanceScreen() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Category</label>
-                  <select
-                    className="input w-full"
+                  <AppSelect
                     value={expCategory}
                     onChange={e => setExpCategory(e.target.value as ExpenseCategory)}
                   >
                     {CATEGORIES.map(c => (
                       <option key={c} value={c}>{EXPENSE_ICONS[c]} {EXPENSE_LABELS[c]}</option>
                     ))}
-                  </select>
+                  </AppSelect>
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Amount (USD) *</label>
-                  <input
-                    className="input w-full"
+                  <AppInput
                     type="number"
                     step="0.01"
                     min="0"
@@ -277,8 +281,7 @@ export default function FinanceScreen() {
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Paid by</label>
-                <select
-                  className="input w-full"
+                <AppSelect
                   value={expPaidBy}
                   onChange={e => setExpPaidBy(e.target.value)}
                 >
@@ -288,7 +291,7 @@ export default function FinanceScreen() {
                       {m.pubkey === identity?.pub ? ' (you)' : ''}
                     </option>
                   ))}
-                </select>
+                </AppSelect>
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Split among</label>
@@ -315,42 +318,40 @@ export default function FinanceScreen() {
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Receipt note (optional)</label>
-                <input
-                  className="input w-full"
+                <AppInput
                   placeholder="e.g. receipt #1234"
                   value={expReceiptNote}
                   onChange={e => setExpReceiptNote(e.target.value)}
                 />
               </div>
               <div className="flex gap-2">
-                <button
-                  className="btn-primary flex-1 text-sm"
+                <AppButton
+                  className="flex-1 text-sm"
                   onClick={handleLogExpense}
                   disabled={savingExp || !expDescription.trim() || !expAmount}
                 >
                   {savingExp ? 'Saving...' : 'Log Expense'}
-                </button>
-                <button
-                  className="btn-secondary text-sm"
+                </AppButton>
+                <AppButton
+                  variant="secondary"
+                  className="text-sm"
                   onClick={() => setShowExpenseForm(false)}
                 >
                   Cancel
-                </button>
+                </AppButton>
               </div>
-            </div>
+            </AppCard>
           )}
 
           {loading ? (
             <div className="text-center py-8 text-forest-400 text-sm animate-pulse">Loading...</div>
           ) : sortedExpenses.length === 0 ? (
-            <div className="card text-center py-8">
-              <p className="text-gray-400 text-sm">No expenses logged yet</p>
-            </div>
+            <AppEmptyState icon="money" title="No expenses logged yet" />
           ) : (
             sortedExpenses.map(e => (
-              <div key={e.id} className="card">
+              <AppCard key={e.id}>
                 <div className="flex items-start gap-3">
-                  <span className="text-xl flex-shrink-0">{EXPENSE_ICONS[e.category]}</span>
+                  <AppIcon name={EXPENSE_APP_ICONS[e.category]} size={20} className="flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-100">{e.description}</div>
                     <div className="text-xs text-gray-400 mt-0.5">
@@ -364,16 +365,18 @@ export default function FinanceScreen() {
                       {formatCents(e.amountCents)}
                     </span>
                     {(e.loggedBy === identity?.pub || canManage) && (
-                      <button
-                        className="text-xs text-danger-400 hover:text-danger-300"
+                      <AppButton
+                        variant="icon"
+                        icon="close"
+                        iconSize={16}
+                        className="!text-danger-400 hover:!text-danger-300"
                         onClick={() => handleDeleteExpense(e.id)}
-                      >
-                        ✕
-                      </button>
+                        aria-label="Delete expense"
+                      />
                     )}
                   </div>
                 </div>
-              </div>
+              </AppCard>
             ))
           )}
         </div>
@@ -382,21 +385,21 @@ export default function FinanceScreen() {
       {/* Contributions tab */}
       {tab === 'contributions' && (
         <div className="space-y-3">
-          <button
-            className="btn-primary w-full text-sm"
+          <AppButton
+            fullWidth
+            className="text-sm"
             onClick={() => setShowContribForm(true)}
           >
             + Add Contribution
-          </button>
+          </AppButton>
 
           {/* Contribution form */}
           {showContribForm && (
-            <div className="card space-y-3">
+            <AppCard className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-200">Add Contribution</h3>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Amount (USD) *</label>
-                <input
-                  className="input w-full"
+                <AppInput
                   type="number"
                   step="0.01"
                   min="0"
@@ -407,42 +410,40 @@ export default function FinanceScreen() {
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Note (optional)</label>
-                <input
-                  className="input w-full"
+                <AppInput
                   placeholder="e.g. monthly dues"
                   value={contribNote}
                   onChange={e => setContribNote(e.target.value)}
                 />
               </div>
               <div className="flex gap-2">
-                <button
-                  className="btn-primary flex-1 text-sm"
+                <AppButton
+                  className="flex-1 text-sm"
                   onClick={handleLogContribution}
                   disabled={savingContrib || !contribAmount}
                 >
                   {savingContrib ? 'Saving...' : 'Add'}
-                </button>
-                <button
-                  className="btn-secondary text-sm"
+                </AppButton>
+                <AppButton
+                  variant="secondary"
+                  className="text-sm"
                   onClick={() => { setShowContribForm(false); setContribAmount(''); setContribNote('') }}
                 >
                   Cancel
-                </button>
+                </AppButton>
               </div>
-            </div>
+            </AppCard>
           )}
 
           {loading ? (
             <div className="text-center py-8 text-forest-400 text-sm animate-pulse">Loading...</div>
           ) : sortedContributions.length === 0 ? (
-            <div className="card text-center py-8">
-              <p className="text-gray-400 text-sm">No contributions yet</p>
-            </div>
+            <AppEmptyState icon="piggy" title="No contributions yet" />
           ) : (
             sortedContributions.map(c => (
-              <div key={c.id} className="card">
+              <AppCard key={c.id}>
                 <div className="flex items-center gap-3">
-                  <span className="text-xl">💰</span>
+                  <AppIcon name="money" size={20} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-100">
                       {memberName(c.memberPub, members)}
@@ -457,16 +458,18 @@ export default function FinanceScreen() {
                       {formatCents(c.amountCents)}
                     </span>
                     {(c.memberPub === identity?.pub || canManage) && (
-                      <button
-                        className="text-xs text-danger-400 hover:text-danger-300"
+                      <AppButton
+                        variant="icon"
+                        icon="close"
+                        iconSize={16}
+                        className="!text-danger-400 hover:!text-danger-300"
                         onClick={() => handleDeleteContribution(c.id)}
-                      >
-                        ✕
-                      </button>
+                        aria-label="Delete contribution"
+                      />
                     )}
                   </div>
                 </div>
-              </div>
+              </AppCard>
             ))
           )}
         </div>

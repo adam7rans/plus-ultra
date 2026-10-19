@@ -12,7 +12,10 @@ import {
 import { canDiplomatize } from '@plus-ultra/core'
 import type { FederationRelationship, FederationRelationshipStatus } from '@plus-ultra/core'
 import QrDisplay from '../components/QrDisplay'
-import { getDB } from '../lib/db'
+import { copyText } from '../lib/platform/share'
+import { getDB } from '../lib/platform/storage'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard, AppEmptyState } from '../components/ui'
 
 export default function FederationScreen() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId/federation' })
@@ -61,7 +64,7 @@ export default function FederationScreen() {
 
   async function handleCopyCard() {
     if (!contactCardUrl) return
-    await navigator.clipboard.writeText(contactCardUrl)
+    await copyText(contactCardUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -99,7 +102,7 @@ export default function FederationScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Back to Dashboard
+        <AppIcon name="back" size={16} /> Back to Dashboard
       </Link>
 
       <h2 className="text-xl font-bold text-gray-100 mb-1">Federation</h2>
@@ -108,18 +111,18 @@ export default function FederationScreen() {
       </p>
 
       {!canDiplomat && (
-        <div className="card border-warning-700 bg-warning-900/20 mb-6">
+        <AppCard className="!border-warning-700 !bg-warning-900/20 mb-6">
           <p className="text-warning-400 text-sm font-semibold mb-1">Diplomat access required</p>
           <p className="text-gray-400 text-xs">
             Only designated diplomats and founders can manage federation contacts.
             A tribe proposal is required to grant diplomat status.
           </p>
-        </div>
+        </AppCard>
       )}
 
       {/* Contact card generation */}
       {canDiplomat && (
-        <div className="card mb-6">
+        <AppCard className="mb-6">
           <h3 className="text-sm font-semibold text-gray-300 mb-3">Your Contact Card</h3>
           <p className="text-xs text-gray-500 mb-3">
             Share this link with another tribe's diplomat to establish a federation channel.
@@ -132,7 +135,7 @@ export default function FederationScreen() {
                 onClick={() => setShowQr(prev => !prev)}
               >
                 <span className="text-sm text-gray-300">Show QR Code</span>
-                <span className="text-forest-400 text-sm">{showQr ? '▲' : '▼'}</span>
+                <span className="text-forest-400 text-sm">{showQr ? <AppIcon name="caretUp" size={16} /> : <AppIcon name="caretDown" size={16} />}</span>
               </button>
               {showQr && (
                 <div className="flex justify-center py-2">
@@ -143,29 +146,29 @@ export default function FederationScreen() {
                 {contactCardUrl}
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <button className={`btn-primary ${copied ? 'bg-forest-600' : ''}`} onClick={handleCopyCard}>
-                  {copied ? '✓ Copied!' : 'Copy Link'}
-                </button>
-                <button className="btn-secondary" onClick={() => setContactCardUrl(null)}>
+                <AppButton className={copied ? '!bg-forest-600' : ''} onClick={handleCopyCard}>
+                  {copied ? <span className="inline-flex items-center gap-1"><AppIcon name="check" size={16} /> Copied!</span> : 'Copy Link'}
+                </AppButton>
+                <AppButton variant="secondary" onClick={() => setContactCardUrl(null)}>
                   Regenerate
-                </button>
+                </AppButton>
               </div>
             </div>
           ) : (
-            <button
-              className="btn-primary w-full"
+            <AppButton
+              fullWidth
               onClick={handleGenerateCard}
               disabled={generatingCard}
             >
               {generatingCard ? 'Generating...' : 'Generate Contact Card'}
-            </button>
+            </AppButton>
           )}
-        </div>
+        </AppCard>
       )}
 
       {/* Add contact by pasting URL */}
       {canDiplomat && (
-        <div className="card mb-6">
+        <AppCard className="mb-6">
           <h3 className="text-sm font-semibold text-gray-300 mb-3">Add Contact</h3>
           <p className="text-xs text-gray-500 mb-3">
             Paste a contact card URL from another tribe, or scan their QR code.
@@ -180,20 +183,20 @@ export default function FederationScreen() {
                 className="w-full text-xs bg-forest-950 border border-forest-800 rounded-lg px-3 py-2 text-gray-300 placeholder:text-gray-700 focus:outline-none focus:border-forest-600"
               />
               <div className="flex gap-2">
-                <button className="btn-primary flex-1 text-sm" onClick={handlePasteNavigate}>
+                <AppButton className="flex-1 text-sm" onClick={handlePasteNavigate}>
                   Add
-                </button>
-                <button className="btn-secondary flex-1 text-sm" onClick={() => { setPasteMode(false); setPastedUrl('') }}>
+                </AppButton>
+                <AppButton variant="secondary" className="flex-1 text-sm" onClick={() => { setPasteMode(false); setPastedUrl('') }}>
                   Cancel
-                </button>
+                </AppButton>
               </div>
             </div>
           ) : (
-            <button className="btn-secondary w-full" onClick={() => setPasteMode(true)}>
+            <AppButton variant="secondary" fullWidth onClick={() => setPasteMode(true)}>
               Paste Contact Card URL
-            </button>
+            </AppButton>
           )}
-        </div>
+        </AppCard>
       )}
 
       {/* Allied tribes */}
@@ -260,12 +263,11 @@ export default function FederationScreen() {
       )}
 
       {relationships.length === 0 && (
-        <div className="card text-center py-8">
-          <p className="text-gray-400 text-sm">No federation contacts yet.</p>
-          <p className="text-gray-600 text-xs mt-1">
-            Generate a contact card and share it with another tribe's diplomat.
-          </p>
-        </div>
+        <AppEmptyState
+          icon="handshake"
+          title="No federation contacts yet."
+          body="Generate a contact card and share it with another tribe's diplomat."
+        />
       )}
     </div>
   )
@@ -297,7 +299,7 @@ function RelationshipCard({
   }
 
   return (
-    <div className="card">
+    <AppCard>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -315,43 +317,49 @@ function RelationshipCard({
         <Link
           to="/tribe/$tribeId/federation/$channelId"
           params={{ tribeId, channelId: rel.channelId }}
-          className="text-forest-400 text-sm hover:text-forest-300 flex-shrink-0"
+          className="text-forest-400 text-sm hover:text-forest-300 flex-shrink-0 flex items-center gap-1"
         >
-          Open →
+          Open <AppIcon name="forward" size={16} />
         </Link>
       </div>
 
       {canDiplomat && (
         <div className="flex gap-1.5 mt-3 flex-wrap">
           {rel.status !== 'allied' && (
-            <button
-              className="text-xs px-2 py-1 rounded border border-forest-700 text-forest-400 hover:border-forest-500 disabled:opacity-40"
+            <AppButton
+              variant="ghost"
+              size="sm"
+              className="!border !border-forest-700 !text-forest-400 hover:!border-forest-500"
               onClick={() => onStatusChange(rel, 'allied')}
               disabled={changing}
             >
               Declare Allied
-            </button>
+            </AppButton>
           )}
           {rel.status !== 'contact' && (
-            <button
-              className="text-xs px-2 py-1 rounded border border-forest-800 text-gray-400 hover:border-forest-600 disabled:opacity-40"
+            <AppButton
+              variant="ghost"
+              size="sm"
+              className="!border !border-forest-800 !text-gray-400 hover:!border-forest-600"
               onClick={() => onStatusChange(rel, 'contact')}
               disabled={changing}
             >
               Set Contact
-            </button>
+            </AppButton>
           )}
           {rel.status !== 'distrusted' && (
-            <button
-              className="text-xs px-2 py-1 rounded border border-danger-800 text-danger-400 hover:border-danger-600 disabled:opacity-40"
+            <AppButton
+              variant="ghost"
+              size="sm"
+              className="!border !border-danger-800 !text-danger-400 hover:!border-danger-600"
               onClick={() => onStatusChange(rel, 'distrusted')}
               disabled={changing}
             >
               Distrust
-            </button>
+            </AppButton>
           )}
         </div>
       )}
-    </div>
+    </AppCard>
   )
 }

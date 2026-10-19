@@ -1,13 +1,15 @@
 import type { Notification } from '../lib/notifications'
+import AppIcon, { type AppIconName } from './AppIcon'
+import { AppButton, AppCard } from './ui'
 
-const TYPE_ICONS: Record<string, string> = {
-  event_starting: '⏰',
-  event_assigned: '📋',
-  alert_broadcast: '🚨',
-  muster_called: '📣',
-  role_change: '⚙️',
-  new_member: '👋',
-  vouch_received: '👍',
+const TYPE_ICONS: Record<string, AppIconName> = {
+  event_starting: 'clock',
+  event_assigned: 'clipboard',
+  alert_broadcast: 'siren',
+  muster_called: 'megaphone',
+  role_change: 'settings',
+  new_member: 'user',
+  vouch_received: 'handshake',
 }
 
 function timeAgo(ts: number): string {
@@ -29,19 +31,20 @@ export default function NotificationsPanel({ notifications, onMarkRead, onMarkAl
   const unread = notifications.filter(n => !n.read)
 
   return (
-    <div className="card border-forest-700 max-h-80 overflow-y-auto">
+    <AppCard className="border-forest-700 max-h-80 overflow-y-auto">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-200">Notifications</h3>
         <div className="flex items-center gap-2">
           {unread.length > 0 && (
-            <button
-              className="text-xs text-forest-400 hover:text-forest-300"
+            <AppButton
+              variant="ghost"
+              size="sm"
               onClick={onMarkAllRead}
             >
               Mark all read
-            </button>
+            </AppButton>
           )}
-          <button className="text-gray-500 hover:text-gray-300 text-sm" onClick={onClose}>✕</button>
+          <AppButton variant="icon" icon="close" iconSize={16} onClick={onClose} />
         </div>
       </div>
 
@@ -59,9 +62,7 @@ export default function NotificationsPanel({ notifications, onMarkRead, onMarkAl
               }`}
               onClick={() => { if (!n.read) onMarkRead(n.id) }}
             >
-              <span className="text-base flex-shrink-0 mt-0.5">
-                {TYPE_ICONS[n.type] ?? '📌'}
-              </span>
+              <AppIcon name={TYPE_ICONS[n.type] ?? 'pin'} size={16} className="flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-semibold truncate ${n.read ? 'text-gray-400' : 'text-gray-100'}`}>
@@ -78,6 +79,6 @@ export default function NotificationsPanel({ notifications, onMarkRead, onMarkAl
           ))}
         </div>
       )}
-    </div>
+    </AppCard>
   )
 }

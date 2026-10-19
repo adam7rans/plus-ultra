@@ -13,6 +13,9 @@ import type {
 } from '@plus-ultra/core'
 import { useOfflineStage } from '../hooks/useOfflineStage'
 import OfflineStageBanner from '../components/OfflineStageBanner'
+import { copyText } from '../lib/platform/share'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard, AppEmptyState, AppField, AppInput, AppSelect } from '../components/ui'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -98,7 +101,7 @@ export default function CommsScreen() {
   async function handleExport() {
     if (!plan) return
     const text = exportPacePlanAsText(plan)
-    await navigator.clipboard.writeText(text)
+    await copyText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -110,7 +113,7 @@ export default function CommsScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Dashboard
+        <AppIcon name="back" size={16} /> Dashboard
       </Link>
 
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
@@ -118,16 +121,14 @@ export default function CommsScreen() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-100">Comms Plan</h2>
         {plan && (
-          <button
-            className={`text-xs px-3 py-1.5 rounded border transition-colors ${
-              copied
-                ? 'border-forest-500 text-forest-300'
-                : 'border-forest-800 text-gray-400 hover:border-forest-600'
-            }`}
+          <AppButton
+            variant="secondary"
+            size="sm"
+            className={copied ? '!border-forest-500 !text-forest-300' : '!border-forest-800 !text-gray-400 hover:!border-forest-600'}
             onClick={handleExport}
           >
-            {copied ? '✓ Copied' : 'Export'}
-          </button>
+            {copied ? <span className="inline-flex items-center gap-1"><AppIcon name="check" size={16} /> Copied</span> : 'Export'}
+          </AppButton>
         )}
       </div>
 
@@ -240,18 +241,20 @@ function PaceTab({
         const isEditing = editing === level
 
         return (
-          <div key={level} className="card">
+          <AppCard key={level}>
             <div className="flex items-center justify-between mb-2">
               <span className={`text-xs font-bold uppercase tracking-widest ${meta.color}`}>
                 {meta.label}
               </span>
               {canEdit && !isEditing && (
-                <button
-                  className="text-xs text-gray-500 hover:text-forest-400"
+                <AppButton
+                  variant="ghost"
+                  size="sm"
+                  className="!text-gray-500 hover:!text-forest-400"
                   onClick={() => startEdit(level)}
                 >
                   {m ? 'Edit' : '+ Add'}
-                </button>
+                </AppButton>
               )}
             </div>
 
@@ -284,62 +287,54 @@ function PaceTab({
 
             {isEditing && (
               <div className="space-y-2 mt-1">
-                <div>
-                  <label className="label">Method</label>
-                  <select
-                    className="input"
+                <AppField label="Method">
+                  <AppSelect
                     value={editMethod}
                     onChange={e => setEditMethod(e.target.value as CommsMethod)}
                   >
                     {(Object.keys(COMMS_METHOD_LABELS) as CommsMethod[]).map(k => (
                       <option key={k} value={k}>{COMMS_METHOD_LABELS[k]}</option>
                     ))}
-                  </select>
+                  </AppSelect>
                   {/* HAM suggestions */}
                   {editMethod === 'ham_radio' && hamMembers.length > 0 && (
                     <p className="text-xs text-forest-400 mt-1">
                       HAM ops in tribe: {hamMembers.map(m => m.displayName).join(', ')}
                     </p>
                   )}
-                </div>
-                <div>
-                  <label className="label">Details (freq, channel, callsign…)</label>
-                  <input
+                </AppField>
+                <AppField label="Details (freq, channel, callsign…)">
+                  <AppInput
                     type="text"
-                    className="input"
                     placeholder={editMethod === 'ham_radio' ? '146.520 MHz / KD9XYZ' : editMethod === 'frs_gmrs' ? 'Channel 7' : ''}
                     value={editDetails}
                     onChange={e => setEditDetails(e.target.value)}
                   />
-                </div>
-                <div>
-                  <label className="label">Trigger condition</label>
-                  <input
+                </AppField>
+                <AppField label="Trigger condition">
+                  <AppInput
                     type="text"
-                    className="input"
                     placeholder="When app relay is unreachable…"
                     value={editTrigger}
                     onChange={e => setEditTrigger(e.target.value)}
                   />
-                </div>
-                <div>
-                  <label className="label">Notes (optional)</label>
-                  <input
+                </AppField>
+                <AppField label="Notes (optional)">
+                  <AppInput
                     type="text"
-                    className="input"
                     value={editNotes}
                     onChange={e => setEditNotes(e.target.value)}
                   />
-                </div>
+                </AppField>
                 <div className="flex gap-2">
-                  <button className="btn-primary flex-1 text-sm" onClick={saveEntry} disabled={saving || !editDetails.trim() || !editTrigger.trim()}>
+                  <AppButton className="flex-1 text-sm" onClick={saveEntry} disabled={saving || !editDetails.trim() || !editTrigger.trim()}>
                     {saving ? 'Saving…' : 'Save'}
-                  </button>
-                  <button className="btn-secondary flex-1 text-sm" onClick={() => setEditing(null)}>Cancel</button>
+                  </AppButton>
+                  <AppButton variant="secondary" className="flex-1 text-sm" onClick={() => setEditing(null)}>Cancel</AppButton>
                 </div>
               </div>
             )}
-          </div>
+          </AppCard>
         )
       })}
     </div>
@@ -387,12 +382,10 @@ function CheckInsTab({
   return (
     <div className="space-y-3">
       {checkIns.length === 0 && !showForm && (
-        <div className="card text-center py-6">
-          <p className="text-gray-500 text-sm">No check-in schedules yet</p>
-        </div>
+        <AppEmptyState icon="clock" title="No check-in schedules yet" />
       )}
       {checkIns.map(c => (
-        <div key={c.id} className="card">
+        <AppCard key={c.id}>
           <div className="flex items-start justify-between">
             <div>
               <div className="text-sm font-semibold text-gray-200">{c.label}</div>
@@ -404,12 +397,12 @@ function CheckInsTab({
             </div>
             {canEdit && (
               <div className="flex gap-2 ml-2">
-                <button className="text-xs text-gray-500 hover:text-forest-400" onClick={() => openEdit(c)}>Edit</button>
-                <button className="text-xs text-gray-500 hover:text-red-400" onClick={() => onSave(checkIns.filter(x => x.id !== c.id))}>×</button>
+                <AppButton variant="ghost" size="sm" className="!text-gray-500 hover:!text-forest-400" onClick={() => openEdit(c)}>Edit</AppButton>
+                <AppButton variant="icon" icon="close" iconSize={16} className="hover:!text-red-400" onClick={() => onSave(checkIns.filter(x => x.id !== c.id))} aria-label="Delete schedule" />
               </div>
             )}
           </div>
-        </div>
+        </AppCard>
       ))}
 
       {canEdit && !showForm && (
@@ -419,46 +412,44 @@ function CheckInsTab({
       )}
 
       {showForm && (
-        <div className="card space-y-2">
-          <div>
-            <label className="label">Label</label>
-            <input type="text" className="input" placeholder="Morning net" value={label} onChange={e => setLabel(e.target.value)} />
-          </div>
+        <AppCard className="space-y-2">
+          <AppField label="Label">
+            <AppInput type="text" placeholder="Morning net" value={label} onChange={e => setLabel(e.target.value)} />
+          </AppField>
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="label">Time</label>
-              <input type="time" className="input" value={timeOfDay} onChange={e => setTimeOfDay(e.target.value)} />
+              <AppField label="Time">
+                <AppInput type="time" value={timeOfDay} onChange={e => setTimeOfDay(e.target.value)} />
+              </AppField>
             </div>
             <div className="flex-1">
-              <label className="label">Frequency</label>
-              <select className="input" value={frequency} onChange={e => setFrequency(e.target.value as CheckInSchedule['frequency'])}>
-                {Object.entries(FREQ_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+              <AppField label="Frequency">
+                <AppSelect value={frequency} onChange={e => setFrequency(e.target.value as CheckInSchedule['frequency'])}>
+                  {Object.entries(FREQ_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </AppSelect>
+              </AppField>
             </div>
           </div>
-          <div>
-            <label className="label">Method</label>
-            <select className="input" value={method} onChange={e => setMethod(e.target.value as CommsMethod)}>
+          <AppField label="Method">
+            <AppSelect value={method} onChange={e => setMethod(e.target.value as CommsMethod)}>
               {(Object.keys(COMMS_METHOD_LABELS) as CommsMethod[]).map(k => (
                 <option key={k} value={k}>{COMMS_METHOD_LABELS[k]}</option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label className="label">Details</label>
-            <input type="text" className="input" placeholder="146.520 MHz, Channel 7…" value={details} onChange={e => setDetails(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Notes (optional)</label>
-            <input type="text" className="input" value={notes} onChange={e => setNotes(e.target.value)} />
-          </div>
+            </AppSelect>
+          </AppField>
+          <AppField label="Details">
+            <AppInput type="text" placeholder="146.520 MHz, Channel 7…" value={details} onChange={e => setDetails(e.target.value)} />
+          </AppField>
+          <AppField label="Notes (optional)">
+            <AppInput type="text" value={notes} onChange={e => setNotes(e.target.value)} />
+          </AppField>
           <div className="flex gap-2">
-            <button className="btn-primary flex-1 text-sm" onClick={saveEntry} disabled={saving || !label.trim() || !details.trim()}>
+            <AppButton className="flex-1 text-sm" onClick={saveEntry} disabled={saving || !label.trim() || !details.trim()}>
               {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button className="btn-secondary flex-1 text-sm" onClick={() => setShowForm(false)}>Cancel</button>
+            </AppButton>
+            <AppButton variant="secondary" className="flex-1 text-sm" onClick={() => setShowForm(false)}>Cancel</AppButton>
           </div>
-        </div>
+        </AppCard>
       )}
     </div>
   )
@@ -502,12 +493,10 @@ function RallyTab({
   return (
     <div className="space-y-3">
       {rallyPoints.length === 0 && !showForm && (
-        <div className="card text-center py-6">
-          <p className="text-gray-500 text-sm">No rally points configured</p>
-        </div>
+        <AppEmptyState icon="pin" title="No rally points configured" />
       )}
       {rallyPoints.map(r => (
-        <div key={r.id} className="card">
+        <AppCard key={r.id}>
           <div className="flex items-start justify-between">
             <div>
               <div className="text-sm font-semibold text-gray-200">{r.label}</div>
@@ -517,12 +506,12 @@ function RallyTab({
             </div>
             {canEdit && (
               <div className="flex gap-2 ml-2">
-                <button className="text-xs text-gray-500 hover:text-forest-400" onClick={() => openEdit(r)}>Edit</button>
-                <button className="text-xs text-gray-500 hover:text-red-400" onClick={() => onSave(rallyPoints.filter(x => x.id !== r.id))}>×</button>
+                <AppButton variant="ghost" size="sm" className="!text-gray-500 hover:!text-forest-400" onClick={() => openEdit(r)}>Edit</AppButton>
+                <AppButton variant="icon" icon="close" iconSize={16} className="hover:!text-red-400" onClick={() => onSave(rallyPoints.filter(x => x.id !== r.id))} aria-label="Delete rally point" />
               </div>
             )}
           </div>
-        </div>
+        </AppCard>
       ))}
 
       {canEdit && !showForm && (
@@ -532,30 +521,26 @@ function RallyTab({
       )}
 
       {showForm && (
-        <div className="card space-y-2">
-          <div>
-            <label className="label">Label</label>
-            <input type="text" className="input" placeholder="Primary rally" value={label} onChange={e => setLabel(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Description / Location</label>
-            <input type="text" className="input" placeholder="Old barn at crossroads on County Rd 5" value={description} onChange={e => setDescription(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Trigger condition</label>
-            <input type="text" className="input" placeholder="If separated from base…" value={trigger} onChange={e => setTrigger(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Notes (optional)</label>
-            <input type="text" className="input" value={notes} onChange={e => setNotes(e.target.value)} />
-          </div>
+        <AppCard className="space-y-2">
+          <AppField label="Label">
+            <AppInput type="text" placeholder="Primary rally" value={label} onChange={e => setLabel(e.target.value)} />
+          </AppField>
+          <AppField label="Description / Location">
+            <AppInput type="text" placeholder="Old barn at crossroads on County Rd 5" value={description} onChange={e => setDescription(e.target.value)} />
+          </AppField>
+          <AppField label="Trigger condition">
+            <AppInput type="text" placeholder="If separated from base…" value={trigger} onChange={e => setTrigger(e.target.value)} />
+          </AppField>
+          <AppField label="Notes (optional)">
+            <AppInput type="text" value={notes} onChange={e => setNotes(e.target.value)} />
+          </AppField>
           <div className="flex gap-2">
-            <button className="btn-primary flex-1 text-sm" onClick={saveEntry} disabled={saving || !label.trim() || !description.trim() || !trigger.trim()}>
+            <AppButton className="flex-1 text-sm" onClick={saveEntry} disabled={saving || !label.trim() || !description.trim() || !trigger.trim()}>
               {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button className="btn-secondary flex-1 text-sm" onClick={() => setShowForm(false)}>Cancel</button>
+            </AppButton>
+            <AppButton variant="secondary" className="flex-1 text-sm" onClick={() => setShowForm(false)}>Cancel</AppButton>
           </div>
-        </div>
+        </AppCard>
       )}
     </div>
   )
@@ -586,31 +571,31 @@ function CodeWordsTab({
   return (
     <div className="space-y-3">
       {entries.length === 0 && !showForm && (
-        <div className="card text-center py-6">
-          <p className="text-gray-500 text-sm">No code words configured</p>
-        </div>
+        <AppEmptyState icon="lock" title="No code words configured" />
       )}
       {entries.map(([w, m]) => (
-        <div key={w} className="card py-2.5">
+        <AppCard key={w} className="!py-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-sm font-mono font-bold text-forest-300">"{w}"</span>
               <span className="text-xs text-gray-400">= {m}</span>
             </div>
             {canEdit && (
-              <button
-                className="text-xs text-gray-500 hover:text-red-400"
+              <AppButton
+                variant="icon"
+                icon="close"
+                iconSize={16}
+                className="hover:!text-red-400"
                 onClick={() => {
                   const updated = { ...codeWords }
                   delete updated[w]
                   onSave(updated)
                 }}
-              >
-                ×
-              </button>
+                aria-label="Delete code word"
+              />
             )}
           </div>
-        </div>
+        </AppCard>
       ))}
 
       {canEdit && !showForm && (
@@ -620,22 +605,20 @@ function CodeWordsTab({
       )}
 
       {showForm && (
-        <div className="card space-y-2">
-          <div>
-            <label className="label">Code Word</label>
-            <input type="text" className="input" placeholder="Eagle" value={word} onChange={e => setWord(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Meaning</label>
-            <input type="text" className="input" placeholder="All clear" value={meaning} onChange={e => setMeaning(e.target.value)} />
-          </div>
+        <AppCard className="space-y-2">
+          <AppField label="Code Word">
+            <AppInput type="text" placeholder="Eagle" value={word} onChange={e => setWord(e.target.value)} />
+          </AppField>
+          <AppField label="Meaning">
+            <AppInput type="text" placeholder="All clear" value={meaning} onChange={e => setMeaning(e.target.value)} />
+          </AppField>
           <div className="flex gap-2">
-            <button className="btn-primary flex-1 text-sm" onClick={saveEntry} disabled={saving || !word.trim() || !meaning.trim()}>
+            <AppButton className="flex-1 text-sm" onClick={saveEntry} disabled={saving || !word.trim() || !meaning.trim()}>
               {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button className="btn-secondary flex-1 text-sm" onClick={() => setShowForm(false)}>Cancel</button>
+            </AppButton>
+            <AppButton variant="secondary" className="flex-1 text-sm" onClick={() => setShowForm(false)}>Cancel</AppButton>
           </div>
-        </div>
+        </AppCard>
       )}
     </div>
   )

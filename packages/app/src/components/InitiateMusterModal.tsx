@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { MUSTER_REASON_META } from '@plus-ultra/core'
 import type { MusterReason } from '@plus-ultra/core'
+import AppIcon from './AppIcon'
+import AppModal from './ui/AppModal'
+import AppButton from './ui/AppButton'
+import { AppTextarea } from './ui/AppField'
+import { MUSTER_REASON_APP_ICONS } from './registry-icons'
 
 const REASONS: MusterReason[] = ['emergency', 'security', 'routine_drill', 'check_in', 'other']
 
@@ -26,12 +31,7 @@ export default function InitiateMusterModal({ onInitiate, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="max-w-sm w-full mx-4 card border-warning-500/50">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-warning-400">📣 Call Muster</h3>
-          <button className="text-gray-500 hover:text-gray-300 text-sm" onClick={onClose}>✕</button>
-        </div>
+    <AppModal title="Call Muster" icon="megaphone" onClose={onClose}>
 
         <div className="space-y-2 mb-4">
           {REASONS.map(r => {
@@ -47,7 +47,7 @@ export default function InitiateMusterModal({ onInitiate, onClose }: Props) {
                     : 'border-forest-800 bg-forest-950 text-gray-400 hover:border-forest-700'
                 }`}
               >
-                <span className="text-2xl">{meta.icon}</span>
+                <span className="text-2xl"><AppIcon name={MUSTER_REASON_APP_ICONS[r]} size={24} /></span>
                 <span className="text-sm font-semibold">{meta.label}</span>
               </button>
             )
@@ -55,8 +55,7 @@ export default function InitiateMusterModal({ onInitiate, onClose }: Props) {
         </div>
 
         <div className="mb-4">
-          <textarea
-            className="input"
+          <AppTextarea
             rows={2}
             placeholder="Optional message..."
             value={message}
@@ -65,7 +64,7 @@ export default function InitiateMusterModal({ onInitiate, onClose }: Props) {
         </div>
 
         <div className="flex gap-2">
-          <button className="btn-secondary flex-1" onClick={onClose}>Cancel</button>
+          <AppButton variant="secondary" fullWidth onClick={onClose}>Cancel</AppButton>
           <button
             className="flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm bg-warning-600 text-black hover:bg-warning-500 disabled:opacity-50 transition-colors"
             onClick={handleSend}
@@ -74,7 +73,6 @@ export default function InitiateMusterModal({ onInitiate, onClose }: Props) {
             {sending ? 'Calling...' : 'Call Muster'}
           </button>
         </div>
-      </div>
-    </div>
+    </AppModal>
   )
 }

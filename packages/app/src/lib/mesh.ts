@@ -9,7 +9,7 @@
  * In browser/PWA context (window.__TAURI__ undefined) every export is a no-op.
  */
 
-import { gun } from './gun-init'
+import { gun } from './gun'
 import {
   startWifiDirectMode,
   stopWifiDirectMode,

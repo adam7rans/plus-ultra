@@ -8,6 +8,9 @@ import { fetchTribeMeta } from '../lib/tribes'
 import { getAuthority, hasAuthority, ROLE_REGISTRY } from '@plus-ultra/core'
 import type { Tribe, TribeDoc, DocCategory } from '@plus-ultra/core'
 import ReactMarkdown from 'react-markdown'
+import { copyText } from '../lib/platform/share'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard, AppEmptyState, AppInput, AppSegmented, AppSelect, AppTextarea } from '../components/ui'
 
 type Tab = 'browse' | 'drafts' | 'search' | 'templates'
 
@@ -94,13 +97,13 @@ function DocCard({
   const [copied, setCopied] = useState(false)
 
   async function handleExport() {
-    await navigator.clipboard.writeText(doc.content)
+    await copyText(doc.content)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   return (
-    <div className="card">
+    <AppCard>
       <button
         className="w-full text-left"
         onClick={() => setExpanded(prev => !prev)}
@@ -122,7 +125,7 @@ function DocCard({
               v{doc.version} · {new Date(doc.updatedAt).toLocaleDateString()}
             </div>
           </div>
-          <span className="text-forest-400 text-sm flex-shrink-0">{expanded ? '▲' : '▼'}</span>
+          <span className="text-forest-400 text-sm flex-shrink-0">{expanded ? <AppIcon name="caretUp" size={16} /> : <AppIcon name="caretDown" size={16} />}</span>
         </div>
       </button>
 
@@ -174,7 +177,7 @@ function DocCard({
           </div>
         </div>
       )}
-    </div>
+    </AppCard>
   )
 }
 
@@ -289,46 +292,36 @@ export default function KnowledgeBaseScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Dashboard
+        <AppIcon name="back" size={16} /> Dashboard
       </Link>
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-100">Knowledge Base</h2>
         {(canCreate || canManage) && (
-          <button
-            className="btn-primary text-sm"
-            onClick={() => handleNewDoc()}
-          >
+          <AppButton className="text-sm" onClick={() => handleNewDoc()}>
             + New Doc
-          </button>
+          </AppButton>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-forest-900/50 p-1 rounded-lg">
-        {(['browse', 'drafts', 'search', 'templates'] as Tab[]).map(t => (
-          <button
-            key={t}
-            className={`flex-1 text-xs py-1.5 rounded-md transition-colors capitalize ${
-              tab === t ? 'bg-forest-700 text-gray-100' : 'text-gray-400 hover:text-gray-300'
-            }`}
-            onClick={() => setTab(t)}
-          >
-            {t}
-          </button>
-        ))}
+      <div className="mb-4">
+        <AppSegmented
+          options={['browse', 'drafts', 'search', 'templates'] as Tab[]}
+          value={tab}
+          onChange={setTab}
+        />
       </div>
 
       {/* Inline form */}
       {showForm && (
-        <div className="card mb-4 space-y-3">
+        <AppCard className="mb-4 space-y-3">
           <h3 className="text-sm font-semibold text-gray-200">
             {editingDoc ? 'Edit Document' : 'New Document'}
           </h3>
           <div>
             <label className="text-xs text-gray-400 block mb-1">Title *</label>
-            <input
-              className="input w-full"
+            <AppInput
               placeholder="Document title"
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -336,20 +329,19 @@ export default function KnowledgeBaseScreen() {
           </div>
           <div>
             <label className="text-xs text-gray-400 block mb-1">Category</label>
-            <select
-              className="input w-full"
+            <AppSelect
               value={form.category}
               onChange={e => setForm(f => ({ ...f, category: e.target.value as DocCategory }))}
             >
               {categories.map(c => (
                 <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
               ))}
-            </select>
+            </AppSelect>
           </div>
           <div>
             <label className="text-xs text-gray-400 block mb-1">Content (Markdown supported)</label>
-            <textarea
-              className="input w-full font-mono text-xs"
+            <AppTextarea
+              className="font-mono text-xs"
               rows={12}
               placeholder="Write your SOP or playbook here using Markdown..."
               value={form.content}
@@ -358,8 +350,7 @@ export default function KnowledgeBaseScreen() {
           </div>
           <div>
             <label className="text-xs text-gray-400 block mb-1">Tags (comma-separated)</label>
-            <input
-              className="input w-full"
+            <AppInput
               placeholder="e.g. emergency, first-aid"
               value={form.tags}
               onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
@@ -390,30 +381,31 @@ export default function KnowledgeBaseScreen() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button
-              className="btn-primary flex-1 text-sm"
+            <AppButton
+              className="flex-1 text-sm"
               onClick={() => handleSave(false)}
               disabled={saving || !form.title.trim()}
             >
               {saving ? 'Saving...' : 'Save as Draft'}
-            </button>
+            </AppButton>
             {canManage && (
-              <button
-                className="btn-primary flex-1 text-sm bg-forest-600 hover:bg-forest-500"
+              <AppButton
+                className="flex-1 text-sm !bg-forest-600 hover:!bg-forest-500"
                 onClick={() => handleSave(true)}
                 disabled={saving || !form.title.trim()}
               >
                 Save &amp; Approve
-              </button>
+              </AppButton>
             )}
-            <button
-              className="btn-secondary text-sm"
+            <AppButton
+              variant="secondary"
+              className="text-sm"
               onClick={() => { setShowForm(false); setEditingDoc(null); setForm(DEFAULT_FORM) }}
             >
               Cancel
-            </button>
+            </AppButton>
           </div>
-        </div>
+        </AppCard>
       )}
 
       {/* Browse tab */}
@@ -449,10 +441,11 @@ export default function KnowledgeBaseScreen() {
           {loading ? (
             <div className="text-center py-8 text-forest-400 text-sm animate-pulse">Loading docs...</div>
           ) : browseDocs.length === 0 ? (
-            <div className="card text-center py-8">
-              <p className="text-gray-400 text-sm">No approved documents yet</p>
-              <p className="text-gray-500 text-xs mt-1">Use Templates to get started quickly</p>
-            </div>
+            <AppEmptyState
+              icon="book"
+              title="No approved documents yet"
+              body="Use Templates to get started quickly"
+            />
           ) : (
             browseDocs.map(doc => (
               <DocCard
@@ -474,9 +467,7 @@ export default function KnowledgeBaseScreen() {
           {loading ? (
             <div className="text-center py-8 text-forest-400 text-sm animate-pulse">Loading...</div>
           ) : myDrafts.length === 0 ? (
-            <div className="card text-center py-8">
-              <p className="text-gray-400 text-sm">No drafts</p>
-            </div>
+            <AppEmptyState icon="edit" title="No drafts" />
           ) : (
             myDrafts.map(doc => (
               <DocCard
@@ -495,8 +486,7 @@ export default function KnowledgeBaseScreen() {
       {/* Search tab */}
       {tab === 'search' && (
         <div className="space-y-3">
-          <input
-            className="input w-full"
+          <AppInput
             placeholder="Search titles, content, tags..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
@@ -543,7 +533,7 @@ export default function KnowledgeBaseScreen() {
                     {CATEGORY_LABELS[tpl.category]}
                   </div>
                 </div>
-                <span className="text-forest-400">→</span>
+                <AppIcon name="forward" size={16} className="text-forest-400" />
               </div>
             </button>
           ))}

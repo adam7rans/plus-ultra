@@ -11,6 +11,11 @@ import {
   fetchTribeMeta, updateTribeMeta, leaveTribe,
   removeMember, deleteTribe, setAuthorityRole,
 } from '../lib/tribes'
+import { getCurrentCoords, isGeolocationAvailable, reverseGeocode, formatLocality } from '../lib/platform/geo'
+import LocationAutocomplete from '../components/LocationAutocomplete'
+import AppIcon from '../components/AppIcon'
+import { AUTHORITY_APP_ICONS } from '../components/registry-icons'
+import { AppButton, AppCard, AppField, AppInput } from '../components/ui'
 
 const STATUS_COLORS: Record<TribeMember['status'], string> = {
   active: 'bg-forest-400',
@@ -94,7 +99,7 @@ function MemberRow({
               auth === 'restricted'    ? 'bg-gray-800 text-gray-400' :
                                         'bg-forest-800 text-forest-400'
             }`}>
-              {authMeta.icon} {authMeta.label}
+              <AppIcon name={AUTHORITY_APP_ICONS[auth]} size={16} /> {authMeta.label}
             </span>
             {isDeparted && (
               <span className="text-xs text-gray-500">departed</span>
@@ -149,7 +154,7 @@ function MemberRow({
                 }}
                 disabled={isActive}
               >
-                <span>{meta.icon}</span>
+                <span><AppIcon name={AUTHORITY_APP_ICONS[role]} size={16} /></span>
                 <span>{meta.label}</span>
               </button>
             )
@@ -182,6 +187,8 @@ export default function TribeSettingsScreen() {
   const [savingCoords, setSavingCoords] = useState(false)
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
+  const [geoLabel, setGeoLabel] = useState<string | null>(null)
+  const [geoResolving, setGeoResolving] = useState(false)
   const [coordsSaved, setCoordsSaved] = useState(false)
 
   // Local overrides for immediate UI feedback
@@ -267,17 +274,28 @@ export default function TribeSettingsScreen() {
   }
 
   function handleUseCurrentLocation() {
-    if (!navigator.geolocation) {
+    if (!isGeolocationAvailable()) {
       setGeoError('Geolocation not supported')
       return
     }
     setGeoLoading(true)
     setGeoError(null)
-    navigator.geolocation.getCurrentPosition(
+    setGeoLabel(null)
+    getCurrentCoords().then(
       pos => {
-        setEditLat(pos.coords.latitude.toFixed(6))
-        setEditLng(pos.coords.longitude.toFixed(6))
+        setEditLat(pos.latitude.toFixed(6))
+        setEditLng(pos.longitude.toFixed(6))
         setGeoLoading(false)
+        // Grid-up: resolve city/region/country and offer them for the info
+        // fields. Grid-down: lookup fails silently, coords stand.
+        setGeoResolving(true)
+        void reverseGeocode(pos.latitude, pos.longitude).then(info => {
+          setGeoResolving(false)
+          if (!info) return
+          setGeoLabel(formatLocality(info))
+          setEditLocation(prev => (prev.trim() ? prev : (info.city ?? '')))
+          setEditRegion(prev => (prev.trim() ? prev : (info.region ?? info.country ?? '')))
+        })
       },
       () => {
         setGeoError('Could not get location')
@@ -325,53 +343,55 @@ export default function TribeSettingsScreen() {
       <h1 className="text-2xl font-bold text-gray-100 mb-6">Tribe Settings</h1>
 
       {/* ── Tribe Info (5.1) ── */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs text-gray-300 uppercase tracking-widest">Tribe Info</h2>
           {canManage && !editingInfo && (
-            <button className="text-xs text-forest-400 hover:text-forest-300" onClick={startEditingInfo}>
+            <AppButton variant="ghost" size="sm" onClick={startEditingInfo}>
               Edit
-            </button>
+            </AppButton>
           )}
         </div>
 
         {editingInfo ? (
           <div className="space-y-3">
-            <div>
-              <label className="label">Name</label>
-              <input
+            <AppField label="Name">
+              <AppInput
                 type="text"
-                className="input"
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
               />
-            </div>
-            <div>
-              <label className="label">Location</label>
-              <input
-                type="text"
-                className="input"
+            </AppField>
+            <AppField label="Location">
+              <LocationAutocomplete
                 value={editLocation}
-                onChange={e => setEditLocation(e.target.value)}
+                onChange={setEditLocation}
+                onPick={(place) => {
+                  setEditLocation(place.location)
+                  setEditRegion((prev) => (prev.trim() ? prev : place.region))
+                }}
+                onCoords={(lat, lng) => {
+                  setEditLat(lat.toFixed(6))
+                  setEditLng(lng.toFixed(6))
+                }}
+                onLocality={setGeoLabel}
               />
-            </div>
-            <div>
-              <label className="label">Region</label>
-              <input
+            </AppField>
+            <AppField label="Region">
+              <AppInput
                 type="text"
-                className="input"
                 placeholder="e.g. texas, pacific-northwest"
                 value={editRegion}
                 onChange={e => setEditRegion(e.target.value)}
               />
-            </div>
+            </AppField>
             <div className="flex gap-2">
-              <button className="btn-primary flex-1" onClick={saveInfo} disabled={savingInfo}>
+              <AppButton className="flex-1" onClick={saveInfo} disabled={savingInfo}>
                 {savingInfo ? 'Saving...' : 'Save'}
-              </button>
-              <button className="btn-secondary flex-1" onClick={() => setEditingInfo(false)}>
+              </AppButton>
+              <AppButton variant="secondary" className="flex-1" onClick={() => setEditingInfo(false)}>
                 Cancel
-              </button>
+              </AppButton>
             </div>
           </div>
         ) : (
@@ -404,46 +424,46 @@ export default function TribeSettingsScreen() {
             </div>
           </div>
         )}
-      </div>
+      </AppCard>
 
       {/* ── Coordinates ── */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <h2 className="text-xs text-gray-300 uppercase tracking-widest mb-3">Home Coordinates</h2>
         <p className="text-xs text-gray-500 mb-3">
           Used as the map center and home pin. General area only — exact location stays private.
         </p>
-        <button
+        <AppButton
           type="button"
-          className="btn-secondary w-full text-sm mb-3"
+          variant="secondary"
+          fullWidth
+          className="text-sm mb-3"
           onClick={handleUseCurrentLocation}
           disabled={geoLoading}
         >
           {geoLoading ? 'Getting location...' : 'Use My Current Location'}
-        </button>
+        </AppButton>
         {geoError && <p className="text-xs text-danger-400 mb-2">{geoError}</p>}
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <div>
-            <label className="label text-xs">Latitude</label>
-            <input
+          <AppField label="Latitude">
+            <AppInput
               type="number"
               step="0.0001"
-              className="input text-sm"
+              className="text-sm"
               placeholder="48.8584"
               value={editLat}
               onChange={e => setEditLat(e.target.value)}
             />
-          </div>
-          <div>
-            <label className="label text-xs">Longitude</label>
-            <input
+          </AppField>
+          <AppField label="Longitude">
+            <AppInput
               type="number"
               step="0.0001"
-              className="input text-sm"
+              className="text-sm"
               placeholder="2.2945"
               value={editLng}
               onChange={e => setEditLng(e.target.value)}
             />
-          </div>
+          </AppField>
         </div>
         {editLat && editLng && !isNaN(parseFloat(editLat)) && !isNaN(parseFloat(editLng)) && (
           <p className="text-xs text-gray-500 mb-3">
@@ -451,18 +471,25 @@ export default function TribeSettingsScreen() {
             {Math.abs(parseFloat(editLng)).toFixed(4)}° {parseFloat(editLng) >= 0 ? 'E' : 'W'}
           </p>
         )}
-        <button
-          className={`btn-primary w-full text-sm ${coordsSaved ? 'bg-forest-600' : ''}`}
+        {geoResolving && (
+          <p className="text-xs text-gray-500 mb-3 animate-pulse">Looking up area…</p>
+        )}
+        {geoLabel && (
+          <p className="text-xs text-forest-300 mb-3"><AppIcon name="pin" size={16} className="inline" /> {geoLabel}</p>
+        )}
+        <AppButton
+          fullWidth
+          className={`text-sm ${coordsSaved ? '!bg-forest-600' : ''}`}
           onClick={handleSaveCoords}
           disabled={savingCoords}
         >
-          {coordsSaved ? 'Saved ✓' : savingCoords ? 'Saving...' : 'Update Coordinates'}
-        </button>
-      </div>
+          {coordsSaved ? (<>Saved <AppIcon name="check" size={16} className="inline" /></>) : savingCoords ? 'Saving...' : 'Update Coordinates'}
+        </AppButton>
+      </AppCard>
 
       {/* ── Governance (5.3) ── */}
       {govMeta && (
-        <div className="card mb-4">
+        <AppCard className="mb-4">
           <h2 className="text-xs text-gray-300 uppercase tracking-widest mb-3">Governance</h2>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm font-semibold text-gray-100">{govMeta.label}</span>
@@ -475,7 +502,7 @@ export default function TribeSettingsScreen() {
           <div className="space-y-2">
             {(Object.entries(AUTHORITY_META) as [AuthorityRole, typeof AUTHORITY_META[AuthorityRole]][]).map(([role, meta]) => (
               <div key={role} className="flex items-start gap-2 text-xs">
-                <span className="flex-shrink-0 text-sm">{meta.icon}</span>
+                <span className="flex-shrink-0 text-sm"><AppIcon name={AUTHORITY_APP_ICONS[role]} size={16} /></span>
                 <div>
                   <span className={`font-medium ${
                     hasAuthority(myAuth, role) ? 'text-gray-200' : 'text-gray-500'
@@ -485,11 +512,11 @@ export default function TribeSettingsScreen() {
               </div>
             ))}
           </div>
-        </div>
+        </AppCard>
       )}
 
       {/* ── Member Management (5.2) ── */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <h2 className="text-xs text-gray-300 uppercase tracking-widest mb-3">
           Members ({members.length})
         </h2>
@@ -512,10 +539,10 @@ export default function TribeSettingsScreen() {
             ))}
           </div>
         )}
-      </div>
+      </AppCard>
 
       {/* ── Danger Zone ── */}
-      <div className="card border-danger-800">
+      <AppCard className="border-danger-800">
         <h2 className="text-xs font-semibold text-danger-400 uppercase tracking-widest mb-4">Danger Zone</h2>
 
         {/* Leave Tribe */}
@@ -535,16 +562,17 @@ export default function TribeSettingsScreen() {
                   : 'You will lose access to this tribe. This cannot be undone locally.'}
               </p>
               <div className="flex gap-2">
-                <button
-                  className="flex-1 px-3 py-2 rounded text-sm bg-danger-700 text-white hover:bg-danger-600 transition-colors"
+                <AppButton
+                  variant="danger"
+                  className="flex-1 text-sm"
                   onClick={handleLeave}
                   disabled={leaving}
                 >
                   {leaving ? 'Leaving...' : 'Yes, Leave'}
-                </button>
-                <button className="flex-1 btn-secondary text-sm" onClick={() => setConfirmLeave(false)}>
+                </AppButton>
+                <AppButton variant="secondary" className="flex-1 text-sm" onClick={() => setConfirmLeave(false)}>
                   Cancel
-                </button>
+                </AppButton>
               </div>
             </div>
           )}
@@ -566,22 +594,23 @@ export default function TribeSettingsScreen() {
                   This marks the tribe as deleted for all members. Member data is retained but the tribe becomes inaccessible. This cannot be undone.
                 </p>
                 <div className="flex gap-2">
-                  <button
-                    className="flex-1 px-3 py-2 rounded text-sm bg-danger-600 text-white hover:bg-danger-500 transition-colors"
+                  <AppButton
+                    variant="danger"
+                    className="flex-1 text-sm"
                     onClick={handleDelete}
                     disabled={deleting}
                   >
                     {deleting ? 'Deleting...' : 'Yes, Delete Tribe'}
-                  </button>
-                  <button className="flex-1 btn-secondary text-sm" onClick={() => setConfirmDelete(false)}>
+                  </AppButton>
+                  <AppButton variant="secondary" className="flex-1 text-sm" onClick={() => setConfirmDelete(false)}>
                     Cancel
-                  </button>
+                  </AppButton>
                 </div>
               </div>
             )}
           </div>
         )}
-      </div>
+      </AppCard>
     </div>
   )
 }

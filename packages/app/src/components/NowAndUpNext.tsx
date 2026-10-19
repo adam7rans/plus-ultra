@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { getNowAndUpcoming, relativeTimeLabel, formatTime, EVENT_TYPE_META } from '@plus-ultra/core'
+import { getNowAndUpcoming, relativeTimeLabel, formatTime } from '@plus-ultra/core'
 import type { ScheduledEvent } from '@plus-ultra/core'
+import AppIcon from './AppIcon'
+import { EVENT_TYPE_APP_ICONS } from './registry-icons'
 
 interface Props {
   tribeId: string
@@ -26,7 +28,7 @@ export default function NowAndUpNext({ tribeId, events }: Props) {
         params={{ tribeId }}
         className="card flex items-center gap-3 hover:border-forest-600 transition-colors"
       >
-        <span className="text-xl">📅</span>
+        <AppIcon name="calendar" size={20} />
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-gray-300">No events scheduled</div>
           <div className="text-xs text-gray-500">Tap to create your first event</div>
@@ -44,12 +46,11 @@ export default function NowAndUpNext({ tribeId, events }: Props) {
     >
       {/* Current event */}
       {current && (() => {
-        const meta = EVENT_TYPE_META[current.event.type]
         const remaining = current.endAt - now
         const remainMin = Math.max(1, Math.round(remaining / 60_000))
         return (
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-xl">{meta.icon}</span>
+            <span className="text-xl"><AppIcon name={EVENT_TYPE_APP_ICONS[current.event.type]} size={20} /></span>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold text-gray-100 truncate">
                 {current.event.title}
@@ -75,10 +76,9 @@ export default function NowAndUpNext({ tribeId, events }: Props) {
             <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">Up Next</div>
           )}
           {upcoming.map((occ, i) => {
-            const meta = EVENT_TYPE_META[occ.event.type]
             return (
               <div key={`${occ.event.id}-${i}`} className="flex items-center gap-2.5">
-                <span className="text-sm">{meta.icon}</span>
+                <span className="text-sm"><AppIcon name={EVENT_TYPE_APP_ICONS[occ.event.type]} size={16} /></span>
                 <span className="text-xs text-gray-300 flex-1 truncate">{occ.event.title}</span>
                 <span className="text-xs text-gray-500">{formatTime(occ.startAt)}</span>
                 <span className="text-xs text-forest-400 w-12 text-right">

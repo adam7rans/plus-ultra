@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { INFRA_ITEMS, INFRA_ITEM_LABELS } from '@plus-ultra/core'
 import type { InfraItem, MemberInfraStatus } from '@plus-ultra/core'
+import AppIcon from './AppIcon'
+import { AppBadge, AppCard } from './ui'
 
 interface Props {
   myFailingItems: InfraItem[]
@@ -20,9 +22,9 @@ export default function InfraChecklistCard({
   const otherStatuses = tribeStatuses.filter(s => s.memberPub !== myPub)
 
   return (
-    <div className="card border-orange-700/40 mb-3">
+    <AppCard className="border-orange-700/40 mb-3">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-orange-400 text-lg">⚠️</span>
+        <AppIcon name="warning" size={20} className="text-orange-400" />
         <div>
           <p className="text-sm font-semibold text-orange-300">Infrastructure Status</p>
           <p className="text-xs text-gray-400">Tap items that are failing around you</p>
@@ -43,7 +45,7 @@ export default function InfraChecklistCard({
                   : 'bg-gray-900/40 border-gray-700/40 text-gray-400 hover:border-gray-600'
               }`}
             >
-              <span className="mr-1">{failing ? '✗' : '✓'}</span>
+              <AppIcon name={failing ? 'close' : 'check'} size={16} className="mr-1 inline" />
               {INFRA_ITEM_LABELS[item]}
             </button>
           )
@@ -73,12 +75,12 @@ export default function InfraChecklistCard({
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {items.map(item => (
-                          <span
+                          <AppBadge
                             key={item}
-                            className="text-[10px] px-2 py-0.5 rounded-full bg-danger-900/50 text-danger-300 border border-danger-700/40"
+                            tone="red"
                           >
                             {INFRA_ITEM_LABELS[item]}
-                          </span>
+                          </AppBadge>
                         ))}
                       </div>
                     )}
@@ -89,6 +91,6 @@ export default function InfraChecklistCard({
           )}
         </div>
       )}
-    </div>
+    </AppCard>
   )
 }

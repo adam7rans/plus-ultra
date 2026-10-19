@@ -11,6 +11,8 @@ import type { Tribe, BugOutPlan, BugOutVehicle, LoadPriority } from '@plus-ultra
 import { nanoid } from 'nanoid'
 import { useOfflineStage } from '../hooks/useOfflineStage'
 import OfflineStageBanner from '../components/OfflineStageBanner'
+import AppIcon from '../components/AppIcon'
+import { AppBadge, AppButton, AppCard, AppEmptyState, AppInput, AppSelect, AppTextarea } from '../components/ui'
 
 export default function BugOutScreen() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId/bugout' })
@@ -138,43 +140,45 @@ export default function BugOutScreen() {
     setFormLoadPriorities(prev => prev.filter((_, i) => i !== idx))
   }
 
-  const STATUS_BADGE: Record<string, string> = {
-    draft: 'text-gray-400 border-gray-700',
-    ready: 'text-forest-400 border-forest-700',
-    active: 'text-orange-400 border-orange-700',
+  const STATUS_TONE: Record<string, 'gray' | 'green' | 'amber'> = {
+    draft: 'gray',
+    ready: 'green',
+    active: 'amber',
   }
 
   return (
     <div className="max-w-md mx-auto px-4 py-8">
       <Link to="/tribe/$tribeId" params={{ tribeId }} className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300">
-        ← Dashboard
+        <AppIcon name="back" size={16} /> Dashboard
       </Link>
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
       <h2 className="text-xl font-bold text-gray-100 mb-4">Bug-Out Planning</h2>
 
       {/* Active plan banner */}
       {activePlan && (
-        <div className="card border-orange-700/60 bg-orange-950/30 mb-4">
+        <AppCard className="!border-orange-700/60 !bg-orange-950/30 mb-4">
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse flex-shrink-0" />
             <span className="text-sm font-bold text-orange-300">BUG-OUT ACTIVE: {activePlan.name}</span>
           </div>
           <p className="text-xs text-orange-400 mb-2">{activePlan.triggerCondition}</p>
           {canManage && (
-            <button
-              className="text-xs text-gray-400 hover:text-gray-300 border border-gray-700 px-2 py-1 rounded"
+            <AppButton
+              variant="ghost"
+              size="sm"
+              className="!text-gray-400 hover:!text-gray-300 !border !border-gray-700 !px-2 !py-1"
               onClick={() => handleDeactivate(activePlan)}
             >
               Deactivate
-            </button>
+            </AppButton>
           )}
-        </div>
+        </AppCard>
       )}
 
       {canManage && !showNewForm && (
-        <button className="btn-primary w-full text-sm mb-4" onClick={startNewPlan}>
+        <AppButton fullWidth className="text-sm mb-4" onClick={startNewPlan}>
           + New Bug-Out Plan
-        </button>
+        </AppButton>
       )}
 
       {/* Plan form */}
@@ -183,30 +187,30 @@ export default function BugOutScreen() {
           <h3 className="text-sm font-semibold text-gray-200">
             {editingPlan ? 'Edit Plan' : 'New Bug-Out Plan'}
           </h3>
-          <input
-            className="input text-sm"
+          <AppInput
+            className="text-sm"
             placeholder="Plan name *"
             value={formName}
             onChange={e => setFormName(e.target.value)}
             required
           />
-          <textarea
-            className="input text-sm"
+          <AppTextarea
+            className="text-sm"
             placeholder="Trigger condition (e.g. 'Immediate threat to base')"
             value={formTrigger}
             onChange={e => setFormTrigger(e.target.value)}
             rows={2}
           />
-          <select
-            className="input text-sm"
+          <AppSelect
+            className="text-sm"
             value={formStatus}
             onChange={e => setFormStatus(e.target.value as 'draft' | 'ready')}
           >
             <option value="draft">Draft</option>
             <option value="ready">Ready</option>
-          </select>
-          <select
-            className="input text-sm"
+          </AppSelect>
+          <AppSelect
+            className="text-sm"
             value={formRouteId}
             onChange={e => setFormRouteId(e.target.value)}
           >
@@ -214,37 +218,37 @@ export default function BugOutScreen() {
             {routes.map(r => (
               <option key={r.id} value={r.id}>{r.name}</option>
             ))}
-          </select>
+          </AppSelect>
 
           {/* Vehicles */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs text-gray-400">Vehicles</p>
-              <button type="button" className="text-xs text-forest-400 hover:text-forest-300" onClick={addVehicle}>
+              <AppButton type="button" variant="ghost" size="sm" className="!text-forest-400 hover:!text-forest-300" onClick={addVehicle}>
                 + Add
-              </button>
+              </AppButton>
             </div>
             {formVehicles.map((v, idx) => (
               <div key={v.id} className="border border-forest-800 rounded-lg p-2 mb-2 space-y-1">
                 <div className="flex gap-2">
-                  <input
-                    className="input text-xs flex-1"
+                  <AppInput
+                    className="text-xs flex-1"
                     placeholder="Label (e.g. Main truck)"
                     value={v.label}
                     onChange={e => updateVehicle(idx, { label: e.target.value })}
                   />
-                  <input
-                    className="input text-xs w-16"
+                  <AppInput
+                    className="text-xs !w-16"
                     type="number"
                     placeholder="Cap."
                     value={v.capacity}
                     onChange={e => updateVehicle(idx, { capacity: Number(e.target.value) })}
                     min={1}
                   />
-                  <button type="button" className="text-danger-400 text-sm px-1" onClick={() => removeVehicle(idx)}>×</button>
+                  <AppButton type="button" variant="ghost" size="sm" icon="close" iconSize={16} className="!text-danger-400 hover:!text-danger-300 !px-1" onClick={() => removeVehicle(idx)} aria-label="Remove vehicle" />
                 </div>
-                <select
-                  className="input text-xs"
+                <AppSelect
+                  className="text-xs"
                   value={v.driverPub ?? ''}
                   onChange={e => updateVehicle(idx, { driverPub: e.target.value || undefined })}
                 >
@@ -252,7 +256,7 @@ export default function BugOutScreen() {
                   {members.map(m => (
                     <option key={m.pubkey} value={m.pubkey}>{m.displayName}</option>
                   ))}
-                </select>
+                </AppSelect>
               </div>
             ))}
           </div>
@@ -261,37 +265,37 @@ export default function BugOutScreen() {
           <div>
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs text-gray-400">Load Priorities</p>
-              <button type="button" className="text-xs text-forest-400 hover:text-forest-300" onClick={addLoadPriority}>
+              <AppButton type="button" variant="ghost" size="sm" className="!text-forest-400 hover:!text-forest-300" onClick={addLoadPriority}>
                 + Add
-              </button>
+              </AppButton>
             </div>
             {formLoadPriorities.map((lp, idx) => (
               <div key={lp.id} className="border border-forest-800 rounded-lg p-2 mb-2 space-y-1">
                 <div className="flex gap-2">
-                  <input
-                    className="input text-xs w-12"
+                  <AppInput
+                    className="text-xs !w-12"
                     type="number"
                     placeholder="#"
                     value={lp.order}
                     onChange={e => updateLoadPriority(idx, { order: Number(e.target.value) })}
                     min={1}
                   />
-                  <input
-                    className="input text-xs flex-1"
+                  <AppInput
+                    className="text-xs flex-1"
                     placeholder="Category (e.g. Water)"
                     value={lp.category}
                     onChange={e => updateLoadPriority(idx, { category: e.target.value })}
                   />
-                  <button type="button" className="text-danger-400 text-sm px-1" onClick={() => removeLoadPriority(idx)}>×</button>
+                  <AppButton type="button" variant="ghost" size="sm" icon="close" iconSize={16} className="!text-danger-400 hover:!text-danger-300 !px-1" onClick={() => removeLoadPriority(idx)} aria-label="Remove load priority" />
                 </div>
-                <input
-                  className="input text-xs"
+                <AppInput
+                  className="text-xs"
                   placeholder="Description"
                   value={lp.description ?? ''}
                   onChange={e => updateLoadPriority(idx, { description: e.target.value || undefined })}
                 />
-                <select
-                  className="input text-xs"
+                <AppSelect
+                  className="text-xs"
                   value={lp.assignedTo ?? ''}
                   onChange={e => updateLoadPriority(idx, { assignedTo: e.target.value || undefined })}
                 >
@@ -299,13 +303,13 @@ export default function BugOutScreen() {
                   {members.map(m => (
                     <option key={m.pubkey} value={m.pubkey}>{m.displayName}</option>
                   ))}
-                </select>
+                </AppSelect>
               </div>
             ))}
           </div>
 
-          <textarea
-            className="input text-sm"
+          <AppTextarea
+            className="text-sm"
             placeholder="Notes"
             value={formNotes}
             onChange={e => setFormNotes(e.target.value)}
@@ -313,12 +317,12 @@ export default function BugOutScreen() {
           />
 
           <div className="flex gap-2">
-            <button type="submit" className="btn-primary flex-1 text-sm" disabled={saving || !formName.trim()}>
+            <AppButton type="submit" className="flex-1 text-sm" disabled={saving || !formName.trim()}>
               {saving ? 'Saving...' : 'Save Plan'}
-            </button>
-            <button type="button" className="btn-secondary flex-1 text-sm" onClick={() => { setShowNewForm(false); setEditingPlan(null) }}>
+            </AppButton>
+            <AppButton type="button" variant="secondary" className="flex-1 text-sm" onClick={() => { setShowNewForm(false); setEditingPlan(null) }}>
               Cancel
-            </button>
+            </AppButton>
           </div>
         </form>
       )}
@@ -326,19 +330,19 @@ export default function BugOutScreen() {
       {/* Plan list */}
       <div className="space-y-3">
         {plans.length === 0 ? (
-          <p className="text-xs text-gray-500 text-center py-8">No bug-out plans yet</p>
+          <AppEmptyState icon="backpack" title="No bug-out plans yet" />
         ) : (
           plans.map(plan => {
             const route = routes.find(r => r.id === plan.routeId)
             let vehicles: BugOutVehicle[] = []
             try { vehicles = JSON.parse(plan.vehiclesJson) } catch { /* empty */ }
             return (
-              <div key={plan.id} className="card">
+              <AppCard key={plan.id}>
                 <div className="flex items-start gap-2 mb-1">
                   <span className="text-sm font-semibold text-gray-100 flex-1">{plan.name}</span>
-                  <span className={`text-xs border px-1.5 py-0.5 rounded flex-shrink-0 ${STATUS_BADGE[plan.status] ?? ''}`}>
+                  <AppBadge tone={STATUS_TONE[plan.status] ?? 'gray'} className="flex-shrink-0">
                     {plan.status}
-                  </span>
+                  </AppBadge>
                 </div>
                 {plan.triggerCondition && (
                   <p className="text-xs text-gray-400 mb-1">{plan.triggerCondition}</p>
@@ -351,37 +355,45 @@ export default function BugOutScreen() {
                 )}
                 {canManage && (
                   <div className="flex gap-2 mt-2">
-                    <button
-                      className="text-xs text-forest-400 hover:text-forest-300"
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
+                      className="!text-forest-400 hover:!text-forest-300"
                       onClick={() => startEditPlan(plan)}
                     >
                       Edit
-                    </button>
+                    </AppButton>
                     {plan.status === 'ready' && (
-                      <button
-                        className="text-xs text-orange-400 hover:text-orange-300"
+                      <AppButton
+                        variant="ghost"
+                        size="sm"
+                        className="!text-orange-400 hover:!text-orange-300"
                         onClick={() => setShowActivateConfirm(plan.id)}
                       >
                         Activate
-                      </button>
+                      </AppButton>
                     )}
                     {plan.status === 'active' && (
-                      <button
-                        className="text-xs text-gray-400 hover:text-gray-300"
+                      <AppButton
+                        variant="ghost"
+                        size="sm"
+                        className="!text-gray-400 hover:!text-gray-300"
                         onClick={() => handleDeactivate(plan)}
                       >
                         Deactivate
-                      </button>
+                      </AppButton>
                     )}
-                    <button
-                      className="text-xs text-danger-400 hover:text-danger-300 ml-auto"
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
+                      className="!text-danger-400 hover:!text-danger-300 ml-auto"
                       onClick={() => deleteBugOutPlan(tribeId, plan.id)}
                     >
                       Delete
-                    </button>
+                    </AppButton>
                   </div>
                 )}
-              </div>
+              </AppCard>
             )
           })
         )}

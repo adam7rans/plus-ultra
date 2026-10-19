@@ -1,6 +1,10 @@
 import { useState, useRef } from 'react'
 import { MUSTER_STATUS_META } from '@plus-ultra/core'
-import { createVoiceRecorder } from '../lib/media'
+import { createVoiceRecorder } from '../lib/platform/media'
+import AppIcon from './AppIcon'
+import AppButton from './ui/AppButton'
+import { AppInput, AppTextarea } from './ui/AppField'
+import { MUSTER_STATUS_APP_ICONS } from './registry-icons'
 import type { MusterStatus } from '@plus-ultra/core'
 
 const STATUSES: MusterStatus[] = ['present', 'away_authorized', 'away_unplanned', 'injured', 'need_help']
@@ -89,7 +93,7 @@ export default function MusterResponseForm({
                   : 'border-forest-800 bg-forest-950 text-gray-400 hover:border-forest-700'
               }`}
             >
-              <span className="text-xl">{meta.icon}</span>
+              <span className="text-xl"><AppIcon name={MUSTER_STATUS_APP_ICONS[s]} size={20} /></span>
               <span className={`text-sm font-semibold ${isSelected ? meta.color : ''}`}>{meta.label}</span>
             </button>
           )
@@ -97,16 +101,14 @@ export default function MusterResponseForm({
       </div>
 
       {/* Location */}
-      <input
-        className="input"
+      <AppInput
         placeholder="Location (optional) — e.g. south perimeter, barn"
         value={location}
         onChange={e => setLocation(e.target.value)}
       />
 
       {/* Note */}
-      <textarea
-        className="input"
+      <AppTextarea
         rows={2}
         placeholder="Note (optional)"
         value={note}
@@ -124,7 +126,7 @@ export default function MusterResponseForm({
               : 'border-forest-700 bg-forest-900/30 text-gray-400 hover:border-forest-600'
           }`}
         >
-          🎙 {isRecording ? 'Recording…' : 'Voice note'}
+          <AppIcon name="mic" size={16} /> {isRecording ? 'Recording…' : 'Voice note'}
         </button>
         {voiceNote && (
           <div className="flex items-center gap-2 flex-1">
@@ -137,7 +139,7 @@ export default function MusterResponseForm({
               className="text-gray-500 hover:text-gray-300 text-xs"
               onClick={() => setVoiceNote(null)}
             >
-              ✕
+              <AppIcon name="close" size={14} />
             </button>
           </div>
         )}
@@ -146,15 +148,15 @@ export default function MusterResponseForm({
       {/* Actions */}
       <div className="flex gap-2">
         {onCancel && (
-          <button className="btn-secondary flex-1" onClick={onCancel}>Cancel</button>
+          <AppButton variant="secondary" fullWidth onClick={onCancel}>Cancel</AppButton>
         )}
-        <button
-          className="flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm bg-forest-600 text-white hover:bg-forest-500 disabled:opacity-50 transition-colors"
+        <AppButton
+          fullWidth
           onClick={handleSubmit}
           disabled={!status || submitting}
         >
           {submitting ? 'Submitting…' : submitLabel}
-        </button>
+        </AppButton>
       </div>
     </div>
   )

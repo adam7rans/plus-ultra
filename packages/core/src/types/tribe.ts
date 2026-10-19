@@ -41,6 +41,8 @@ export interface TribeMember {
   photo?: string               // base64 data URL — stored in IDB only, not synced via Gun
   availability?: 'full_time' | 'part_time' | 'on_call'
   physicalLimitations?: string
+  /** Free-text "anything else the tribe should know" (onboarding). */
+  notes?: string
   // Health / medical fields
   bloodType?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-' | 'unknown'
   allergies?: string[]

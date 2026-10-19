@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MusterResponseForm from './MusterResponseForm'
 
-vi.mock('../lib/media', () => ({
+vi.mock('../lib/platform/media', () => ({
   createVoiceRecorder: vi.fn().mockReturnValue({
     start: vi.fn().mockResolvedValue(false),
     stop: vi.fn(),

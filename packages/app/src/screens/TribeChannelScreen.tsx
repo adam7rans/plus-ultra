@@ -8,6 +8,7 @@ import { useTribe } from '../contexts/TribeContext'
 import { fetchTribeMeta } from '../lib/tribes'
 import MessageBubble from '../components/MessageBubble'
 import MessageInput from '../components/MessageInput'
+import AppIcon from '../components/AppIcon'
 import { usePendingMessageIds } from '../hooks/usePendingMessageIds'
 import type { Message, Tribe } from '@plus-ultra/core'
 import { nanoid } from 'nanoid'
@@ -101,18 +102,18 @@ export default function TribeChannelScreen() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-forest-950">
+    <div className="flex flex-col h-[calc(100vh-56px-env(safe-area-inset-bottom))] bg-forest-950">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-forest-800 bg-forest-900 flex-shrink-0">
         <Link to="/tribe/$tribeId" params={{ tribeId }} className="text-forest-400 hover:text-forest-300">
-          ←
+          <AppIcon name="back" size={20} />
         </Link>
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-gray-100 truncate">
             {tribe?.name ?? 'Tribe Channel'}
           </div>
           <div className="text-xs text-gray-500">
-            {offlineStage === 0 ? `${members.length} members` : '⚡ Offline — messages queued'}
+            {offlineStage === 0 ? `${members.length} members` : (<span className="inline-flex items-center gap-1"><AppIcon name="bolt" size={14} /> Offline — messages queued</span>)}
           </div>
         </div>
       </div>
@@ -125,7 +126,7 @@ export default function TribeChannelScreen() {
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="text-4xl mb-3">📡</div>
+            <div className="mb-3 text-gray-600"><AppIcon name="broadcast" size={32} /></div>
             <p className="text-gray-400 text-sm font-medium">No messages yet</p>
             <p className="text-gray-600 text-xs mt-1">Be the first to say something</p>
           </div>
@@ -155,12 +156,12 @@ export default function TribeChannelScreen() {
       {/* Reply bar */}
       {replyingTo && (
         <div className="flex items-center gap-2 px-4 py-2 bg-forest-900 border-t border-forest-800 flex-shrink-0">
-          <span className="text-xs text-forest-400">↩</span>
+          <AppIcon name="reply" size={14} className="text-forest-400 shrink-0" />
           <span className="text-xs text-gray-400 truncate flex-1">
             {getMemberName(replyingTo.senderId)}: {replyingTo.type === 'text' ? replyingTo.content : `[${replyingTo.type}]`}
           </span>
-          <button className="text-gray-500 text-xs hover:text-gray-300" onClick={() => setReplyingTo(null)}>
-            ✕
+          <button className="text-gray-500 text-xs hover:text-gray-300 inline-flex" onClick={() => setReplyingTo(null)}>
+            <AppIcon name="close" size={14} />
           </button>
         </div>
       )}

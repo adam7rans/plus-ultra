@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link } from '@tanstack/react-router'
-import { closeDB } from '../lib/db'
+import { Link, useNavigate } from '@tanstack/react-router'
+import { useIdentity } from '../contexts/IdentityContext'
+import { seedDemoTribe } from '../lib/demo-seed'
+import { closeDB } from '../lib/platform/storage'
+import { hasMediaRecorder, hasGetUserMedia, isAudioMimeSupported } from '../lib/platform/media'
+import { getPlatform, getMeshCapabilities } from '../lib/platform'
 import { getQueueStats } from '../lib/messaging'
+import AppIcon from '../components/AppIcon'
+import { AppButton } from '../components/ui'
 
 const isDev = import.meta.env.DEV
 
@@ -14,6 +20,30 @@ interface DiagResult {
 export default function DiagnosticsScreen() {
   const [results, setResults] = useState<DiagResult[]>([])
   const [resetting, setResetting] = useState(false)
+  const [seeding, setSeeding] = useState(false)
+  const [seedStatus, setSeedStatus] = useState<string | null>(null)
+  const { identity } = useIdentity()
+  const navigate = useNavigate()
+
+  async function handleSeedDemo() {
+    if (!identity) return
+    if (!window.confirm('Load the Pinecrest demo tribe (25 members, seeded chats)? Your current data stays untouched.')) return
+    setSeeding(true)
+    setSeedStatus('Starting…')
+    try {
+      const result = await seedDemoTribe(identity, { onProgress: setSeedStatus })
+      setSeedStatus(`Seeded ${result.memberCount} members, ${result.messageCount} messages`)
+      // Same event create/join flows dispatch — refreshes the home tribe list
+      // so Pinecrest appears in My Tribes instead of being reachable only
+      // via the auto-navigation below.
+      window.dispatchEvent(new Event('tribe-joined'))
+      await navigate({ to: '/tribe/$tribeId', params: { tribeId: result.tribeId } })
+    } catch (err) {
+      setSeedStatus(`Seed failed: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setSeeding(false)
+    }
+  }
 
   function resetAllData() {
     setResetting(true)
@@ -33,6 +63,8 @@ export default function DiagnosticsScreen() {
     // Platform
     out.push({ label: 'User-Agent', value: navigator.userAgent, ok: true })
     out.push({ label: 'Online', value: String(navigator.onLine), ok: navigator.onLine })
+    out.push({ label: 'App Platform', value: getPlatform(), ok: true })
+    out.push({ label: 'Mesh', value: getMeshCapabilities().note, ok: true })
 
     // IndexedDB
     out.push({
@@ -42,14 +74,14 @@ export default function DiagnosticsScreen() {
     })
 
     // MediaRecorder + MIME types
-    const hasMediaRecorder = typeof MediaRecorder !== 'undefined'
+    const hasRecorder = hasMediaRecorder()
     out.push({
       label: 'MediaRecorder',
-      value: hasMediaRecorder ? 'available' : 'MISSING',
-      ok: hasMediaRecorder,
+      value: hasRecorder ? 'available' : 'MISSING',
+      ok: hasRecorder,
     })
 
-    if (hasMediaRecorder) {
+    if (hasRecorder) {
       const mimeTypes = [
         'audio/webm',
         'audio/webm;codecs=opus',
@@ -59,16 +91,17 @@ export default function DiagnosticsScreen() {
         'audio/aac',
       ]
       for (const t of mimeTypes) {
-        const supported = MediaRecorder.isTypeSupported(t)
+        const supported = isAudioMimeSupported(t)
         out.push({ label: `  ${t}`, value: supported ? 'supported' : 'not supported', ok: supported })
       }
     }
 
     // getUserMedia
+    const hasGum = hasGetUserMedia()
     out.push({
       label: 'getUserMedia',
-      value: typeof navigator.mediaDevices?.getUserMedia === 'function' ? 'available' : 'MISSING',
-      ok: typeof navigator.mediaDevices?.getUserMedia === 'function',
+      value: hasGum ? 'available' : 'MISSING',
+      ok: hasGum,
     })
 
     // Crypto (SEA keypairs)
@@ -97,20 +130,42 @@ export default function DiagnosticsScreen() {
       </Link>
       <h2 className="text-xl font-bold text-gray-100 mb-6">Diagnostics</h2>
 
+      <Link to="/design-system" className="block mb-6">
+        <AppButton variant="secondary" fullWidth className="text-sm">
+          Open Design System gallery
+        </AppButton>
+      </Link>
+
       {isDev && (
-        <button
+        <AppButton
+          variant="danger"
+          fullWidth
+          className="mb-6 text-sm"
           onClick={resetAllData}
           disabled={resetting}
-          className="w-full mb-6 py-2 px-4 rounded bg-danger-600 hover:bg-danger-500 disabled:opacity-50 text-white text-sm font-semibold"
         >
           {resetting ? 'Wiping data…' : 'Reset All Data (dev only)'}
-        </button>
+        </AppButton>
+      )}
+
+      <AppButton
+        fullWidth
+        className="mb-2 text-sm"
+        onClick={() => void handleSeedDemo()}
+        disabled={seeding || !identity}
+      >
+        {seeding ? 'Seeding demo tribe…' : 'Load Demo Tribe (25 members)'}
+      </AppButton>
+      {seedStatus && (
+        <p className="text-xs text-gray-400 font-mono mb-6" style={{ wordBreak: 'break-all' }}>
+          {seedStatus}
+        </p>
       )}
 
       <div className="space-y-1 font-mono text-xs">
         {results.map((r, i) => (
           <div key={i} className="flex items-start gap-3">
-            <span className={r.ok ? 'text-forest-400' : 'text-danger-400'}>{r.ok ? '✓' : '✗'}</span>
+            <span className={r.ok ? 'text-forest-400' : 'text-danger-400'}>{r.ok ? <AppIcon name="check" size={16} /> : <AppIcon name="close" size={16} />}</span>
             <span className="text-gray-400 min-w-[200px] flex-shrink-0">{r.label}</span>
             <span className={r.ok ? 'text-gray-300' : 'text-danger-300'} style={{ wordBreak: 'break-all' }}>{r.value}</span>
           </div>

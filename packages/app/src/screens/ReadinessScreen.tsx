@@ -5,19 +5,21 @@ import RadarChart from '../components/RadarChart'
 import type { ReadinessDimensionResult } from '@plus-ultra/core'
 import { useOfflineStage } from '../hooks/useOfflineStage'
 import OfflineStageBanner from '../components/OfflineStageBanner'
+import AppIcon, { type AppIconName } from '../components/AppIcon'
+import { AppCard, AppEmptyState } from '../components/ui'
 
 const DIMENSION_CONFIG: {
   key: 'personnel' | 'supply' | 'infrastructure' | 'comms' | 'coordination' | 'cohesion'
   label: string
-  icon: string
+  icon: AppIconName
   route: string
 }[] = [
-  { key: 'personnel', label: 'Personnel', icon: '👤', route: 'schematic' },
-  { key: 'supply', label: 'Supply', icon: '📦', route: 'inventory' },
-  { key: 'infrastructure', label: 'Infrastructure', icon: '🏕️', route: 'map' },
-  { key: 'comms', label: 'Comms', icon: '📻', route: 'comms' },
-  { key: 'coordination', label: 'Coordination', icon: '🎯', route: 'goals' },
-  { key: 'cohesion', label: 'Cohesion', icon: '🧠', route: 'psych' },
+  { key: 'personnel', label: 'Personnel', icon: 'user', route: 'schematic' },
+  { key: 'supply', label: 'Supply', icon: 'box', route: 'inventory' },
+  { key: 'infrastructure', label: 'Infrastructure', icon: 'tent', route: 'map' },
+  { key: 'comms', label: 'Comms', icon: 'radio', route: 'comms' },
+  { key: 'coordination', label: 'Coordination', icon: 'target', route: 'goals' },
+  { key: 'cohesion', label: 'Cohesion', icon: 'brain', route: 'psych' },
 ]
 
 type TribeSubRoute =
@@ -72,7 +74,7 @@ function formatFactorValue(value: number): string {
 
 function DimensionCard({ dim, icon, label }: {
   dim: ReadinessDimensionResult
-  icon: string
+  icon: AppIconName
   label: string
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -83,7 +85,7 @@ function DimensionCard({ dim, icon, label }: {
       onClick={() => setExpanded(e => !e)}
     >
       <div className="flex items-center gap-3">
-        <span className="text-xl flex-shrink-0">{icon}</span>
+        <AppIcon name={icon} size={20} className="flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-semibold text-gray-200">{label}</span>
@@ -98,7 +100,7 @@ function DimensionCard({ dim, icon, label }: {
             />
           </div>
         </div>
-        <span className="text-forest-400 text-xs ml-1 flex-shrink-0">{expanded ? '▲' : '▼'}</span>
+        <span className="text-forest-400 text-xs ml-1 flex-shrink-0">{expanded ? <AppIcon name="caretUp" size={16} /> : <AppIcon name="caretDown" size={16} />}</span>
       </div>
 
       {expanded && (
@@ -106,7 +108,7 @@ function DimensionCard({ dim, icon, label }: {
           {dim.factors.map((factor, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className={`text-xs flex-shrink-0 ${factor.ok ? 'text-forest-400' : 'text-danger-400'}`}>
-                {factor.ok ? '✓' : '✗'}
+                {factor.ok ? <AppIcon name="check" size={16} /> : <AppIcon name="close" size={16} />}
               </span>
               <span className="text-xs text-gray-300 flex-1">{factor.label}</span>
               <span className="text-xs font-mono text-gray-400">{formatFactorValue(factor.value)}</span>
@@ -128,7 +130,7 @@ export default function ReadinessScreen() {
     return (
       <div className="max-w-md mx-auto px-4 py-8">
         <Link to="/tribe/$tribeId" params={{ tribeId }} className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300">
-          ← Dashboard
+          <AppIcon name="back" size={16} /> Dashboard
         </Link>
         <div className="space-y-3 animate-pulse">
           <div className="h-8 bg-forest-900 rounded w-2/3" />
@@ -144,11 +146,9 @@ export default function ReadinessScreen() {
     return (
       <div className="max-w-md mx-auto px-4 py-8">
         <Link to="/tribe/$tribeId" params={{ tribeId }} className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300">
-          ← Dashboard
+          <AppIcon name="back" size={16} /> Dashboard
         </Link>
-        <div className="card text-center py-10">
-          <p className="text-gray-400 text-sm">Not enough data yet — fill in more tribe information.</p>
-        </div>
+        <AppEmptyState icon="shield" title="Not enough data yet — fill in more tribe information." />
       </div>
     )
   }
@@ -177,7 +177,7 @@ export default function ReadinessScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Dashboard
+        <AppIcon name="back" size={16} /> Dashboard
       </Link>
 
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
@@ -185,7 +185,7 @@ export default function ReadinessScreen() {
       <h2 className="text-xl font-bold text-gray-100 mb-4">Readiness Report</h2>
 
       {/* Overall score card */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <div>
             <div className="text-5xl font-bold font-mono text-gray-100 leading-none">
@@ -208,12 +208,12 @@ export default function ReadinessScreen() {
             style={{ width: `${report.overall}%` }}
           />
         </div>
-      </div>
+      </AppCard>
 
       {/* Radar chart */}
-      <div className="card mb-4 flex justify-center">
+      <AppCard className="mb-4 flex justify-center">
         <RadarChart scores={radarScores} />
-      </div>
+      </AppCard>
 
       {/* Dimension cards */}
       <div className="space-y-2 mb-4">
@@ -240,15 +240,15 @@ export default function ReadinessScreen() {
                   className="card w-full text-left flex items-center gap-3 hover:border-danger-600 transition-colors"
                   onClick={() => navigate({ to: route, params: { tribeId } })}
                 >
-                  <span className="text-danger-400 flex-shrink-0">→</span>
+                  <AppIcon name="forward" size={16} className="text-danger-400 flex-shrink-0" />
                   <span className="text-sm text-gray-300 flex-1">{gap}</span>
-                  <span className="text-forest-400 text-xs">Fix →</span>
+                  <span className="text-forest-400 text-xs">Fix <AppIcon name="forward" size={16} /></span>
                 </button>
               ) : (
-                <div key={i} className="card flex items-center gap-3">
-                  <span className="text-danger-400 flex-shrink-0">→</span>
+                <AppCard key={i} className="flex items-center gap-3">
+                  <AppIcon name="forward" size={16} className="text-danger-400 flex-shrink-0" />
                   <span className="text-sm text-gray-300">{gap}</span>
-                </div>
+                </AppCard>
               )
             })}
           </div>
@@ -256,10 +256,10 @@ export default function ReadinessScreen() {
       )}
 
       {report.criticalGaps.length === 0 && (
-        <div className="card text-center py-4 border-forest-700 bg-forest-900/20">
+        <AppCard className="text-center !py-4 !border-forest-700 !bg-forest-900/20">
           <p className="text-forest-400 text-sm font-semibold">No critical gaps detected</p>
           <p className="text-gray-500 text-xs mt-1">Tribe is well-prepared across all dimensions</p>
-        </div>
+        </AppCard>
       )}
     </div>
   )

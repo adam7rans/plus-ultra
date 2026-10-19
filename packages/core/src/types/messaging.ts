@@ -1,4 +1,4 @@
-export type MessageType = 'text' | 'voice' | 'photo'
+export type MessageType = 'text' | 'voice' | 'photo' | 'video'
 
 export interface Message {
   id: string

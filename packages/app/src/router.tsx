@@ -1,6 +1,7 @@
 import { createRouter, createRoute, createRootRoute, Outlet } from '@tanstack/react-router'
 import { IdentityProvider } from './contexts/IdentityContext'
 import { TribeProvider } from './contexts/TribeContext'
+import TribeLayout from './components/TribeLayout'
 import IdentityScreen from './screens/IdentityScreen'
 import HomeScreen from './screens/HomeScreen'
 import CreateTribeScreen from './screens/CreateTribeScreen'
@@ -10,6 +11,7 @@ import SkillsDeclarationScreen from './screens/SkillsDeclarationScreen'
 import TribeChannelScreen from './screens/TribeChannelScreen'
 import DirectMessageScreen from './screens/DirectMessageScreen'
 import DiagnosticsScreen from './screens/DiagnosticsScreen'
+import DesignSystemScreen from './screens/DesignSystemScreen'
 import TribeSchematicScreen from './screens/TribeSchematicScreen'
 import MyStationScreen from './screens/MyStationScreen'
 import MyPeopleScreen from './screens/MyPeopleScreen'
@@ -37,6 +39,7 @@ import BugOutScreen from './screens/BugOutScreen'
 import KnowledgeBaseScreen from './screens/KnowledgeBaseScreen'
 import FinanceScreen from './screens/FinanceScreen'
 import ReadinessScreen from './screens/ReadinessScreen'
+import MoreScreen from './screens/MoreScreen'
 import Viewer from './viewer/Viewer'
 
 function RootLayout() {
@@ -52,6 +55,15 @@ function RootLayout() {
 }
 
 const rootRoute = createRootRoute({ component: RootLayout })
+
+// Layout for the /tribe URL space: page content + bottom tab bar.
+// The layout owns the 'tribe' prefix; children paths are relative to it,
+// so full paths stay exactly '/tribe/$tribeId/...' as before.
+const tribeLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'tribe',
+  component: TribeLayout,
+})
 
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -78,106 +90,106 @@ const joinRoute = createRoute({
 })
 
 const tribeDashboardRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId',
   component: TribeDashboard,
 })
 
 const skillsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/skills',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/skills',
   component: SkillsDeclarationScreen,
 })
 
 const tribeChannelRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/channel',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/channel',
   component: TribeChannelScreen,
 })
 
 const dmRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/dm/$memberPub',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/dm/$memberPub',
   component: DirectMessageScreen,
 })
 
 const tribeSchematicRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/schematic',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/schematic',
   component: TribeSchematicScreen,
 })
 
 const myStationRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/station',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/station',
   component: MyStationScreen,
 })
 
 const myPeopleRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/people',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/people',
   component: MyPeopleScreen,
 })
 
 const scheduleRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/schedule',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/schedule',
   component: ScheduleScreen,
 })
 
 const onboardingRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/onboarding',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/onboarding',
   component: OnboardingScreen,
 })
 
 const inventoryRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/inventory',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/inventory',
   component: InventoryScreen,
 })
 
 const memberProfileRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/member/$memberPub',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/member/$memberPub',
   component: MemberProfileScreen,
 })
 
 const tribeSettingsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/settings',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/settings',
   component: TribeSettingsScreen,
 })
 
 const proposalsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/proposals',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/proposals',
   component: ProposalsScreen,
 })
 
 // IMPORTANT: createProposalRoute must come before proposalDetailRoute
 // so that "new" is not captured as $proposalId
 const createProposalRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/proposals/new',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/proposals/new',
   component: CreateProposalScreen,
 })
 
 const proposalDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/proposals/$proposalId',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/proposals/$proposalId',
   component: ProposalDetailScreen,
 })
 
 const mapRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/map',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/map',
   component: MapScreen,
 })
 
 const trainingRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/training',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/training',
   component: TrainingScreen,
 })
 
@@ -188,89 +200,101 @@ const connectRoute = createRoute({
 })
 
 const federationRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/federation',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/federation',
   component: FederationScreen,
 })
 
 // IMPORTANT: federationChannelRoute must come after federationRoute
 const federationChannelRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/federation/$channelId',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/federation/$channelId',
   component: FederationChannelScreen,
 })
 
 const psychOverviewRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/psych',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/psych',
   component: PsychOverviewScreen,
 })
 
 // IMPORTANT: psychAssessmentRoute must come after psychOverviewRoute
 const psychAssessmentRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/psych/assessment',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/psych/assessment',
   component: PsychAssessmentScreen,
 })
 
 const rollCallRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/rollcall',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/rollcall',
   component: RollCallScreen,
 })
 
 const productionRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/production',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/production',
   component: ProductionScreen,
 })
 
 const contactsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/contacts',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/contacts',
   component: ContactsScreen,
 })
 
 const commsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/comms',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/comms',
   component: CommsScreen,
 })
 
 const goalsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/goals',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/goals',
   component: GoalsScreen,
 })
 
 const bugoutRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/bugout',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/bugout',
   component: BugOutScreen,
 })
 
 const kbRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/kb',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/kb',
   component: KnowledgeBaseScreen,
 })
 
 const financeRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/finance',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/finance',
   component: FinanceScreen,
 })
 
 const readinessRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tribe/$tribeId/readiness',
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/readiness',
   component: ReadinessScreen,
+})
+
+const moreRoute = createRoute({
+  getParentRoute: () => tribeLayoutRoute,
+  path: '$tribeId/more',
+  component: MoreScreen,
 })
 
 const diagnosticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/diagnostics',
   component: DiagnosticsScreen,
+})
+
+const designSystemRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/design-system',
+  component: DesignSystemScreen,
 })
 
 const viewerRoute = createRoute({
@@ -287,11 +311,7 @@ const viewerFlowRoute = createRoute({
   component: Viewer,
 })
 
-const routeTree = rootRoute.addChildren([
-  homeRoute,
-  identityRoute,
-  createTribeRoute,
-  joinRoute,
+const tribeRouteTree = tribeLayoutRoute.addChildren([
   tribeDashboardRoute,
   skillsRoute,
   tribeChannelRoute,
@@ -309,7 +329,6 @@ const routeTree = rootRoute.addChildren([
   proposalDetailRoute,
   mapRoute,
   trainingRoute,
-  connectRoute,
   federationRoute,
   federationChannelRoute,
   psychOverviewRoute,
@@ -323,7 +342,18 @@ const routeTree = rootRoute.addChildren([
   kbRoute,
   financeRoute,
   readinessRoute,
+  moreRoute,
+])
+
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  identityRoute,
+  createTribeRoute,
+  joinRoute,
+  tribeRouteTree,
+  connectRoute,
   diagnosticsRoute,
+  designSystemRoute,
   viewerRoute,
   viewerFlowRoute,
 ])

@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useIdentity } from '../contexts/IdentityContext'
-import { shortId, markBackedUp } from '../lib/identity'
+import { shortId, markBackedUp } from '../lib/platform/identity'
 import QrDisplay from '../components/QrDisplay'
 import QrScanner from '../components/QrScanner'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard, AppInput } from '../components/ui'
 import { Link } from '@tanstack/react-router'
 
 type View = 'main' | 'backup' | 'restore'
@@ -71,20 +73,20 @@ export default function IdentityScreen() {
           Anyone with this QR code can access your identity.
         </p>
 
-        <div className="card mb-4 flex justify-center">
+        <AppCard className="mb-4 flex justify-center">
           <QrDisplay value={backupData} onShown={handleBackupShown} />
-        </div>
+        </AppCard>
 
-        <div className="card border-danger-700 bg-danger-900/20 mb-6">
-          <p className="text-danger-400 text-sm font-semibold mb-1">⚠ Keep this private</p>
+        <AppCard className="border-danger-700 bg-danger-900/20 mb-6">
+          <p className="text-danger-400 text-sm font-semibold mb-1"><AppIcon name="warning" size={16} className="inline" /> Keep this private</p>
           <p className="text-gray-400 text-xs">
             This QR contains your private key. Guard it like cash.
           </p>
-        </div>
+        </AppCard>
 
-        <button className="btn-primary w-full" onClick={() => setView('main')}>
+        <AppButton fullWidth onClick={() => setView('main')}>
           Done — I've saved my backup
-        </button>
+        </AppButton>
       </div>
     )
   }
@@ -102,20 +104,20 @@ export default function IdentityScreen() {
         </p>
 
         {restoreSuccess ? (
-          <div className="card border-forest-600 bg-forest-800/20">
-            <p className="text-forest-300 font-semibold mb-1">✓ Identity restored</p>
+          <AppCard className="border-forest-600 bg-forest-800/20">
+            <p className="text-forest-300 font-semibold mb-1"><AppIcon name="check" size={16} className="inline" /> Identity restored</p>
             <p className="text-gray-400 text-sm">Your identity has been restored successfully.</p>
             <Link to="/" className="block mt-4">
-              <button className="btn-primary w-full">Continue</button>
+              <AppButton fullWidth>Continue</AppButton>
             </Link>
-          </div>
+          </AppCard>
         ) : (
           <>
             <QrScanner onScan={handleQrScanned} />
             {restoreError && (
-              <div className="card border-danger-700 bg-danger-900/20 mt-4">
+              <AppCard className="border-danger-700 bg-danger-900/20 mt-4">
                 <p className="text-danger-400 text-sm">{restoreError}</p>
-              </div>
+              </AppCard>
             )}
           </>
         )}
@@ -133,7 +135,7 @@ export default function IdentityScreen() {
       <h2 className="text-xl font-bold text-gray-100 mb-6">Your Identity</h2>
 
       {/* Public key display */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-gray-300 uppercase tracking-widest">Public Key</span>
           <span className="text-xs text-gray-400">Safe to share</span>
@@ -144,20 +146,21 @@ export default function IdentityScreen() {
         <div className="text-xs text-gray-400 font-mono break-all leading-relaxed">
           {identity.pub}
         </div>
-      </div>
+      </AppCard>
 
       {/* Display name */}
-      <div className="card mb-4">
+      <AppCard className="mb-4">
         <div className="text-xs text-gray-300 uppercase tracking-widest mb-3">Display Name</div>
         {identity.displayName && !editingDisplayName ? (
           <div className="flex items-center justify-between">
             <span className="text-gray-100 font-semibold">{identity.displayName}</span>
-            <button
-              className="text-xs text-forest-400 hover:text-forest-300"
+            <AppButton
+              variant="ghost"
+              size="sm"
               onClick={() => { setDisplayNameInput(identity.displayName ?? ''); setEditingDisplayName(true) }}
             >
               Edit
-            </button>
+            </AppButton>
           </div>
         ) : (
           <>
@@ -165,8 +168,8 @@ export default function IdentityScreen() {
               <p className="text-xs text-gray-500 mb-3">Not set — tribe members see your short ID (<span className="font-mono text-forest-300">{shortId(identity.pub)}</span>) instead.</p>
             )}
             <div className="flex gap-2">
-              <input
-                className="input flex-1 text-sm"
+              <AppInput
+                className="flex-1 text-sm"
                 type="text"
                 placeholder="Your name"
                 value={displayNameInput}
@@ -174,20 +177,20 @@ export default function IdentityScreen() {
                 maxLength={40}
                 autoFocus
               />
-              <button
-                className="btn-primary text-sm px-4"
+              <AppButton
+                className="text-sm !px-4"
                 onClick={handleSaveDisplayName}
                 disabled={!displayNameInput.trim()}
               >
                 Save
-              </button>
+              </AppButton>
             </div>
           </>
         )}
-      </div>
+      </AppCard>
 
       {/* Private key — hidden */}
-      <div className="card mb-6 border-danger-700/30">
+      <AppCard className="mb-6 border-danger-700/30">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-gray-300 uppercase tracking-widest">Private Key</span>
           <span className="text-xs text-danger-400">Never share</span>
@@ -197,25 +200,28 @@ export default function IdentityScreen() {
             <div className="text-xs text-gray-400 font-mono break-all leading-relaxed mb-2">
               {identity.priv}
             </div>
-            <button
-              className="text-xs text-danger-400 hover:text-danger-300"
+            <AppButton
+              variant="ghost"
+              size="sm"
+              className="!text-danger-400 hover:!text-danger-300"
               onClick={() => setShowPrivateWarning(false)}
             >
               Hide
-            </button>
+            </AppButton>
           </div>
         ) : (
-          <button
-            className="text-xs text-gray-400 hover:text-gray-200"
+          <AppButton
+            variant="ghost"
+            size="sm"
             onClick={() => setShowPrivateWarning(true)}
           >
             ••••••••••••••••••••••••••••••• (tap to reveal)
-          </button>
+          </AppButton>
         )}
-      </div>
+      </AppCard>
 
       {/* Backup status */}
-      <div className={`card mb-6 ${identity.backedUp ? 'border-forest-600/30' : 'border-warning-700'}`}>
+      <AppCard className={`mb-6 ${identity.backedUp ? 'border-forest-600/30' : 'border-warning-700'}`}>
         <div className="flex items-center gap-2 mb-1">
           <span className={`w-2 h-2 rounded-full ${identity.backedUp ? 'bg-forest-400' : 'bg-warning-500 animate-pulse'}`} />
           <span className={`text-sm font-semibold ${identity.backedUp ? 'text-forest-300' : 'text-warning-400'}`}>
@@ -227,16 +233,16 @@ export default function IdentityScreen() {
             ? 'You have a backup QR code for this identity.'
             : 'Without a backup, losing your phone means losing your tribe access forever.'}
         </p>
-      </div>
+      </AppCard>
 
       {/* Actions */}
       <div className="space-y-3">
-        <button className="btn-primary w-full" onClick={() => setView('backup')}>
-          {identity.backedUp ? 'View Backup QR Code' : '⚠ Back Up Now'}
-        </button>
-        <button className="btn-secondary w-full" onClick={() => setView('restore')}>
+        <AppButton fullWidth onClick={() => setView('backup')}>
+          {identity.backedUp ? 'View Backup QR Code' : (<><AppIcon name="warning" size={16} className="inline" /> Back Up Now</>)}
+        </AppButton>
+        <AppButton variant="secondary" fullWidth onClick={() => setView('restore')}>
           Restore from QR Code
-        </button>
+        </AppButton>
       </div>
 
       <p className="text-xs text-gray-400 text-center mt-6">

@@ -8,6 +8,9 @@ import { useConsumption } from '../hooks/useConsumption'
 import { useInventory } from '../hooks/useInventory'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
 import { logProductionEntry } from '../lib/production'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard } from '../components/ui'
+import { ASSET_APP_ICONS } from '../components/registry-icons'
 import {
   ASSET_REGISTRY, ASSET_BY_KEY,
   computeNetRate, computeNetDaysRemaining,
@@ -52,7 +55,7 @@ export default function ProductionScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Dashboard
+        <AppIcon name="back" size={16} /> Dashboard
       </Link>
 
       <OfflineStageBanner stage={offlineStage} offlineSince={offlineSince} />
@@ -64,7 +67,7 @@ export default function ProductionScreen() {
 
       {/* Net Positions — only if production data exists */}
       {assetsWithProduction.length > 0 && (
-        <div className="card mb-6">
+        <AppCard className="mb-6">
           <h3 className="text-xs text-gray-400 uppercase tracking-widest mb-3">Net Positions</h3>
           <div className="space-y-2">
             {assetsWithProduction.map(assetType => {
@@ -81,7 +84,7 @@ export default function ProductionScreen() {
 
               return (
                 <div key={assetType} className="flex items-center gap-3">
-                  <span className="text-base w-6 text-center">{spec.icon}</span>
+                  <span className="text-base w-6 text-center"><AppIcon name={ASSET_APP_ICONS[spec.asset]} size={16} /></span>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-gray-200 truncate">{spec.label}</div>
                     {netRate !== null ? (
@@ -103,17 +106,17 @@ export default function ProductionScreen() {
               )
             })}
           </div>
-        </div>
+        </AppCard>
       )}
 
       {/* Log Production form */}
-      <div className="card mb-6">
+      <AppCard className="mb-6">
         <h3 className="text-xs text-gray-400 uppercase tracking-widest mb-3">Log Production</h3>
         <LogProductionForm
           tribeId={tribeId}
           loggedBy={identity?.pub ?? ''}
         />
-      </div>
+      </AppCard>
 
       {/* History grouped by asset */}
       {byAsset.size > 0 && (
@@ -128,15 +131,15 @@ export default function ProductionScreen() {
               const isExpanded = expandedHistory.has(assetType)
 
               return (
-                <div key={assetType} className="card">
+                <AppCard key={assetType}>
                   <button
                     className="w-full flex items-center gap-2 text-left"
                     onClick={() => toggleHistory(assetType)}
                   >
-                    <span className="text-base">{spec.icon}</span>
+                    <span className="text-base"><AppIcon name={ASSET_APP_ICONS[spec.asset]} size={16} /></span>
                     <span className="text-sm text-gray-200 flex-1">{spec.label}</span>
                     <span className="text-xs text-gray-600">{sorted.length} entr{sorted.length !== 1 ? 'ies' : 'y'}</span>
-                    <span className="text-gray-600 text-xs ml-1">{isExpanded ? '▲' : '▼'}</span>
+                    <span className="text-gray-600 text-xs ml-1">{isExpanded ? <AppIcon name="caretUp" size={16} /> : <AppIcon name="caretDown" size={16} />}</span>
                   </button>
 
                   {isExpanded && (
@@ -157,7 +160,7 @@ export default function ProductionScreen() {
                       })}
                     </div>
                   )}
-                </div>
+                </AppCard>
               )
             })}
           </div>
@@ -248,7 +251,7 @@ function LogProductionForm({ tribeId, loggedBy }: { tribeId: string; loggedBy: s
                 className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-forest-800 transition-colors"
                 onMouseDown={() => selectAsset(spec.asset)}
               >
-                <span className="text-sm">{spec.icon}</span>
+                <span className="text-sm"><AppIcon name={ASSET_APP_ICONS[spec.asset]} size={16} /></span>
                 <span className="text-xs text-gray-300">{spec.label}</span>
                 <span className="text-xs text-gray-600 ml-auto">{spec.unit}</span>
               </button>
@@ -316,13 +319,14 @@ function LogProductionForm({ tribeId, loggedBy }: { tribeId: string; loggedBy: s
         />
       </div>
 
-      <button
+      <AppButton
         type="submit"
+        size="sm"
+        fullWidth
         disabled={submitting || !selectedAsset}
-        className="btn-primary text-xs py-1.5 w-full"
       >
         {success ? 'Logged!' : submitting ? 'Logging...' : 'Log Production'}
-      </button>
+      </AppButton>
     </form>
   )
 }

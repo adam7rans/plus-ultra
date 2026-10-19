@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { createVoiceRecorder, compressPhoto } from '../lib/media'
+import { createVoiceRecorder, compressPhoto, pickNativePhoto } from '../lib/platform/media'
+import { isNative } from '../lib/platform/types'
+import AppButton from './ui/AppButton'
+import { AppTextarea } from './ui/AppField'
 
 interface Props {
   onSendText: (text: string) => Promise<void>
@@ -86,36 +89,53 @@ export default function MessageInput({ onSendText, onSendVoice, onSendPhoto, dis
     }
   }
 
+  async function handlePhotoButton() {
+    // Native shell: system photo picker. Web: file input (unchanged).
+    if (isNative()) {
+      const picked = await pickNativePhoto()
+      if (!picked) return
+      setSending(true)
+      try {
+        await onSendPhoto(picked.base64, picked.mimeType)
+      } finally {
+        setSending(false)
+      }
+      return
+    }
+    fileRef.current?.click()
+  }
+
   if (recording) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3 border-t border-forest-800 bg-forest-950">
+      <div className="flex items-center gap-3 px-4 py-3 pb-safe border-t border-forest-800 bg-forest-950">
         <div className="flex-1 flex items-center gap-2">
           <span className="w-2.5 h-2.5 bg-danger-400 rounded-full animate-pulse" />
           <span className="text-danger-400 text-sm font-mono">
             Recording {recordingSeconds}s / 30s
           </span>
         </div>
-        <button
+        <AppButton
+          variant="danger"
+          size="sm"
           onClick={stopRecording}
-          className="bg-danger-700 hover:bg-danger-500 text-white px-4 py-2 rounded-lg text-sm font-semibold"
         >
           Stop &amp; Send
-        </button>
+        </AppButton>
       </div>
     )
   }
 
   return (
-    <div className="flex items-end gap-2 px-3 py-3 border-t border-forest-800 bg-forest-950">
+    <div className="flex items-end gap-2 px-3 py-3 pb-safe border-t border-forest-800 bg-forest-950">
       {/* Photo */}
-      <button
-        className="text-gray-500 hover:text-forest-400 p-2 flex-shrink-0 transition-colors"
-        onClick={() => fileRef.current?.click()}
+      <AppButton
+        variant="icon"
+        icon="camera"
+        iconSize={20}
+        onClick={() => void handlePhotoButton()}
         disabled={disabled || sending}
         title="Send photo"
-      >
-        <span className="text-xl">📷</span>
-      </button>
+      />
       <input
         ref={fileRef}
         type="file"
@@ -129,8 +149,8 @@ export default function MessageInput({ onSendText, onSendVoice, onSendPhoto, dis
       />
 
       {/* Text input */}
-      <textarea
-        className="flex-1 input resize-none text-sm py-2 max-h-24"
+      <AppTextarea
+        className="flex-1 resize-none text-sm py-2 max-h-24"
         rows={1}
         placeholder="Message tribe..."
         value={text}
@@ -141,23 +161,25 @@ export default function MessageInput({ onSendText, onSendVoice, onSendPhoto, dis
 
       {/* Voice or Send */}
       {text.trim() ? (
-        <button
-          className="bg-forest-500 hover:bg-forest-400 text-white p-2 rounded-lg flex-shrink-0 transition-colors active:scale-95"
+        <AppButton
+          variant="icon"
+          icon="send"
+          iconSize={20}
           onClick={() => void handleSendText()}
           disabled={sending}
-        >
-          <span className="text-lg">↑</span>
-        </button>
+          aria-label="Send"
+          className="!bg-accent-500 hover:!bg-accent-400 !text-white"
+        />
       ) : (
-        <button
-          className="text-gray-500 hover:text-forest-400 p-2 flex-shrink-0 transition-colors active:scale-95"
+        <AppButton
+          variant="icon"
+          icon="mic"
+          iconSize={20}
           onMouseDown={() => void startRecording()}
           onTouchStart={() => void startRecording()}
           disabled={disabled || sending}
           title="Hold to record voice"
-        >
-          <span className="text-xl">🎙</span>
-        </button>
+        />
       )}
     </div>
   )

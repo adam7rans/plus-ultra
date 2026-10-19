@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
+import AppIcon from '../components/AppIcon'
+import { AppButton, AppCard } from '../components/ui'
 import { useSurvivabilityScore } from '../hooks/useSurvivabilityScore'
-import { getDB } from '../lib/db'
+import { getDB } from '../lib/platform/storage'
 import type { TribeMember } from '@plus-ultra/core'
 
 type Relationship = 'family' | 'friend'
@@ -88,7 +90,7 @@ export default function MyPeopleScreen() {
       : `${Math.floor(lastSeenAgo / 86400000)}d ago`
 
     return (
-      <div key={member.pubkey} className="card flex items-center gap-3 py-3">
+      <AppCard key={member.pubkey} className="flex items-center gap-3 !py-3">
         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${status.color}`} />
         <Link
           to="/tribe/$tribeId/member/$memberPub"
@@ -108,17 +110,17 @@ export default function MyPeopleScreen() {
             params={{ tribeId, memberPub: member.pubkey }}
             className="text-gray-500 hover:text-forest-400 transition-colors"
           >
-            <span className="text-lg">💬</span>
+            <span className="text-lg"><AppIcon name="chat" size={16} /></span>
           </Link>
-          <button
+          <AppButton
+            variant="icon"
+            icon="close"
+            iconSize={16}
             onClick={() => removePerson(member.pubkey)}
-            className="text-gray-700 hover:text-danger-400 transition-colors text-xs"
             title="Remove"
-          >
-            ✕
-          </button>
+          />
         </div>
-      </div>
+      </AppCard>
     )
   }
 
@@ -137,7 +139,7 @@ export default function MyPeopleScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Back to Dashboard
+        <AppIcon name="back" size={16} /> Back to Dashboard
       </Link>
 
       <h2 className="text-xl font-bold text-gray-100 mb-1">My People</h2>
@@ -149,25 +151,28 @@ export default function MyPeopleScreen() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs text-gray-300 uppercase tracking-widest flex items-center gap-2">
-            👨‍👩‍👧 Family ({familyMembers.length})
+            <AppIcon name="people" size={16} /> Family ({familyMembers.length})
           </h3>
-          <button
-            className="text-xs text-forest-400 hover:text-forest-300"
+          <AppButton
+            variant="ghost"
+            size="sm"
             onClick={() => setShowAddModal('family')}
           >
             + Add
-          </button>
+          </AppButton>
         </div>
         {familyMembers.length === 0 ? (
-          <div className="card text-center py-4">
+          <AppCard className="text-center py-4">
             <p className="text-gray-500 text-sm">No family members added yet</p>
-            <button
-              className="text-forest-400 text-xs mt-1 hover:text-forest-300"
+            <AppButton
+              variant="ghost"
+              size="sm"
+              className="mt-1"
               onClick={() => setShowAddModal('family')}
             >
               Add family members →
-            </button>
-          </div>
+            </AppButton>
+          </AppCard>
         ) : (
           <div className="space-y-1.5">
             {familyMembers.map(m => renderPersonRow(m))}
@@ -179,25 +184,28 @@ export default function MyPeopleScreen() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs text-gray-300 uppercase tracking-widest flex items-center gap-2">
-            🤝 Friends ({friendMembers.length})
+            <AppIcon name="handshake" size={16} /> Friends ({friendMembers.length})
           </h3>
-          <button
-            className="text-xs text-forest-400 hover:text-forest-300"
+          <AppButton
+            variant="ghost"
+            size="sm"
             onClick={() => setShowAddModal('friend')}
           >
             + Add
-          </button>
+          </AppButton>
         </div>
         {friendMembers.length === 0 ? (
-          <div className="card text-center py-4">
+          <AppCard className="text-center py-4">
             <p className="text-gray-500 text-sm">No friends added yet</p>
-            <button
-              className="text-forest-400 text-xs mt-1 hover:text-forest-300"
+            <AppButton
+              variant="ghost"
+              size="sm"
+              className="mt-1"
               onClick={() => setShowAddModal('friend')}
             >
               Add friends →
-            </button>
-          </div>
+            </AppButton>
+          </AppCard>
         ) : (
           <div className="space-y-1.5">
             {friendMembers.map(m => renderPersonRow(m))}
@@ -213,12 +221,12 @@ export default function MyPeopleScreen() {
               <h3 className="text-sm font-bold text-gray-100">
                 Add {showAddModal === 'family' ? 'Family Member' : 'Friend'}
               </h3>
-              <button
-                className="text-gray-500 hover:text-gray-300"
+              <AppButton
+                variant="icon"
+                icon="close"
+                iconSize={16}
                 onClick={() => setShowAddModal(null)}
-              >
-                ✕
-              </button>
+              />
             </div>
             <div className="p-4 overflow-y-auto max-h-[50vh]">
               {availableToAdd.length === 0 ? (

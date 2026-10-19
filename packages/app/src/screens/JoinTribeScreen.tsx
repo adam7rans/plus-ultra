@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearch, Link } from '@tanstack/react-router'
 import { useIdentity } from '../contexts/IdentityContext'
 import { joinTribe, fetchTribeMeta } from '../lib/tribes'
+import { AppButton, AppCard } from '../components/ui'
 import type { Tribe } from '@plus-ultra/core'
 
 export default function JoinTribeScreen() {
@@ -65,13 +66,13 @@ export default function JoinTribeScreen() {
   if (!tribeId || !token) {
     return (
       <div className="max-w-md mx-auto px-4 py-8">
-        <div className="card border-danger-700">
+        <AppCard className="border-danger-700">
           <p className="text-danger-400 font-semibold mb-1">Invalid invite link</p>
           <p className="text-gray-400 text-sm">This link is missing required parameters.</p>
           <Link to="/" className="block mt-4">
-            <button className="btn-secondary w-full">Go home</button>
+            <AppButton variant="secondary" fullWidth>Go home</AppButton>
           </Link>
-        </div>
+        </AppCard>
       </div>
     )
   }
@@ -85,13 +86,13 @@ export default function JoinTribeScreen() {
       <h2 className="text-xl font-bold text-gray-100 mb-2">Join a Tribe</h2>
 
       {error ? (
-        <div className="card border-danger-700 bg-danger-900/20 mb-6">
+        <AppCard className="border-danger-700 bg-danger-900/20 mb-6">
           <p className="text-danger-400 text-sm">{error}</p>
-        </div>
+        </AppCard>
       ) : (tribe || urlTribeName) ? (
         <div className="space-y-6">
           {/* Tribe preview */}
-          <div className="card">
+          <AppCard>
             <div className="text-xs text-gray-500 uppercase tracking-widest mb-2">You're invited to join</div>
             <div className="text-2xl font-bold text-gray-100 mb-1">{tribe?.name ?? urlTribeName}</div>
             <div className="text-gray-400 text-sm">{tribe?.location ?? urlTribeLoc}</div>
@@ -105,20 +106,20 @@ export default function JoinTribeScreen() {
                 </span>
               </div>
             )}
-          </div>
+          </AppCard>
 
-          <button
-            className="btn-primary w-full"
+          <AppButton
+            fullWidth
             onClick={handleJoin}
             disabled={joining}
           >
             {joining ? 'Joining...' : `Join ${tribe?.name ?? urlTribeName}`}
-          </button>
+          </AppButton>
         </div>
       ) : (
-        <div className="card border-warning-700">
+        <AppCard className="border-warning-700">
           <p className="text-warning-400 text-sm">Could not load tribe info. Make sure you have internet or are connected to another tribe member's device.</p>
-        </div>
+        </AppCard>
       )}
     </div>
   )

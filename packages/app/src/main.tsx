@@ -6,6 +6,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles/index.css'
 import App from './App.tsx'
+import { initNative } from './lib/platform/init'
+
+// Native shell chrome (status bar, keyboard, back button, deep links).
+// No-op on web/PWA/desktop.
+void initNative()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

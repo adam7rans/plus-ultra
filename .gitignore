@@ -8,3 +8,4 @@ packages/app/dist/
 packages/core/dist/
 relay/push-subscriptions.json
 relay/radata/
+packages/app/test-results/

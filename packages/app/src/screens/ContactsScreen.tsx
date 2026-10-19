@@ -4,15 +4,17 @@ import { useIdentity } from '../contexts/IdentityContext'
 import { useContacts } from '../hooks/useContacts'
 import { addContact, updateContact, deleteContact, markVerified } from '../lib/contacts'
 import type { ExternalContact, ContactCategory } from '@plus-ultra/core'
+import AppIcon, { type AppIconName } from '../components/AppIcon'
+import { AppButton, AppCard, AppField, AppInput, AppSelect } from '../components/ui'
 
-const CATEGORY_META: Record<ContactCategory, { label: string; icon: string }> = {
-  medical:    { label: 'Medical',    icon: '🏥' },
-  legal:      { label: 'Legal',      icon: '⚖️' },
-  comms:      { label: 'Comms',      icon: '📻' },
-  supply:     { label: 'Supply',     icon: '🛒' },
-  mutual_aid: { label: 'Mutual Aid', icon: '🤝' },
-  authority:  { label: 'Authority',  icon: '🚔' },
-  other:      { label: 'Other',      icon: '👤' },
+const CATEGORY_META: Record<ContactCategory, { label: string; icon: AppIconName }> = {
+  medical:    { label: 'Medical',    icon: 'firstAid' },
+  legal:      { label: 'Legal',      icon: 'scales' },
+  comms:      { label: 'Comms',      icon: 'radio' },
+  supply:     { label: 'Supply',     icon: 'cart' },
+  mutual_aid: { label: 'Mutual Aid', icon: 'handshake' },
+  authority:  { label: 'Authority',  icon: 'detective' },
+  other:      { label: 'Other',      icon: 'user' },
 }
 
 const CATEGORY_ORDER: ContactCategory[] = [
@@ -155,19 +157,19 @@ export default function ContactsScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-4 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Dashboard
+        <AppIcon name="back" size={16} /> Dashboard
       </Link>
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-100">Contacts</h2>
-        <button className="btn-primary text-sm px-3 py-1.5" onClick={openAdd}>
+        <AppButton size="sm" className="text-sm" onClick={openAdd}>
           + Add Contact
-        </button>
+        </AppButton>
       </div>
 
       {/* Search */}
-      <input
-        className="input text-sm mb-3"
+      <AppInput
+        className="text-sm mb-3"
         placeholder="Search name, role, notes..."
         value={search}
         onChange={e => setSearch(e.target.value)}
@@ -195,31 +197,31 @@ export default function ContactsScreen() {
             }`}
             onClick={() => setFilterCategory(cat)}
           >
-            {CATEGORY_META[cat].icon} {CATEGORY_META[cat].label}
+            <AppIcon name={CATEGORY_META[cat].icon} size={16} /> {CATEGORY_META[cat].label}
           </button>
         ))}
       </div>
 
       {/* Contact list */}
       {filtered.length === 0 ? (
-        <div className="card text-center py-8">
+        <AppCard className="text-center py-8">
           <p className="text-gray-400 text-sm">
             {contacts.length === 0 ? 'No contacts yet — add doctors, HAM ops, vendors, and allies' : 'No contacts match your search'}
           </p>
-        </div>
+        </AppCard>
       ) : (
         <div className="space-y-4">
           {Array.from(grouped.entries()).map(([cat, items]) => (
             <div key={cat}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-base">{CATEGORY_META[cat].icon}</span>
+                <span className="text-base"><AppIcon name={CATEGORY_META[cat].icon} size={16} /></span>
                 <span className="text-xs text-gray-400 uppercase tracking-widest font-semibold">
                   {CATEGORY_META[cat].label}
                 </span>
               </div>
               <div className="space-y-1">
                 {items.map(c => (
-                  <div key={c.id} className="card p-0 overflow-hidden">
+                  <AppCard key={c.id} className="!p-0 overflow-hidden">
                     {/* Row */}
                     <button
                       className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-forest-900/30 transition-colors"
@@ -233,18 +235,19 @@ export default function ContactsScreen() {
                         <p className="text-xs text-gray-600">{formatVerified(c.lastVerified)}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          className="text-xs text-forest-400 hover:text-forest-300 px-2 py-1 border border-forest-800 rounded"
+                        <AppButton
+                          variant="ghost"
+                          size="sm"
                           onClick={e => { e.stopPropagation(); openEdit(c) }}
                         >
                           Edit
-                        </button>
-                        <button
-                          className="text-base text-danger-400 hover:text-danger-300 px-1"
+                        </AppButton>
+                        <AppButton
+                          variant="icon"
+                          icon="close"
+                          iconSize={16}
                           onClick={e => { e.stopPropagation(); void handleDelete(c) }}
-                        >
-                          ×
-                        </button>
+                        />
                       </div>
                     </button>
 
@@ -260,28 +263,32 @@ export default function ContactsScreen() {
                         )}
                         {c.notes && <p className="text-xs text-gray-300"><span className="text-gray-500">Notes:</span> {c.notes}</p>}
                         <div className="flex gap-2 pt-2">
-                          <button
-                            className="text-xs px-3 py-1 border border-forest-700 text-forest-400 rounded hover:border-forest-500 transition-colors"
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
                             onClick={() => void handleMarkVerified(c)}
                           >
                             Mark Verified
-                          </button>
-                          <button
-                            className="text-xs px-3 py-1 border border-forest-700 text-forest-400 rounded hover:border-forest-500 transition-colors"
+                          </AppButton>
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
                             onClick={() => openEdit(c)}
                           >
                             Edit
-                          </button>
-                          <button
-                            className="text-xs px-3 py-1 border border-danger-800 text-danger-400 rounded hover:border-danger-600 transition-colors"
+                          </AppButton>
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
+                            className="!text-danger-400 hover:!text-danger-300"
                             onClick={() => void handleDelete(c)}
                           >
                             Delete
-                          </button>
+                          </AppButton>
                         </div>
                       </div>
                     )}
-                  </div>
+                  </AppCard>
                 ))}
               </div>
             </div>
@@ -300,120 +307,116 @@ export default function ContactsScreen() {
               <h3 className="text-gray-100 font-semibold">
                 {editingContact ? 'Edit Contact' : 'Add Contact'}
               </h3>
-              <button className="text-gray-400 hover:text-gray-200 text-lg px-1" onClick={closeForm}>×</button>
+              <AppButton
+                variant="icon"
+                icon="close"
+                iconSize={16}
+                onClick={closeForm}
+              />
             </div>
 
             <div className="space-y-3">
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Name *</label>
-                <input
-                  className="input text-sm"
+              <AppField label="Name *">
+                <AppInput
+                  className="text-sm"
                   placeholder="Dr. Jane Smith"
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 />
-              </div>
+              </AppField>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Category *</label>
-                <select
-                  className="input text-sm"
+              <AppField label="Category *">
+                <AppSelect
+                  className="text-sm"
                   value={form.category}
                   onChange={e => setForm(f => ({ ...f, category: e.target.value as ContactCategory }))}
                 >
                   {CATEGORY_ORDER.map(cat => (
                     <option key={cat} value={cat}>
-                      {CATEGORY_META[cat].icon} {CATEGORY_META[cat].label}
+                      {CATEGORY_META[cat].label}
                     </option>
                   ))}
-                </select>
-              </div>
+                </AppSelect>
+              </AppField>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Role</label>
-                <input
-                  className="input text-sm"
+              <AppField label="Role">
+                <AppInput
+                  className="text-sm"
                   placeholder="EMT, HAM operator, County Sheriff..."
                   value={form.role}
                   onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
                 />
-              </div>
+              </AppField>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Phone</label>
-                <input
-                  className="input text-sm"
+              <AppField label="Phone">
+                <AppInput
+                  className="text-sm"
                   placeholder="(555) 123-4567"
                   value={form.phone}
                   onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                 />
-              </div>
+              </AppField>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Radio Frequency</label>
-                <input
-                  className="input text-sm"
+              <AppField label="Radio Frequency">
+                <AppInput
+                  className="text-sm"
                   placeholder="146.520 MHz / KD9XYZ"
                   value={form.radioFreq}
                   onChange={e => setForm(f => ({ ...f, radioFreq: e.target.value }))}
                 />
-              </div>
+              </AppField>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Location</label>
-                <input
-                  className="input text-sm"
+              <AppField label="Location">
+                <AppInput
+                  className="text-sm"
                   placeholder="Address or landmark"
                   value={form.location}
                   onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
                 />
-              </div>
+              </AppField>
 
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Latitude (enables map pin)</label>
-                  <input
-                    className="input text-sm"
+                <AppField label="Latitude (enables map pin)">
+                  <AppInput
+                    className="text-sm"
                     type="number"
                     placeholder="39.7392"
                     value={form.lat}
                     onChange={e => setForm(f => ({ ...f, lat: e.target.value }))}
                   />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Longitude</label>
-                  <input
-                    className="input text-sm"
+                </AppField>
+                <AppField label="Longitude">
+                  <AppInput
+                    className="text-sm"
                     type="number"
                     placeholder="-104.9903"
                     value={form.lng}
                     onChange={e => setForm(f => ({ ...f, lng: e.target.value }))}
                   />
-                </div>
+                </AppField>
               </div>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Notes</label>
-                <input
-                  className="input text-sm"
+              <AppField label="Notes">
+                <AppInput
+                  className="text-sm"
                   placeholder="Any additional notes"
                   value={form.notes}
                   onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 />
-              </div>
+              </AppField>
             </div>
 
             <div className="flex gap-2 mt-5">
-              <button
-                className="btn-primary flex-1"
+              <AppButton
+                className="flex-1"
                 onClick={() => void handleSave()}
                 disabled={saving || !form.name.trim()}
               >
                 {saving ? 'Saving...' : 'Save'}
-              </button>
-              <button className="btn-secondary flex-1" onClick={closeForm}>
+              </AppButton>
+              <AppButton variant="secondary" className="flex-1" onClick={closeForm}>
                 Cancel
-              </button>
+              </AppButton>
             </div>
           </div>
         </div>

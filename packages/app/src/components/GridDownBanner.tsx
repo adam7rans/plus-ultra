@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import type { GridState } from '@plus-ultra/core'
+import AppIcon from './AppIcon'
+import { AppButton, AppCard } from './ui'
 
 interface Props {
   gridState: GridState
@@ -23,29 +25,28 @@ export default function GridDownBanner({ gridState, tribeId, onClear, canClear }
   const isDrill = gridState.isSimulation
 
   return (
-    <div className={`card mb-4 ${
+    <AppCard className={`mb-4 ${
       isDrill
         ? 'border-warning-500 bg-warning-900/20'
         : 'border-danger-500 bg-danger-900/20'
     }`}>
       <div className="flex items-center gap-2 mb-1">
         <span className={`font-bold text-sm ${isDrill ? 'text-warning-300' : 'text-danger-300'}`}>
-          ⚡ GRID-DOWN {isDrill ? 'DRILL' : 'ACTIVE'}
+          <AppIcon name="bolt" size={16} className="inline" />{' '}
+          GRID-DOWN {isDrill ? 'DRILL' : 'ACTIVE'}
         </span>
         <span className={`text-xs ml-auto ${isDrill ? 'text-warning-400' : 'text-danger-400'}`}>
           {expiryLabel(gridState.expiresAt)}
         </span>
         {canClear && (
-          <button
+          <AppButton
+            variant="ghost"
+            size="sm"
             onClick={onClear}
-            className={`text-xs px-2 py-0.5 rounded border transition-colors ml-1 ${
-              isDrill
-                ? 'border-warning-600 text-warning-400 hover:bg-warning-800/30'
-                : 'border-danger-600 text-danger-400 hover:bg-danger-800/30'
-            }`}
+            className={`ml-1 ${isDrill ? '' : '!text-danger-400 hover:!text-danger-300'}`}
           >
-            Clear ×
-          </button>
+            Clear <AppIcon name="close" size={16} className="inline" />
+          </AppButton>
         )}
       </div>
       {gridState.message && (
@@ -58,6 +59,6 @@ export default function GridDownBanner({ gridState, tribeId, onClear, canClear }
       >
         View Readiness Report →
       </Link>
-    </div>
+    </AppCard>
   )
 }

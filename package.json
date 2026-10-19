@@ -12,7 +12,11 @@
     "build:android": "npm run build --workspace=packages/core && npm run build:android --workspace=packages/app",
     "build:ios": "npm run build --workspace=packages/core && npm run build:ios --workspace=packages/app",
     "serve-app": "node relay/serve-app.js",
-    "relay": "node relay/relay.js"
+    "relay": "node relay/relay.js",
+    "mobile:sync": "npm run sync --workspace=packages/mobile",
+    "mobile:version": "node packages/mobile/scripts/sync-version.mjs",
+    "mobile:open:ios": "npm run open:ios --workspace=packages/mobile",
+    "mobile:open:android": "npm run open:android --workspace=packages/mobile"
   },
   "dependencies": {
     "convex": "^1.33.1"

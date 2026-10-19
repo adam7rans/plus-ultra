@@ -17,6 +17,9 @@ import {
 import type { AssetCategory, AssetType, AssetSpec, TribeAsset } from '@plus-ultra/core'
 import type { AssetConsumptionData } from '../hooks/useConsumption'
 import type { ConsumptionEntry } from '@plus-ultra/core'
+import AppIcon from '../components/AppIcon'
+import { AppBadge, AppButton, AppCard } from '../components/ui'
+import { ASSET_APP_ICONS, CATEGORY_APP_ICONS } from '../components/registry-icons'
 
 export default function InventoryScreen() {
   const { tribeId } = useParams({ from: '/tribe/$tribeId/inventory' })
@@ -79,7 +82,7 @@ export default function InventoryScreen() {
         params={{ tribeId }}
         className="text-forest-400 text-sm mb-6 flex items-center gap-2 hover:text-forest-300"
       >
-        ← Back to Dashboard
+        <AppIcon name="back" size={16} /> Back to Dashboard
       </Link>
 
       <h2 className="text-xl font-bold text-gray-100 mb-1">Inventory</h2>
@@ -88,7 +91,7 @@ export default function InventoryScreen() {
       </p>
 
       {/* Asset Readiness score */}
-      <div className="card mb-6">
+      <AppCard className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <div>
             <div className="text-sm font-bold text-gray-100">Asset Readiness</div>
@@ -113,7 +116,7 @@ export default function InventoryScreen() {
             style={{ width: `${readinessPct}%` }}
           />
         </div>
-      </div>
+      </AppCard>
 
       {/* Category sections */}
       <div className="space-y-2">
@@ -138,7 +141,7 @@ export default function InventoryScreen() {
               >
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-base">{meta.icon}</span>
+                    <span className="text-base"><AppIcon name={CATEGORY_APP_ICONS[cat]} size={16} /></span>
                     <span className="text-sm font-semibold text-gray-200">{meta.label}</span>
                   </div>
                   <span className="text-xs text-gray-500">
@@ -149,7 +152,7 @@ export default function InventoryScreen() {
                   <span className="text-gray-600">
                     Needed at {memberCount} members
                   </span>
-                  <span className="text-gray-600">{isExpanded ? '▲' : '▼'}</span>
+                  <span className="text-gray-600">{isExpanded ? <AppIcon name="caretUp" size={16} /> : <AppIcon name="caretDown" size={16} />}</span>
                 </div>
               </button>
 
@@ -193,15 +196,15 @@ function DaysBadge({ data }: { data: AssetConsumptionData }) {
   const days = data.daysRemaining
   const label = days === Infinity ? '--' : `${Math.round(days)}d`
 
-  const colorClass =
-    data.status === 'critical' ? 'bg-danger-900 text-danger-400 border-danger-700' :
-    data.status === 'warning'  ? 'bg-warning-900/50 text-warning-400 border-warning-700' :
-                                 'bg-forest-950 text-forest-400 border-forest-800'
+  const tone: 'red' | 'amber' | 'green' =
+    data.status === 'critical' ? 'red' :
+    data.status === 'warning'  ? 'amber' :
+                                 'green'
 
   return (
-    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${colorClass}`}>
+    <AppBadge tone={tone} className="!text-[10px] font-mono">
       {label}
-    </span>
+    </AppBadge>
   )
 }
 
@@ -299,13 +302,14 @@ function LogForm({
         placeholder="Notes (optional)"
         className="w-full text-xs bg-forest-950 border border-forest-800 rounded-lg px-2.5 py-1.5 text-gray-300 placeholder:text-gray-700 focus:outline-none focus:border-forest-600"
       />
-      <button
+      <AppButton
         type="submit"
+        size="sm"
+        fullWidth
         disabled={submitting}
-        className="btn-primary text-xs py-1.5 w-full"
       >
         {submitting ? 'Logging...' : 'Log Consumption'}
-      </button>
+      </AppButton>
     </form>
   )
 }
@@ -356,19 +360,19 @@ function AssetRow({
   const [showLogForm, setShowLogForm] = useState(false)
 
   return (
-    <div className="card">
+    <AppCard>
       {/* Main row — clickable for stores to expand */}
       <div
         className={`flex items-center gap-2 ${isStores ? 'cursor-pointer' : ''}`}
         onClick={isStores ? onToggleAsset : undefined}
       >
-        <span className="text-sm">{spec.icon}</span>
+        <span className="text-sm"><AppIcon name={ASSET_APP_ICONS[spec.asset]} size={16} /></span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs text-gray-200 truncate">{spec.label}</span>
-            {spec.critical && <span className="text-warning-400 text-xs">★</span>}
+            {spec.critical && <AppIcon name="star" size={16} className="text-warning-400" />}
             {consumptionData && <DaysBadge data={consumptionData} />}
-            {isSyncing && <span className="text-gray-400 text-xs" title="Pending relay sync">⏱</span>}
+            {isSyncing && <span className="text-gray-400 text-xs" title="Pending relay sync"><AppIcon name="clock" size={16} /></span>}
           </div>
           <div className="text-xs text-gray-600">
             Need ×{needed} {unitLabel}
@@ -400,7 +404,7 @@ function AssetRow({
         )}
 
         {isStores && (
-          <span className="text-gray-600 text-xs ml-1">{isExpandedAsset ? '▲' : '▼'}</span>
+          <span className="text-gray-600 text-xs ml-1">{isExpandedAsset ? <AppIcon name="caretUp" size={16} /> : <AppIcon name="caretDown" size={16} />}</span>
         )}
       </div>
 
@@ -476,12 +480,14 @@ function AssetRow({
           {/* Log consumption */}
           {canEdit && (
             <>
-              <button
-                className="text-xs text-forest-400 hover:text-forest-300 transition-colors"
+              <AppButton
+                className="!text-xs !text-forest-400 hover:!text-forest-300"
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowLogForm(prev => !prev)}
               >
-                {showLogForm ? '▲ Hide form' : '[Log Consumption]'}
-              </button>
+                {showLogForm ? <span className="inline-flex items-center gap-1"><AppIcon name="caretUp" size={16} /> Hide form</span> : '[Log Consumption]'}
+              </AppButton>
               {showLogForm && (
                 <LogForm
                   unitLabel={unitLabel}
@@ -495,6 +501,6 @@ function AssetRow({
           )}
         </div>
       )}
-    </div>
+    </AppCard>
   )
 }

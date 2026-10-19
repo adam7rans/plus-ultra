@@ -75,6 +75,7 @@ export default defineSchema({
       ),
     ),
     physicalLimitations: v.optional(v.string()),
+    notes: v.optional(v.string()),
     bloodType: v.optional(v.string()),
     allergies: v.optional(v.array(v.string())),
     medications: v.optional(v.array(v.string())),

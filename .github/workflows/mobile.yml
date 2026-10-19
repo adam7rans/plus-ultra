@@ -1,0 +1,93 @@
+# Phase 6 — mobile CI.
+#
+# Lanes:
+#   web     — core unit tests (336 green) + production Vite build of packages/app.
+#             NOTE: packages/app's full vitest suite is intentionally NOT run here:
+#             24 files fail on main for pre-existing environment reasons
+#             (Gun.js under node, Playwright specs collected by vitest).
+#             Cleanup tracked for Phase 7; the component subset is covered locally.
+#   ios     — Capacitor sync + unsigned Xcode build validation
+#             (CODE_SIGNING_ALLOWED=NO). Signed TestFlight uploads need
+#             APP_STORE_CONNECT_* secrets + a match/fastlane lane (Phase 7).
+#   android — Capacitor sync + assembleDebug (runs on any runner with Java;
+#             first run downloads the Gradle toolchain). Signed release needs
+#             ANDROID_KEYSTORE_* secrets (Phase 7).
+#
+# Version source of truth is packages/app/package.json (`npm run mobile:version`
+# propagates to Info.plist / build.gradle before native builds).
+
+name: mobile
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/app/**'
+      - 'packages/mobile/**'
+      - 'packages/core/**'
+      - '.github/workflows/mobile.yml'
+  pull_request:
+    paths:
+      - 'packages/app/**'
+      - 'packages/mobile/**'
+      - 'packages/core/**'
+  workflow_dispatch:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test --workspace=packages/core
+      - run: npx vite build
+        working-directory: packages/app
+
+  ios:
+    runs-on: macos-latest
+    needs: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vite build
+        working-directory: packages/app
+      - run: npm run mobile:version
+      - run: npx cap sync ios
+        working-directory: packages/mobile
+      - run: >
+          xcodebuild build
+          -project ios/App/App.xcodeproj
+          -scheme App
+          -destination 'generic/platform=iOS'
+          CODE_SIGNING_ALLOWED=NO
+        working-directory: packages/mobile
+
+  android:
+    runs-on: ubuntu-latest
+    needs: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npx vite build
+        working-directory: packages/app
+      - run: npm run mobile:version
+      - run: npx cap sync android
+        working-directory: packages/mobile
+      - run: ./gradlew :app:assembleDebug
+        working-directory: packages/mobile/android

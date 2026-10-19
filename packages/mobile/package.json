@@ -1,0 +1,19 @@
+{
+  "name": "@plus-ultra/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plus Ultra — Capacitor native shell (iOS + Android). Wraps packages/app/dist; no app code lives here.",
+  "scripts": {
+    "sync": "cap sync",
+    "sync:ios": "cap sync ios",
+    "sync:android": "cap sync android",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3"
+  }
+}

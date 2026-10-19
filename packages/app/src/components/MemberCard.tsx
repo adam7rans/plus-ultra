@@ -7,6 +7,9 @@ import {
 } from '@plus-ultra/core'
 import type { TribeMember, Tribe, AuthorityRole, MemberSkill, PsychDimensions } from '@plus-ultra/core'
 import { setAuthorityRole, setDiplomatStatus } from '../lib/tribes'
+import AppIcon from './AppIcon'
+import { ROLE_APP_ICONS, AUTHORITY_APP_ICONS } from './registry-icons'
+import { AppBadge, AppCard } from './ui'
 
 interface Props {
   member: TribeMember
@@ -64,7 +67,7 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
   }
 
   return (
-    <div className="card">
+    <AppCard>
       <Link
         to="/tribe/$tribeId/member/$memberPub"
         params={{ tribeId, memberPub: member.pubkey }}
@@ -80,7 +83,7 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
               {member.displayName}
             </span>
             {isYou && (
-              <span className="text-xs bg-forest-800 text-forest-300 px-1.5 py-0.5 rounded">you</span>
+              <AppBadge>you</AppBadge>
             )}
             {auth !== 'member' && (
               <span className={`text-xs px-1.5 py-0.5 rounded ${
@@ -89,7 +92,7 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
                 auth === 'lead' ? 'bg-blue-900/50 text-blue-300' :
                 auth === 'restricted' ? 'bg-gray-800 text-gray-400' : ''
               }`}>
-                {authMeta.icon} {authMeta.label}
+                <AppIcon name={AUTHORITY_APP_ICONS[auth]} size={16} /> {authMeta.label}
               </span>
             )}
           </div>
@@ -97,7 +100,7 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
             {topRoleSpecs.length > 0 ? (
               <>
                 {topRoleSpecs.map(spec => (
-                  <span key={spec.role} className="text-xs text-gray-500">{spec.icon}</span>
+                  <span key={spec.role} className="text-xs text-gray-500"><AppIcon name={ROLE_APP_ICONS[spec.role]} size={16} /></span>
                 ))}
                 {memberSkills.length > 3 && (
                   <span className="text-xs text-gray-600">+{memberSkills.length - 3}</span>
@@ -130,7 +133,7 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
             onClick={() => setShowRoles(prev => !prev)}
             title="Manage role"
           >
-            <span className="text-base">⚙️</span>
+            <span className="text-base"><AppIcon name="settings" size={16} /></span>
           </button>
         )}
         {!isYou && (
@@ -141,7 +144,7 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
             title={`Message ${member.displayName}`}
             onClick={e => e.stopPropagation()}
           >
-            <span className="text-base">💬</span>
+            <span className="text-base"><AppIcon name="chat" size={16} /></span>
             {dmUnreadCount && dmUnreadCount > 0 ? (
               <span className="absolute -top-1 -right-0.5 w-3.5 h-3.5 rounded-full bg-forest-500 text-white text-[8px] font-bold flex items-center justify-center">
                 {dmUnreadCount > 9 ? '9+' : dmUnreadCount}
@@ -172,7 +175,7 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
                     onClick={() => handleSetRole(role)}
                     disabled={isActive}
                   >
-                    <span>{meta.icon}</span>
+                    <span><AppIcon name={AUTHORITY_APP_ICONS[role]} size={16} /></span>
                     <span>{meta.label}</span>
                     {fitPct !== null && (
                       <span className="text-[10px] text-gray-500 ml-0.5">{fitPct}% fit</span>
@@ -195,7 +198,7 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
                 onClick={handleToggleDiplomat}
                 disabled={togglingDiplomat}
               >
-                <span>{member.isDiplomat ? 'Diplomat ✓' : 'Designate as Diplomat'}</span>
+                <span>{member.isDiplomat ? (<span className="inline-flex items-center gap-1">Diplomat <AppIcon name="check" size={16} /></span>) : 'Designate as Diplomat'}</span>
               </button>
               {member.isDiplomat && (
                 <p className="text-xs text-gray-600 mt-1">
@@ -206,6 +209,6 @@ export default function MemberCard({ member, isYou, tribeId, tribe, actorMember,
           )}
         </div>
       )}
-    </div>
+    </AppCard>
   )
 }

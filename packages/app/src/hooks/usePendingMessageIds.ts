@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getDB } from '../lib/db'
+import { getDB } from '../lib/platform/storage'
 
 export function usePendingMessageIds(): Set<string> {
   const [ids, setIds] = useState<Set<string>>(new Set())
